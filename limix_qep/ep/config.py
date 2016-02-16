@@ -1,0 +1,5 @@
+_ZERO_FLOOR = 1e-7
+_DEBUG = False
+_MAX_ITER = 30
+_EP_EPS = 1e-5
+_PARAM_EPS = 1e-5
