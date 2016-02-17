@@ -15,8 +15,10 @@ def _git_version():
         env['LANGUAGE'] = 'C'
         env['LANG'] = 'C'
         env['LC_ALL'] = 'C'
+        cwd = os.path.abspath(os.path.dirname(__file__))
+        cwd = os.path.join(cwd, '../')
         out = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                               env=env).communicate()[0]
+                               env=env, cwd=cwd).communicate()[0]
         return out
 
     try:
@@ -27,20 +29,23 @@ def _git_version():
 
     return GIT_REVISION
 
-def _get_version_info(version, isreleased):
+def get_version_info(version, isreleased, filename):
     # Adding the git rev number needs to be done inside write_version_py(),
     # otherwise the import of numpy.version messes up the build under Python 3.
     FULLVERSION = version
-    if os.path.exists('.git'):
+    cwd = os.path.abspath(os.path.dirname(__file__))
+    if os.path.exists(os.path.join(cwd, '../', '.git')):
         GIT_REVISION = _git_version()
-    elif os.path.exists('limix_qep/version.py'):
+    elif os.path.exists(filename):
         # must be a source distribution, use existing version file
         try:
             from limix_qep.version import git_revision as GIT_REVISION
         except ImportError:
-            raise ImportError("Unable to import git_revision. Try removing " \
-                              "limix_qep/version.py and the build directory " \
-                              "before building.")
+            msg = "Unable to import git_revision. Try removing "
+            msg += "%s and the build directory " % filename
+            msg += "before building."
+            print('Working folder %s' % os.getcwd())
+            raise ImportError(msg)
     else:
         GIT_REVISION = "Unknown"
 
@@ -49,9 +54,9 @@ def _get_version_info(version, isreleased):
 
     return FULLVERSION, GIT_REVISION
 
-def write_version_py(version, isreleased, filename='limix_qep/version.py'):
+def write_version_py(version, isreleased, filename):
     cnt = """
-# THIS FILE IS GENERATED FROM GWARPED SETUP.PY
+# THIS FILE IS GENERATED FROM LIMIX-QEP SETUP.PY
 short_version = '%(version)s'
 version = '%(version)s'
 full_version = '%(full_version)s'
@@ -60,7 +65,7 @@ release = %(isrelease)s
 if not release:
     version = full_version
 """
-    FULLVERSION, GIT_REVISION = _get_version_info(version, isreleased)
+    FULLVERSION, GIT_REVISION = get_version_info(version, isreleased, filename)
 
     a = open(filename, 'w')
     try:
