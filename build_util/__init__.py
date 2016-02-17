@@ -81,7 +81,6 @@ def generate_cython():
     print("Cythonizing sources")
     p = subprocess.call([sys.executable,
                           os.path.join(cwd, 'cythonize.py'),
-                          'limix_qep/special'],
-                         cwd=cwd)
+                          'limix_qep/special'])
     if p != 0:
         raise RuntimeError("Running cythonize failed!")

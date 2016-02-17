@@ -131,17 +131,18 @@ def setup_package():
 
     run_build = parse_setuppy_commands()
 
+
     cwd = os.path.abspath(os.path.dirname(__file__))
     if not os.path.exists(os.path.join(cwd, 'PKG-INFO')):
         # Generate Cython sources, unless building from source release
         generate_cython()
 
-    # from setuptools import setup
+    from setuptools import setup
+
     if run_build:
         from numpy.distutils.core import setup
         metadata['configuration'] = configuration
     else:
-        from setuptools import setup
         # Version number is added to metadata inside configuration() if build
         # is run.
         metadata['version'] = get_version_info(VERSION, ISRELEASED,

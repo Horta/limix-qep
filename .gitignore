@@ -1,3 +1,4 @@
-limix_qep.eqq-info/
+limix_qep.egg-info/*
 save-commands.json
 build/
+cythonize.dat

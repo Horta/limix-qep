@@ -2,8 +2,8 @@ import numpy as np
 from numpy import dot
 import unittest
 
-from limix_qep.lik import Binomial
-from limix_qep.ep import EP
+from limix_qep import Binomial
+from limix_qep import EP
 from limix_util.linalg import economic_QS
 from limix_util.linalg import _QS_from_K
 from limix_util.dataset import create_binomial

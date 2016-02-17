@@ -33,10 +33,11 @@ def configuration(parent_package='', top_path=None):
                        include_dirs=[curdir],
                        depends=base_hdr + cephes_hdr)
 
-    config.add_extension('nbinom_moms', ['nbinom_moms.pyx'],
+    config.add_extension('nbinom_moms', sources=['nbinom_moms.c'],
                          include_dirs=[curdir],
                          libraries=['cephes', 'nbinom_moms_base'],
-                         depends=base_src + cephes_src + base_hdr + cephes_hdr)
+                         depends=base_src + cephes_src + base_hdr + cephes_hdr\
+                                 + ['nbinom_moms.pyx', 'nbinom_moms.pxd'])
 
     config.add_subpackage('test')
     config.add_define_macros(define_macros)
