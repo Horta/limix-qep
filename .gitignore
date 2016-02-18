@@ -1,4 +1,5 @@
 limix_qep.egg-info/*
 save-commands.json
 build/
+_build/
 cythonize.dat
