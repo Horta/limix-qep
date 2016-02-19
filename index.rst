@@ -11,8 +11,11 @@ Contents:
 .. toctree::
    :maxdepth: 5
 
-.. autofunction:: limix_qep.tool.heritability.estimate
+.. autofunction:: limix_qep.h2_estimate
+.. autofunction:: limix_qep.scan
 
+.. autoclass:: limix_qep.Bernoulli
+.. autoclass:: limix_qep.Binomial
 
 
 Indices and tables

@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import asarray
 import logging
-from limix_qep import EP
+from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_util.linalg import economic_QS
 from limix_util.data_ import gower_kinship_normalization
@@ -10,7 +10,7 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
              outcome_type=Bernoulli(), prevalence=None):
     """Estimate the so-called narrow-sense heritability.
 
-    It supports Bernoulli and Binomial phenotypes (see outcome_type).
+    It supports Bernoulli and Binomial phenotypes (see `outcome_type`).
     The user must specifiy only one of the parameters G, K, and QS for
     defining the genetic background.
 
@@ -20,6 +20,8 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
                     estimation.
     :param numpy.array K: Kinship matrix.
     :param tuple QS: Economic eigen decomposition of the Kinship matrix.
+    :param numpy.array covariate: Covariates.
+    :param object oucome_type: Either Bernoulli :class:`limix_qep.Bernoulli` or Binomial.
     :return: a tuple containing the estimated heritability and additional
              information, respectively.
     """

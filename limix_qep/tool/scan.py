@@ -1,10 +1,10 @@
 import logging
 from numpy import asarray
-from limix_qep import EP
+from limix_qep.ep import EP
 import numpy as np
 from numpy import dot
 import scipy as sp
-from limix_qep.lik import Bernoulli, Binomial
+from limix_qep import Bernoulli, Binomial
 from limix_util.data_ import gower_kinship_normalization
 from limix_util.linalg import economic_QS
 
@@ -175,6 +175,27 @@ class LRT(object):
 
 def scan(y, X, G=None, K=None, QS=None, covariate=None,
          outcome_type=None):
+    """Perform association scan between genetic markers and phenotype.
+
+    Matrix `X` shall contain the genetic markers (e.g., number of minor alleles)
+    with rows and columsn representing samples and genetic markers,
+    respectively.
+
+    It supports Bernoulli and Binomial phenotypes (see `outcome_type`).
+    The user must specifiy only one of the parameters `G`, `K`, and `QS` for
+    defining the genetic background.
+
+    :param numpy.array y: Phenotype. The domain has be the non-negative
+                          integers.
+    :param numpy.array X: Candidate genetic markers whose association with the
+                          phenotype will be tested.
+    :param numpy.array G: Genetic markers matrix used internally for kinship
+                          estimation.
+    :param numpy.array K: Kinship matrix.
+    :param tuple QS:      Economic eigen decomposition of the Kinship matrix.
+    :return:              a tuple containing the estimated p-values and
+                          additional information, respectively.
+    """
 
     if outcome_type is None:
         outcome_type = Bernoulli()
