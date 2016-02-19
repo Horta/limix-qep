@@ -58,7 +58,7 @@ class LRT(object):
         if self._computed:
             return
 
-        self._logger.info('Statistics computation.')
+        self._logger.info('Statistics computation has started.')
 
         self._compute_null_model()
         if self._full:
@@ -69,7 +69,7 @@ class LRT(object):
         self._computed = True
 
     def _compute_alt_models(self):
-        self._logger.info('Alternative model computation.')
+        self._logger.info('Alternative model computation has started.')
 
         X = self._X
         covariate = self._covariate
@@ -92,7 +92,7 @@ class LRT(object):
         self._lrs = fp_lrs
 
     def _compute_null_model(self):
-        self._logger.info('Null model computation.')
+        self._logger.info('Null model computation has started.')
 
         y = self._y
         Q = self._Q
@@ -146,7 +146,6 @@ class LRT(object):
 
         p = covariate.shape[1]
         acov = np.hstack( (covariate, X) )
-        print 'Finding optimal betas...'
         self._logger.debug('Finding optimal betas.')
         if p == 1:
             betas = fep.optimal_betas(acov, 1)
@@ -175,7 +174,10 @@ class LRT(object):
         return self._ep
 
 def scan(y, X, G=None, K=None, QS=None, covariate=None,
-         outcome_type=Bernoulli()):
+         outcome_type=None):
+
+    if outcome_type is None:
+        outcome_type = Bernoulli()
 
     logger = logging.getLogger(__name__)
     logger.info('Association scan has started.')
@@ -216,40 +218,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     X /= np.sqrt(X.shape[1])
     info['X'] = X
 
-    lrt = LRT(X, y, QS, covariate=covariate)
+    lrt = LRT(X, y, QS, covariate=covariate, outcome_type=outcome_type)
     info['lrs'] = lrt.lrs()
     info['effsizes'] = lrt.effsizes
-    return lrt.pvals()
-
-if __name__ == '__main__':
-    pass
-    # # np.random.seed(978)
-    # # np.seterr(all='raise')
-    # # # n = 10
-    # # # p = 5
-    # # # X = np.random.rand(n, p)
-    # # # v = dot(X, X.T).diagonal().mean()
-    # # # X = X / v
-    # # # G = X.copy()
-    # # # K = dot(G, G.T)
-    # # # y = np.asarray(np.random.randint(0, 2, n), dtype=float)
-    # #
-    # # # pvals = test_lmm(X, y, G)
-    # # # ipvals = np.array([0.13553864, 0.57124235, 0.45712805, 0.02639387, 0.14379783])
-    # # # np.testing.assert_allclose(pvals, ipvals, rtol=1e-6)
-    # #
-    # data = np.load('/Users/horta/workspace/limix-gwarped-exp/gwarped_exp/genetics/pb/data_1k_50k.npz')
-    # G = data['X'][0:300,0:800]
-    # X = G
-    # y = data['y'][0:300]
-    # n = y.shape[0]
-    # covariate = np.ones((n, 1))
-    # #
-    # # (pvals, lrs, ep) = lrt(X, y, G, covariate=covariate)
-    # # print pvals
-    # #
-    # # # test_glmm_adjust(ep, pvals, X, ntop=5)
-    #
-    # np.random.seed(398348)
-    # lrt = LRT2(X, y, G=G, outcome_type=Bernoulli())
-    # print lrt.pvals()
+    return (lrt.pvals(), info)

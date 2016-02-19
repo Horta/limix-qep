@@ -11,7 +11,6 @@ from limix_util.dataset import create_binomial
 class TestEP(unittest.TestCase):
     def setUp(self):
         np.random.seed(5)
-        ntrials = 3
         n = 5
         self._n = n
         p = n+4
