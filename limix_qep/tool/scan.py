@@ -1,12 +1,12 @@
 import logging
 from numpy import asarray
-from gwarped.gp.ep import EP
+from limix_qep import EP
 import numpy as np
 from numpy import dot
 import scipy as sp
 from limix_qep.lik import Bernoulli, Binomial
 from limix_util.data_ import gower_kinship_normalization
-from gwarped.util.linalg import economic_QS
+from limix_util.linalg import economic_QS
 
 class LRT(object):
     def __init__(self, X, y, QS, outcome_type=Bernoulli(), full=False,
@@ -35,6 +35,11 @@ class LRT(object):
         self._varg = np.nan
         self._varo = np.nan
         self._vare = np.nan
+        self._pvals = None
+        self._lrs = None
+        self._ep = None
+        self._betas  = None
+        self._lml_null = np.nan
 
     @property
     def varg(self):
@@ -66,16 +71,12 @@ class LRT(object):
     def _compute_alt_models(self):
         self._logger.info('Alternative model computation.')
 
-        y = self._y
-        Q = self._Q
-        S = self._S
         X = self._X
         covariate = self._covariate
-        outcome_type = self._outcome_type
         lml_null = self._lml_null
 
         ep = self._ep
-        ep._freeze_this_thing = True
+        ep.pause = True
 
         fp_lml_alt = np.full(X.shape[1], -np.inf)
         fep = ep.fixed_ep()
@@ -89,7 +90,6 @@ class LRT(object):
 
         self._pvals = fp_pvals
         self._lrs = fp_lrs
-        self._ep = ep
 
     def _compute_null_model(self):
         self._logger.info('Null model computation.')
@@ -104,16 +104,10 @@ class LRT(object):
         ep.optimize()
 
         lml_null = ep.lml()
-        sigg2_null = ep.sigg2
-        delta_null = ep.delta
-        beta_null = ep.beta
 
         self._lml_null = lml_null
-        self._sigg2_null = sigg2_null
-        self._delta_null = delta_null
-        self._beta_null = beta_null
         self._ep = ep
-        self._ep_sites = ep.get_site_likelihoods()
+        # self._ep_sites = ep.get_site_likelihoods()
 
         varg = ep.sigg2
         varo = ep.sigg2 * ep.delta
@@ -132,7 +126,8 @@ class LRT(object):
         lml_alts = []
         for i in xrange(X.shape[1]):
             ep.M = np.hstack( (covariate, X[:,i][:,np.newaxis]) )
-            ep.optimize(only_step2=True)
+            assert False, 'fix me'
+            # ep.optimize(only_step2=True)
             lml_alts.append(ep.lml())
 
         lml_alts = np.asarray(lml_alts, float)
@@ -141,26 +136,22 @@ class LRT(object):
         chi2 = sp.stats.chi2(df=1)
         pvals = chi2.sf(lrs)
 
+        self._pvals = pvals
+        self._lrs = lrs
+
     def _lml_alts(self, fep, X, covariate=None):
         if covariate is None:
             covariate = np.ones((X.shape[0], 1))
         lml_alt = []
-        time_lml = 0.
 
-        try:
-            p = covariate.shape[1]
-            acov = np.hstack( (covariate, X) )
-            print 'Finding optimal betas...'
-            if p == 1:
-                betas = fep.optimal_betas(acov, 1)
-            else:
-                betas = fep.optimal_betas_general(acov, p)
-            print 'Done.'
-        except Exception as e:
-            pass
-
-        # betas = fep.optimal_betas(np.hstack( (covariate, X) ),
-        #                            covariate.shape[1])
+        p = covariate.shape[1]
+        acov = np.hstack( (covariate, X) )
+        print 'Finding optimal betas...'
+        self._logger.debug('Finding optimal betas.')
+        if p == 1:
+            betas = fep.optimal_betas(acov, 1)
+        else:
+            betas = fep.optimal_betas_general(acov, p)
 
         ms = dot(covariate, betas[:p,:]) + X * betas[p,:]
         lml_alt = fep.lmls(ms)
@@ -184,7 +175,7 @@ class LRT(object):
         return self._ep
 
 def scan(y, X, G=None, K=None, QS=None, covariate=None,
-         outcome_type=Bernoulli(), prevalence=None):
+         outcome_type=Bernoulli()):
 
     logger = logging.getLogger(__name__)
     logger.info('Association scan has started.')
@@ -213,11 +204,9 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if QS is None:
         logger.debug('Computing the economic eigen decomposition.')
-        (Q, S) = economic_QS((G, K), 'GK')
+        QS = economic_QS((G, K), 'GK')
     else:
-        Q = QS[0]
-        S = QS[1]
-        S /= np.mean(S)
+        QS[1] /= QS[1].mean()
 
     logger.debug('Genetic marker candidates normalization.')
     X = X - np.mean(X, 0)
@@ -227,7 +216,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     X /= np.sqrt(X.shape[1])
     info['X'] = X
 
-    lrt = LRT(X, y, K, covariate=covariate)
+    lrt = LRT(X, y, QS, covariate=covariate)
     info['lrs'] = lrt.lrs()
     info['effsizes'] = lrt.effsizes
     return lrt.pvals()
