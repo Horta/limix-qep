@@ -185,14 +185,23 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     The user must specifiy only one of the parameters `G`, `K`, and `QS` for
     defining the genetic background.
 
-    :param numpy.array y: Phenotype. The domain has be the non-negative
-                          integers.
-    :param numpy.array X: Candidate genetic markers whose association with the
-                          phenotype will be tested.
-    :param numpy.array G: Genetic markers matrix used internally for kinship
-                          estimation.
-    :param numpy.array K: Kinship matrix.
+    Let :math:`N` be the sample size, :math:`S` the number of covariates,
+    :math:`P_c` the number of genetic markers to be tested, and :math:`P_b`
+    the number of genetic markers used for Kinship estimation.
+
+    :param numpy.ndarray y: Phenotype. The domain has be the non-negative
+                          integers. Dimension (:math:`N\\times 0`).
+    :param numpy.ndarray X: Candidate genetic markers whose association with the
+                          phenotype will be tested. Dimension
+                          (:math:`N\\times P_c`).
+    :param numpy.ndarray G: Genetic markers matrix used internally for kinship
+                          estimation. Dimension (:math:`N\\times P_b`).
+    :param numpy.ndarray K: Kinship matrix. Dimension (:math:`N\\times N`).
     :param tuple QS:      Economic eigen decomposition of the Kinship matrix.
+    :param numpy.array covariate: Covariates. Default is an offset.
+                                  Dimension (:math:`N\\times S`).
+    :param object oucome_type: Either :class:`limix_qep.Bernoulli` (default)
+                               or a :class:`limix_qep.Binomial` instance.
     :return:              a tuple containing the estimated p-values and
                           additional information, respectively.
     """

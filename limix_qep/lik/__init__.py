@@ -1,17 +1,33 @@
 import numpy as np
 
 class Bernoulli(object):
+    """Represent a Bernoulli phenotype.
+
+    There is no parameter to be set for this object type.
+    """
     def assert_outcome(self, y):
         y = np.asarray(y)
         if not np.all(np.logical_or(y == 0.0, y == 1.0)):
             raise Exception("Wrong outcome value(s): %s." % str(y))
 
 class Binomial(object):
+    """Represent a Binomial phenotype.
+
+    Each sample has its own number of trials.
+    """
     # ntrials can be either a scalar, in which case it is assumed
     # that all samples have the same number of trials, and a
     # array, in which case a different number of trials can be specified
     # for each sample.
     def __init__(self, ntrials, nsamples=None):
+        """Construct a Binomial phenotype representation by specifying
+        the number of trials of each sample.
+
+        :param ntrials: A single scalar means that all samples will have the
+                        same number of trials. Use :class:`~numpy:numpy.ndarray`
+                        instead if the number of trials vary across samples.
+        :type ntrials: int, numpy.ndarray
+        """
         if np.isscalar(ntrials):
             assert nsamples is not None, ("You need to set" +\
                                           " the number of samples.")

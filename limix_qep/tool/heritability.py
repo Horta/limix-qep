@@ -7,24 +7,35 @@ from limix_util.linalg import economic_QS
 from limix_util.data_ import gower_kinship_normalization
 
 def estimate(y, G=None, K=None, QS=None, covariate=None,
-             outcome_type=Bernoulli(), prevalence=None):
+             outcome_type=None, prevalence=None):
     """Estimate the so-called narrow-sense heritability.
 
     It supports Bernoulli and Binomial phenotypes (see `outcome_type`).
     The user must specifiy only one of the parameters G, K, and QS for
     defining the genetic background.
 
-    :param numpy.array y: Phenotype. The domain has be the non-negative
-                          integers.
-    :param numpy.array G: Genetic markers matrix used internally for kinship
-                    estimation.
-    :param numpy.array K: Kinship matrix.
+    Let :math:`N` be the sample size, :math:`S` the number of covariates, and
+    :math:`P_b` the number of genetic markers used for Kinship estimation.
+
+    :param numpy.ndarray y: Phenotype. The domain has be the non-negative
+                          integers. Dimension (:math:`N\\times 0`).
+    :param numpy.ndarray G: Genetic markers matrix used internally for kinship
+                    estimation. Dimension (:math:`N\\times P_b`).
+    :param numpy.ndarray K: Kinship matrix. Dimension (:math:`N\\times N`).
     :param tuple QS: Economic eigen decomposition of the Kinship matrix.
-    :param numpy.array covariate: Covariates.
-    :param object oucome_type: Either Bernoulli :class:`limix_qep.Bernoulli` or Binomial.
+    :param numpy.ndarray covariate: Covariates. Default is an offset.
+                                  Dimension (:math:`N\\times S`).
+    :param object oucome_type: Either :class:`limix_qep.Bernoulli` (default)
+                               or a :class:`limix_qep.Binomial` instance.
+    :param float prevalence: Population rate of cases for dichotomous
+                             phenotypes. Typically useful for case-control
+                             studies.
     :return: a tuple containing the estimated heritability and additional
              information, respectively.
     """
+
+    if outcome_type is None:
+        outcome_type = Bernoulli()
 
     logger = logging.getLogger(__name__)
     logger.info('Heritability estimation has started.')

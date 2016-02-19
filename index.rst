@@ -16,6 +16,7 @@ Contents:
 
 .. autoclass:: limix_qep.Bernoulli
 .. autoclass:: limix_qep.Binomial
+  :members: __init__
 
 
 Indices and tables
