@@ -1,2 +1,6 @@
 limix-qep
 - limix-util
+- numba
+- scipy
+- setuptools
+- cython

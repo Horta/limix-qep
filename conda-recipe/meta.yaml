@@ -1,0 +1,22 @@
+package:
+  name: limix_qep
+  version: 0.1.0
+
+requirements:
+  build:
+    - python
+    - numpy
+    - cython
+    - setuptools
+
+  run:
+    - python
+    - numpy
+    - scipy
+    - numba
+    - setuptools
+    - cython
+
+about:
+  home: http://www.ebi.ac.uk
+  license: Private
