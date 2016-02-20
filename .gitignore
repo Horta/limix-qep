@@ -3,3 +3,4 @@ save-commands.json
 build/
 _build/
 cythonize.dat
+.eggs/

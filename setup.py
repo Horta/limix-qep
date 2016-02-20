@@ -1,11 +1,11 @@
+import imp
 import os
 if os.path.exists('MANIFEST'): os.remove('MANIFEST')
 import sys
-import imp
 import textwrap
 
 try:
-    import numpy
+    imp.find_module('numpy')
 except ImportError:
     print('Fatal: could not import numpy. Please, make sure it is installed.')
     sys.exit(1)
@@ -121,12 +121,15 @@ def setup_package():
     filename = os.path.join(dirname, 'limix_qep', 'version.py')
     write_version_py(VERSION, ISRELEASED, filename='limix_qep/version.py')
 
+    install_requires = ['humanfriendly']
+
     metadata = dict(
         name='limix-qep',
         maintainer = "Limix Developers",
         maintainer_email = "horta@ebi.ac.uk",
         test_suite='setup.get_test_suite',
-        packages=['limix_qep']
+        packages=['limix_qep'],
+        install_requires=install_requires
     )
 
     run_build = parse_setuppy_commands()
