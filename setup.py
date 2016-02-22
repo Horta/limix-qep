@@ -146,6 +146,16 @@ def setup_package():
         from numpy.distutils.core import setup
         metadata['configuration'] = configuration
     else:
+        if len(sys.argv) >= 2 and sys.argv[1] == 'bdist_wheel':
+            # bdist_wheel needs setuptools
+            import setuptools
+        from numpy.distutils.core import setup
+
+        cwd = os.path.abspath(os.path.dirname(__file__))
+        if not os.path.exists(os.path.join(cwd, 'PKG-INFO')):
+            # Generate Cython sources, unless building from source release
+            generate_cython()
+
         # Version number is added to metadata inside configuration() if build
         # is run.
         metadata['version'] = get_version_info(VERSION, ISRELEASED,
