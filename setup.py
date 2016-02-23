@@ -13,8 +13,8 @@ builtins.__LIMIX_QEP_SETUP__ = True
 
 PKG_NAME            = "limix_qep"
 MAJOR               = 0
-MINOR               = 1
-MICRO               = 3
+MINOR               = 0
+MICRO               = 1
 ISRELEASED          = False
 VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
@@ -40,6 +40,7 @@ from limix_build import parse_setuppy_commands
 from limix_build import generate_cython
 from limix_build import get_version_info
 from limix_build import get_version_filename
+from limix_build import avoid_requires
 
 def get_test_suite():
     from unittest import TestLoader
@@ -68,6 +69,11 @@ def setup_package():
 
     write_version_py(PKG_NAME, VERSION, ISRELEASED)
 
+    install_requires = ['cython']
+
+    avoid_requires('scipy', install_requires)
+    avoid_requires('numba', install_requires)
+
     metadata = dict(
         name=PKG_NAME,
         maintainer="Limix Developers",
@@ -76,7 +82,7 @@ def setup_package():
         license="BSD",
         url='http://pmbio.github.io/limix/',
         packages=[PKG_NAME],
-        install_requires=['limix_util', 'scipy'],
+        install_requires=['limix_util'],
         setup_requires=[]
     )
 

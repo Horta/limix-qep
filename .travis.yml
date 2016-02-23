@@ -1,54 +1,29 @@
-# After changing this file, check it on:
-#   http://lint.travis-ci.org/
 language: python
-
-# Run jobs on container-based infrastructure, can be overridden per job
-sudo: false
-
-# Travis whitelists the installable packages, additions can be requested
-#   https://github.com/travis-ci/apt-package-whitelist
-addons:
-  apt:
-    packages: &common_packages
-      - gfortran
-      - libatlas-dev
-      - libatlas-base-dev
-      # Speedup builds, particularly when USE_CHROOT=1
-      - eatmydata
-
-cache:
-  directories:
-    - $HOME/.cache/pip
+sudo: required
+dist: trusty
 
 python:
   - 2.7
+  # - 3.5
+install:
+  - sudo apt-get update
+  # We do this conditionally because it saves us some downloading if the
+  # version is the same.
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh;
+    else
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    fi
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - hash -r
+  - conda config --set always_yes yes --set changeps1 no
+  - conda update -q conda
+  - conda info -a
 
-before_install:
-  - uname -a
-  - free -m
-  - df -h
-  - ulimit -a
-  - mkdir builds
-  - pushd builds
-  # Build into own virtualenv
-  # We therefore control our own environment, avoid travis' numpy
-  #
-  # Some change in virtualenv 14.0.5 caused `test_f2py` to fail. So, we have
-  # pinned `virtualenv` to the last known working version to avoid this failure.
-  # Appears we had some issues with certificates on Travis. It looks like
-  # bumping to 14.0.6 will help.
-  - pip install -U 'virtualenv==14.0.6'
-  - virtualenv --python=python venv
-  - source venv/bin/activate
-  - python -V
-  - pip install --upgrade pip setuptools
-  # - pip install nose
-  # pip install coverage
-  # Speed up install by not compiling Cython
-  - pip install --install-option="--no-cython-compile" Cython
-  - popd
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy matplotlib scipy numba h5py
+  - source activate test-environment
+  - python setup.py install
 
-script: python setup.py test
-#
-# after_success:
-#   - ./tools/travis-upload-wheel.sh
+script:
+  - python setup.py test
