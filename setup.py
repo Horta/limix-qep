@@ -72,7 +72,6 @@ def setup_package():
     install_requires = ['cython']
 
     avoid_requires('scipy', install_requires)
-    avoid_requires('numba', install_requires)
 
     metadata = dict(
         name=PKG_NAME,
@@ -82,7 +81,7 @@ def setup_package():
         license="BSD",
         url='http://pmbio.github.io/limix/',
         packages=[PKG_NAME],
-        install_requires=['limix_util'],
+        install_requires=['limix_util', 'numba'],
         setup_requires=[]
     )
 
