@@ -1,6 +1,5 @@
 import unittest
-from gwarped.special.nbinom_moms import NBinomMoms
-from gwarped.tmp.learn_binom3.starwars import moments as old_moments
+from limix_qep.special.nbinom_moms import NBinomMoms
 
 class TestEPGauss(unittest.TestCase):
     def setUp(self):

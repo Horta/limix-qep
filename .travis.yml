@@ -1,0 +1,54 @@
+# After changing this file, check it on:
+#   http://lint.travis-ci.org/
+language: python
+
+# Run jobs on container-based infrastructure, can be overridden per job
+sudo: false
+
+# Travis whitelists the installable packages, additions can be requested
+#   https://github.com/travis-ci/apt-package-whitelist
+addons:
+  apt:
+    packages: &common_packages
+      - gfortran
+      - libatlas-dev
+      - libatlas-base-dev
+      # Speedup builds, particularly when USE_CHROOT=1
+      - eatmydata
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+
+python:
+  - 2.7
+
+before_install:
+  - uname -a
+  - free -m
+  - df -h
+  - ulimit -a
+  - mkdir builds
+  - pushd builds
+  # Build into own virtualenv
+  # We therefore control our own environment, avoid travis' numpy
+  #
+  # Some change in virtualenv 14.0.5 caused `test_f2py` to fail. So, we have
+  # pinned `virtualenv` to the last known working version to avoid this failure.
+  # Appears we had some issues with certificates on Travis. It looks like
+  # bumping to 14.0.6 will help.
+  - pip install -U 'virtualenv==14.0.6'
+  - virtualenv --python=python venv
+  - source venv/bin/activate
+  - python -V
+  - pip install --upgrade pip setuptools
+  # - pip install nose
+  # pip install coverage
+  # Speed up install by not compiling Cython
+  - pip install --install-option="--no-cython-compile" Cython
+  - popd
+
+script: python setup.py test
+#
+# after_success:
+#   - ./tools/travis-upload-wheel.sh
