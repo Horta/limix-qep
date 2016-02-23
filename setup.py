@@ -21,9 +21,19 @@ VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 try:
     imp.find_module('limix_build')
 except ImportError:
-    print('Fatal: could not import limix_build. Please, make sure it is ' +
-          'installed before attempting to build this package.')
-    sys.exit(1)
+    import subprocess
+    r = subprocess.call("pip install limix_build", shell=True)
+    if r != 0:
+        print('Fatal: could not install limix_build using pip. We need this' +
+              ' package before we can build.')
+        sys.exit(1)
+
+    try:
+        imp.find_module('limix_build')
+    except ImportError:
+        print('Fatal: could not import limix_build. Please, make sure it is ' +
+              'installed before attempting to build this package.')
+        sys.exit(1)
 
 from limix_build import write_version_py
 from limix_build import parse_setuppy_commands
