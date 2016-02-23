@@ -14,7 +14,7 @@ builtins.__LIMIX_QEP_SETUP__ = True
 PKG_NAME            = "limix_qep"
 MAJOR               = 0
 MINOR               = 1
-MICRO               = 1
+MICRO               = 2
 ISRELEASED          = False
 VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
