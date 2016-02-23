@@ -73,6 +73,8 @@ def setup_package():
         maintainer="Limix Developers",
         maintainer_email = "horta@ebi.ac.uk",
         test_suite='setup.get_test_suite',
+        license="BSD",
+        url='http://pmbio.github.io/limix/',
         packages=[PKG_NAME],
         install_requires=['limix_util', 'scipy'],
         setup_requires=[]
