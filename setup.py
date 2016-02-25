@@ -8,7 +8,8 @@ except ImportError:
 
 import os
 import sys
-from setuptools import setup
+import glob
+from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext
@@ -31,6 +32,50 @@ VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 from limix_build import write_version_py
 from limix_build import get_version_info
 
+def cephes_info():
+    curdir = os.path.abspath(os.path.dirname(__file__))
+
+    define_macros = []
+    if sys.platform == 'win32':
+        define_macros.append(('_USE_MATH_DEFINES', None))
+    define_macros.append(('PI', 3.141592653589793238462643383279502884))
+
+
+    cephes_src = glob.glob(os.path.join(curdir, 'cephes', '*/*.c'))
+    cephes_src.extend(glob.glob(os.path.join(curdir, 'cephes', '*.c')))
+
+    cephes_hdr = glob.glob(os.path.join(curdir, 'cephes', '*/*.h'))
+    cephes_hdr.extend(glob.glob(os.path.join(curdir, 'cephes', '*.h')))
+
+    return dict(src=cephes_src, include_dirs=[curdir],
+                define_macros=define_macros,
+                extra_compile_args=['-Wno-unused-function'],
+                depends=cephes_src+cephes_hdr)
+
+def special_extension():
+    ci = cephes_info()
+
+    curdir = os.path.abspath(os.path.dirname(__file__))
+
+    special_folder = os.path.join(curdir, 'limix_qep/special/')
+
+    src = ['nbinom_moms.pyx', 'nbinom_moms_base.c']
+    src = [os.path.join(special_folder, s) for s in src]
+
+    hdr = ['nbinom_moms.pxd', 'nbinom_moms_base.h']
+    hdr = [os.path.join(special_folder, h) for h in hdr]
+
+    depends = src + hdr + ci['depends']
+
+    ext = Extension('limix_qep/special/nbinom_moms',
+                    src+ci['src'],
+                    include_dirs=ci['include_dirs']+[np.get_include()],
+                    extra_compile_args=ci['extra_compile_args'],
+                    define_macros=ci['define_macros'],
+                    depends=depends)
+
+    return ext
+
 def get_test_suite():
     from unittest import TestLoader
     return TestLoader().discover(PKG_NAME)
@@ -48,7 +93,7 @@ def setup_package():
         import scipy
     except ImportError:
         install_requires.append('scipy')
-    
+
     setup_requires = []
 
     metadata = dict(
@@ -57,11 +102,14 @@ def setup_package():
         version=get_version_info(PKG_NAME, VERSION, ISRELEASED)[0],
         maintainer_email="horta@ebi.ac.uk",
         test_suite='setup.get_test_suite',
+        packages=find_packages(),
         license="BSD",
         url='http://pmbio.github.io/limix/',
-        packages=[PKG_NAME],
         install_requires=install_requires,
-        setup_requires=setup_requires
+        setup_requires=setup_requires,
+        zip_safe=False,
+        ext_modules=cythonize([special_extension()]),
+        cmdclass=dict(build_ext=build_ext)
     )
 
     try:
