@@ -5,8 +5,8 @@ import numpy as np
 from numpy import dot
 import scipy as sp
 from limix_qep import Bernoulli, Binomial
-from limix_util.data_ import gower_kinship_normalization
-from limix_util.linalg import economic_QS
+from limix_math.linalg import economic_QS
+from util import gower_kinship_normalization
 
 class LRT(object):
     def __init__(self, X, y, QS, outcome_type=Bernoulli(), full=False,

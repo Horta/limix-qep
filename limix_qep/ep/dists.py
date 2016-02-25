@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import dot
-from limix_util.linalg import cho_solve
-from limix_util.linalg import ddot, dotd
+from limix_math.linalg import cho_solve
+from limix_math.linalg import ddot, dotd
 
 class SiteLik(object):
     def __init__(self, nsamples):

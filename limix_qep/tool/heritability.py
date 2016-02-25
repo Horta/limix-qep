@@ -3,8 +3,8 @@ from numpy import asarray
 import logging
 from limix_qep.ep import EP
 from limix_qep import Bernoulli
-from limix_util.linalg import economic_QS
-from limix_util.data_ import gower_kinship_normalization
+from limix_math.linalg import economic_QS
+from util import gower_kinship_normalization
 
 def estimate(y, G=None, K=None, QS=None, covariate=None,
              outcome_type=None, prevalence=None):

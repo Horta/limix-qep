@@ -1,13 +1,13 @@
 import logging
 import numpy as np
-from numpy import dot
 import scipy as sp
-import scipy.stats as st
-from limix_util.linalg import ddot, sum2diag
-from limix_util.linalg import solve, cho_solve
-from limix_util.linalg import trace2
-from limix_util.dist.norm import logpdf, logcdf
-from limix_util.cached import Cached, cached
+from numpy import dot
+from limix_math.linalg import ddot, sum2diag
+from limix_math.linalg import solve, cho_solve
+from limix_math.linalg import trace2
+from limix_math.dist.norm import logpdf, logcdf
+from limix_math.dist.beta import isf as bisf
+from hcache import Cached, cached
 from limix_qep.special.nbinom_moms import NBinomMoms
 from limix_qep.lik import Binomial, Bernoulli
 from dists import SiteLik
@@ -24,8 +24,10 @@ def _is_zero(x):
     return abs(x) < 1e-9
 
 _NALPHAS0 = 100
-_ALPHAS0 = st.beta(0.55, 2.).isf(1.-
-                        np.linspace(0, 1, _NALPHAS0+1, endpoint=False)[1:])
+_ALPHAS0 = bisf(0.55, 2., 1.-
+                np.linspace(0, 1, _NALPHAS0+1, endpoint=False)[1:])
+# _ALPHAS0 = st.beta(0.55, 2.).isf(1.-
+#                         np.linspace(0, 1, _NALPHAS0+1, endpoint=False)[1:])
 _NALPHAS1 = 30
 _ALPHAS1_EPS = 1e-3
 _DEFAULT_NINTP = 100

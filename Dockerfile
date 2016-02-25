@@ -6,7 +6,10 @@ RUN chmod +x miniconda.sh
 RUN ./miniconda.sh -b
 ENV PATH /root/miniconda2/bin:$PATH
 RUN conda update --yes conda
-RUN conda install --yes python=2.7 numpy cython scipy
-RUN mkdir /limix-qep
-WORKDIR /limix-qep
-ADD . /limix-qep
+RUN conda update --yes pip
+RUN conda install --yes python=2.7 numpy cython scipy numba
+RUN pip install limix_build
+RUN pip install limix_util
+#RUN mkdir /limix-qep
+#WORKDIR /limix-qep
+#ADD . /limix-qep
