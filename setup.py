@@ -1,10 +1,10 @@
 from __future__ import division, print_function
-try:
-    import limix_build
-except ImportError:
-    from ez_build import use_limix_build
-    use_limix_build()
-    import limix_build
+# try:
+# import limix_build
+# except ImportError:
+#     from ez_build import use_limix_build
+#     use_limix_build()
+#     import limix_build
 
 import os
 import sys
@@ -13,6 +13,8 @@ from setuptools import setup, find_packages
 from setuptools.extension import Extension
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext
+import distutils.command.bdist_conda
+from distutils.command.bdist_conda import CondaDistribution
 import numpy as np
 
 if sys.version_info[0] >= 3:
@@ -24,9 +26,9 @@ builtins.__LIMIX_QEP_SETUP__ = True
 
 PKG_NAME            = "limix_qep"
 MAJOR               = 0
-MINOR               = 0
-MICRO               = 1
-ISRELEASED          = False
+MINOR               = 1
+MICRO               = 4
+ISRELEASED          = True
 VERSION             = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
 from limix_build import write_version_py
@@ -94,7 +96,7 @@ def setup_package():
     except ImportError:
         install_requires.append('scipy')
 
-    setup_requires = []
+    setup_requires = ['limix_build']
 
     metadata = dict(
         name=PKG_NAME,
@@ -109,7 +111,10 @@ def setup_package():
         setup_requires=setup_requires,
         zip_safe=False,
         ext_modules=cythonize([special_extension()]),
-        cmdclass=dict(build_ext=build_ext)
+        cmdclass=dict(build_ext=build_ext),
+        distclass=CondaDistribution,
+        conda_buildnum=1,
+        conda_features=['mkl']
     )
 
     try:

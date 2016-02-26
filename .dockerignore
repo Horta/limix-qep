@@ -1,6 +1,9 @@
-limix_qep.egg-info/*
 save-commands.json
 build/
 _build/
 cythonize.dat
 .eggs/
+**/*.so
+limix_qep.egg-info/
+**/*.pyc
+dist/

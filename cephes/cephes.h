@@ -1,7 +1,7 @@
 #ifndef _CEPHES_H_
 #define _CEPHES_H_
 //
-// // #include <math.h>
+#include <math.h>
 #include <float.h>
 //
 // #include "bessel/mconf.h"
@@ -14,11 +14,12 @@
 // #include "cmath/protos.h"
 // #include "ellf/protos.h"
 //
-// static double inline norm_cdf(double x)
-// {
-//   return ndtr(x);
-// }
-//
+
+extern double torch_cephes_ndtr ( double );
+static double inline norm_cdf(double x)
+{
+  return ndtr(x);
+}
 
 double torch_cephes_incbi(double a, double b, double y);
 static double inline beta_isf(double a, double b, double x)
@@ -37,31 +38,31 @@ static double inline norm_cdfi(double x)
 {
   return torch_cephes_ndtri(x);
 }
-//
-// static double inline norm_pdf(x)
-// {
-//   // static const double _norm_pdf_C = sqrt(2*M_PI);
-//   static const double _norm_pdf_C = 2.5066282746310002416123552393401041626930236816406250;
-//   return exp(-(x*x)/2.0) / _norm_pdf_C;
-// }
-//
+
+static double inline norm_pdf(x)
+{
+  // static const double _norm_pdf_C = sqrt(2*M_PI);
+  static const double _norm_pdf_C = 2.5066282746310002416123552393401041626930236816406250;
+  return exp(-(x*x)/2.0) / _norm_pdf_C;
+}
+
 static double inline norm_logpdf(double x)
 {
   // static const double _norm_pdf_logC = log(2*M_PI)/2.0;
   static const double _norm_pdf_logC = 0.9189385332046726695409688545623794198036193847656250;
   return -(x*x)/ 2.0 - _norm_pdf_logC;
 }
-//
-// static double inline norm_logpdf2(double x, double mu, double var)
-// {
-//   return norm_logpdf((x - mu) / sqrt(var)) - log(var)/2.0;
-// }
-//
-// static double inline norm_sf(double x)
-// {
-//   return norm_cdf(-x);
-// }
-//
+
+static double inline norm_logpdf2(double x, double mu, double var)
+{
+  return norm_logpdf((x - mu) / sqrt(var)) - log(var)/2.0;
+}
+
+static double inline norm_sf(double x)
+{
+  return norm_cdf(-x);
+}
+
 static double inline norm_logsf(double x)
 {
   return norm_logcdf(-x);
@@ -170,9 +171,10 @@ static double inline logaddexpss(double x, double y, double sx,
 // ln(|sx|) + x + ln(sign(sx) + sy/|sx| * exp(y-x))
 // ln(|sx|) + x + ln(sign(sx) * (1 + sy/sx * exp(y-x)))
 
+extern double torch_cephes_lbeta ( double a, double b );
 static double inline binomln(double N, double K)
 {
-  return -lbeta(1 + N - K, 1 + K) - log1p(N);
+  return -torch_cephes_lbeta(1 + N - K, 1 + K) - log1p(N);
 }
 
 #endif

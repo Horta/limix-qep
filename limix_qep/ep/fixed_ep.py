@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import dot
-from limix_util.linalg import ddot, sum2diag
-from limix_util.linalg import solve, cho_solve
+from limix_math.linalg import ddot, sum2diag
+from limix_math.linalg import solve, cho_solve
 
 _ZERO_FLOOR = 1e-6
 def _is_zero(x):

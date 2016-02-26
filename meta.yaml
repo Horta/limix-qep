@@ -1,13 +1,17 @@
 package:
   name: limix_qep
-  version: 0.1.0
+  version: 0.1.4
 
 requirements:
   build:
     - python
     - numpy
+    - scipy
     - cython
     - setuptools
+    - conda-build
+    - limix_math
+    - hcache
 
   run:
     - python
@@ -16,6 +20,8 @@ requirements:
     - numba
     - setuptools
     - cython
+    - limix_math
+    - hcache
 
 about:
   home: http://www.ebi.ac.uk

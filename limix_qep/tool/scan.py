@@ -7,6 +7,7 @@ import scipy as sp
 from limix_qep import Bernoulli, Binomial
 from limix_math.linalg import economic_QS
 from util import gower_kinship_normalization
+import scipy.stats as st
 
 class LRT(object):
     def __init__(self, X, y, QS, outcome_type=Bernoulli(), full=False,
@@ -85,7 +86,7 @@ class LRT(object):
         fp_lml_alt[:] = np.maximum(fp_lml_alt, t)
 
         fp_lrs = -2 * lml_null + 2 * fp_lml_alt
-        chi2 = sp.stats.chi2(df=1)
+        chi2 = st.chi2(df=1)
         fp_pvals = chi2.sf(fp_lrs)
 
         self._pvals = fp_pvals
@@ -133,7 +134,7 @@ class LRT(object):
         lml_alts = np.asarray(lml_alts, float)
 
         lrs = -2 * self._lml_null + 2 * lml_alts
-        chi2 = sp.stats.chi2(df=1)
+        chi2 = st.chi2(df=1)
         pvals = chi2.sf(lrs)
 
         self._pvals = pvals

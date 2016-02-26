@@ -15,6 +15,8 @@ from dists import Joint
 from dists import Cavity
 from fixed_ep import FixedEP
 from config import _MAX_ITER, _EP_EPS, _PARAM_EPS
+from scipy import optimize
+from scipy.misc import logsumexp
 
 class PrecisionError(Exception):
     pass
@@ -271,7 +273,7 @@ class EP(Cached):
         L1_0 = np.linalg.solve(L1, QtA0A0pT_teta)
         p3 += dot(L1_0.T, L1_0)
         vv = 2*np.log(np.abs(teta))
-        p3 -= np.exp(sp.misc.logsumexp(vv - np.log(tctau)))
+        p3 -= np.exp(logsumexp(vv - np.log(tctau)))
         p3 *= 0.5
 
         p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
@@ -659,7 +661,7 @@ class EP(Cached):
             opt = dict(xatol=_PARAM_EPS, disp=disp)
             bounds_sigg2 = (1e-4, 30.0)
             fun_cost = self._create_fun_cost_sigg2(opt_beta)
-            res = sp.optimize.minimize_scalar(fun_cost,
+            res = optimize.minimize_scalar(fun_cost,
                                               options=opt,
                                               bounds=bounds_sigg2,
                                               method='Bounded')
@@ -668,7 +670,7 @@ class EP(Cached):
             fun_cost = self._create_fun_cost_both(opt_beta)
 
             opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
-            res = sp.optimize.minimize_scalar(fun_cost, options=opt,
+            res = optimize.minimize_scalar(fun_cost, options=opt,
                                               bounds=(_ALPHAS1_EPS,
                                                       1-_ALPHAS1_EPS),
                                               method='Bounded')
@@ -680,7 +682,7 @@ class EP(Cached):
             assert False
             # fun_cost = self._create_fun_cost_step1_keep_sigg2(disp, opt_beta)
             # opt = dict(xatol=_PARAM_EPS, maxiter=30, disp=disp)
-            # res = sp.optimize.minimize_scalar(fun_cost, options=opt,
+            # res = optimize.minimize_scalar(fun_cost, options=opt,
             #                                   bounds=bounds_delta,
             #                                   method='Bounded')
             # self.delta = res.x
