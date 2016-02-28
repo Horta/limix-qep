@@ -1,6 +1,5 @@
 #!/bin/bash
 
-pip install limix_build -U
 $PYTHON setup.py install
 
 # Add more build steps here, if they are necessary.

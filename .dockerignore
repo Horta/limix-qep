@@ -1,9 +1,16 @@
 save-commands.json
 build/
 _build/
-cythonize.dat
 .eggs/
 **/*.so
 limix_qep.egg-info/
 **/*.pyc
 dist/
+save-commands.json
+.eggs/
+build/
+**/*.so
+*.pyc
+**/*.pyc
+.git/
+.DS_Store

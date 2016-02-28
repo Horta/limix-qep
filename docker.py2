@@ -1,0 +1,3 @@
+#!/bin/bash
+
+docker build -t dhorta/limix-qep.py2 -f Dockerfile.py2 . && docker run -it dhorta/limix-qep.py2

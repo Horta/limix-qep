@@ -1,12 +1,26 @@
 language: python
-sudo: required
-dist: trusty
+sudo: false
+
+cache:
+  - pip
+  - apt
 
 python:
   - 2.7
-  # - 3.5
-install:
-  - sudo apt-get update
+  - 3.5
+
+addons:
+  apt:
+    packages:
+      - build-essential
+      - python-dev
+      - python-numpy
+      - python-scipy
+      - libc6
+      - g++
+      - gfortran
+
+before_install:
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -19,11 +33,14 @@ install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
+  # Useful for debugging any issues with conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy matplotlib scipy numba h5py
+  # Replace dep1 dep2 ... with your dependencies
+  - conda install conda-build
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy cython setuptools
   - source activate test-environment
-  - python setup.py install
 
-script:
-  - python setup.py test
+
+install: python setup.py install
+script: python setup.py test

@@ -4,7 +4,7 @@ import logging
 from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_math.linalg import economic_QS
-from util import gower_kinship_normalization
+from .util import gower_kinship_normalization
 
 def estimate(y, G=None, K=None, QS=None, covariate=None,
              outcome_type=None, prevalence=None):

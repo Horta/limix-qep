@@ -1,0 +1,6 @@
+FROM dhorta/compatible-science
+
+RUN mkdir /limix-qep
+ADD . /limix-qep
+WORKDIR /limix-qep
+ENTRYPOINT ["/bin/bash"]

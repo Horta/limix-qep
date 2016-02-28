@@ -6,7 +6,7 @@ from numpy import dot
 import scipy as sp
 from limix_qep import Bernoulli, Binomial
 from limix_math.linalg import economic_QS
-from util import gower_kinship_normalization
+from .util import gower_kinship_normalization
 import scipy.stats as st
 
 class LRT(object):
