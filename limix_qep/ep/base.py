@@ -8,7 +8,8 @@ from limix_math.linalg import trace2
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
-from limix_qep.special.nbinom_moms import NBinomMoms
+# from limix_qep.special.nbinom_moms import NBinomMoms
+from limix_qep.special.nbinom_moms import moments_array3, init
 from limix_qep.lik import Binomial, Bernoulli
 from dists import SiteLik
 from dists import Joint
@@ -87,7 +88,10 @@ class EP(Cached):
             self._delta = 0.
         else:
             self._delta = 1.
-            self._nbinom_moms = NBinomMoms(nintp)
+            # self._nbinom_moms = NBinomMoms(nintp)
+            init(nintp)
+            self._mu1 = np.empty(self._nsamples)
+            self._var2 = np.empty(self._nsamples)
 
         self._beta = np.zeros(M.shape[1])
         self._sigg2 = 1.0
@@ -516,11 +520,12 @@ class EP(Cached):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         K = self._y
-        mu1 = np.empty(nsamples)
-        var2 = np.empty(nsamples)
+        mu1 = self._mu1
+        var2 = self._var2
 
         lmom0 = self._loghz
-        self._nbinom_moms.moments_array2(N, K, ceta, ctau, lmom0, mu1, var2)
+        # self._nbinom_moms.moments_array2(N, K, ceta, ctau, lmom0, mu1, var2)
+        moments_array3(N, K, ceta, ctau, lmom0, mu1, var2)
 
         mu = mu1
         sig2 = var2

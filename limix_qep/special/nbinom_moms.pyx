@@ -196,19 +196,51 @@ cdef void moments_array2(int nintervals, double[:] N, double[:] K,
 import numpy as np
 cimport numpy as np
 
-class NBinomMoms(object):
-    def __init__(self, nintervals):
-        self._nintervals = nintervals
-        self._height = np.empty(nintervals+1)
-        self._weight = np.empty(nintervals)
+cdef int _nintervals
+cdef double[:] _height
+cdef double[:] _weight
 
-    def moments(self, N, K, mu, var):
-        return pmoments(self._nintervals, N, K, mu, var, self._height, self._weight)
+cpdef init(int nintervals):
+    global _nintervals, _height, _weight
+    _nintervals = nintervals
+    _height = np.empty(nintervals+1)
+    _weight = np.empty(nintervals)
 
-    def moments_array(self, N, K, mu, var, lmom0, mu_res, var_res):
-        moments_array(self._nintervals, N, K, mu, var, self._height,
-                      self._weight, lmom0, mu_res, var_res)
+@cython.boundscheck(False)
+@cython.wraparound(False)
+@cython.initializedcheck(False)
+@cython.cdivision(True)
+cpdef void moments_array3(double[:] N, double[:] K,
+             double[:] eta, double[:] tau,
+             double[:] lmom0, double[:] mu_res, double[:] var_res):
+    global _nintervals, _height, _weight
+    cdef:
+        int i
+        double left, right
+        double step
+        double mu, var
 
-    def moments_array2(self, N, K, eta, tau, lmom0, mu_res, var_res):
-        moments_array2(self._nintervals, N, K, eta, tau, self._height,
-                       self._weight, lmom0, mu_res, var_res)
+    for i in range(N.shape[0]):
+        mu = eta[i]/tau[i]
+        var = 1./tau[i]
+        meaningful_interval(N[i], K[i], mu, var, &left, &right, _height, _weight)
+        step = (right - left) / _nintervals
+        moments(left, step, _nintervals, N[i], K[i], mu, var,
+                &lmom0[i], &mu_res[i], &var_res[i])
+
+# class NBinomMoms(object):
+#     def __init__(self, nintervals):
+#         self._nintervals = nintervals
+#         self._height = np.empty(nintervals+1)
+#         self._weight = np.empty(nintervals)
+#
+#     def moments(self, N, K, mu, var):
+#         return pmoments(self._nintervals, N, K, mu, var, self._height, self._weight)
+#
+#     def moments_array(self, N, K, mu, var, lmom0, mu_res, var_res):
+#         moments_array(self._nintervals, N, K, mu, var, self._height,
+#                       self._weight, lmom0, mu_res, var_res)
+#
+#     def moments_array2(self, N, K, eta, tau, lmom0, mu_res, var_res):
+#         moments_array2(self._nintervals, N, K, eta, tau, self._height,
+#                        self._weight, lmom0, mu_res, var_res)

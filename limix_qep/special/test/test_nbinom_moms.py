@@ -1,13 +1,28 @@
 import unittest
-from limix_qep.special.nbinom_moms import NBinomMoms
+import numpy as np
+from limix_qep.special.nbinom_moms import moments_array3, init
 
-class TestEPGauss(unittest.TestCase):
+class TestNBinomMoms(unittest.TestCase):
     def setUp(self):
-        self._bm = NBinomMoms(100)
+        init(100)
 
 
     def _test_moments(self, N, K, mu, var, lmom0, mu_res, var_res):
-        (lmom0n, mu_resn, var_resn) = self._bm.moments(N, K, mu, var)
+        mu = np.asarray([mu])
+        var = np.asarray([var])
+        lmom0n, mu_resn, var_resn = np.empty_like(mu), np.empty_like(mu), \
+                                    np.empty_like(mu)
+        NN = np.empty_like(mu)
+        NN[:] = N
+
+        KK = np.empty_like(mu)
+        KK[:] = K
+
+        moments_array3(NN, KK, mu/var, 1./var, lmom0n, mu_resn, var_resn)
+        # moments_array3(double[:] N, double[:] K,
+        #              double[:] eta, double[:] tau,
+        #              double[:] lmom0, double[:] mu_res, double[:] var_res)
+        # (lmom0n, mu_resn, var_resn) = self._bm.moments(N, K, mu, var)
         self.assertAlmostEqual(lmom0n, lmom0, places=3)
         self.assertAlmostEqual(mu_resn, mu_res, places=3)
         self.assertAlmostEqual(var_resn, var_res, places=4)
