@@ -8,7 +8,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 PKG_NAME = 'limix_qep'
-VERSION  = '0.1.6'
+VERSION  = '0.1.7'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
