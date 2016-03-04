@@ -1,6 +1,6 @@
 package:
   name: limix_qep
-  version: 0.1.7
+  version: 0.1.8
 
 requirements:
   build:
