@@ -11,6 +11,12 @@ class Bernoulli(object):
         if not np.all(np.logical_or(y == 0.0, y == 1.0)):
             raise Exception("Wrong outcome value(s): %s." % str(y))
 
+    def __eq__(self, other):
+        return isinstance(other, Bernoulli)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 class Binomial(object):
     """Represent a Binomial phenotype.
 
@@ -48,3 +54,13 @@ class Binomial(object):
         for i in xrange(self.ntrials.shape[0]):
             if y[i] > ntrials[i] or y[i] < 0 or int(y[i]) != y[i]:
                 raise Exception("Wrong outcome value: %s." % str(y[i]))
+
+    def __eq__(self, other):
+        if not isinstance(other, Binomial):
+            return False
+        if self._ntrials.ndim != other.ntrials.ndim:
+            return False
+        return np.all(self._ntrials == other.ntrials)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
