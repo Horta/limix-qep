@@ -1,9 +1,9 @@
+from __future__ import absolute_import
 import logging
 from numpy import asarray
 from limix_qep.ep import EP
 import numpy as np
 from numpy import dot
-import scipy as sp
 from limix_qep import Bernoulli, Binomial
 from limix_math.linalg import economic_QS
 from .util import gower_kinship_normalization
