@@ -9,14 +9,16 @@ from limix_math.linalg import economic_QS
 from .util import gower_kinship_normalization
 import scipy.stats as st
 
+def _get_offset_covariate(covariate, n):
+    if covariate is None:
+        covariate = np.ones((n, 1))
+    return covariate
+
 class LRT(object):
-    def __init__(self, X, y, QS, outcome_type=Bernoulli(), full=False,
+    def __init__(self, y, QS, outcome_type=Bernoulli(), full=False,
                     covariate=None):
 
         self._logger = logging.getLogger(__name__)
-
-        if covariate is None:
-            covariate = np.ones((y.shape[0], 1))
 
         if not (isinstance(outcome_type, Bernoulli) or
                 isinstance(outcome_type, Binomial)):
@@ -28,10 +30,10 @@ class LRT(object):
         self._y = y
         self._Q = QS[0]
         self._S = QS[1]
-        self._covariate = covariate
-        self._X = X
+        self._covariate = _get_offset_covariate(covariate, y.shape[0])
         self._outcome_type = outcome_type
-        self._computed = False
+        self._null_model_ready = False
+        self._alt_model_ready = False
 
         self._varg = np.nan
         self._varo = np.nan
@@ -41,6 +43,7 @@ class LRT(object):
         self._ep = None
         self._betas  = None
         self._lml_null = np.nan
+        self._X = None
 
     @property
     def varg(self):
@@ -54,11 +57,20 @@ class LRT(object):
     def vare(self):
         return self._vare
 
+    @property
+    def candidate_markers(self):
+        return self._X
+
+    @candidate_markers.setter
+    def candidate_markers(self, X):
+        if self._X is None:
+            self._X = X
+            self._alt_model_ready = False
+        elif np.any(self._X != X):
+            self._X = X
+            self._alt_model_ready = False
+
     def _compute_statistics(self):
-
-        if self._computed:
-            return
-
         self._logger.info('Statistics computation has started.')
 
         self._compute_null_model()
@@ -67,9 +79,10 @@ class LRT(object):
         else:
             self._compute_alt_models()
 
-        self._computed = True
-
     def _compute_alt_models(self):
+        if self._alt_model_ready:
+            return
+
         self._logger.info('Alternative model computation has started.')
 
         X = self._X
@@ -91,8 +104,12 @@ class LRT(object):
 
         self._pvals = fp_pvals
         self._lrs = fp_lrs
+        self._alt_model_ready = True
 
     def _compute_null_model(self):
+        if self._null_model_ready:
+            return
+
         self._logger.info('Null model computation has started.')
 
         y = self._y
@@ -119,7 +136,12 @@ class LRT(object):
         self._varo = varo / vart
         self._vare = vare / vart
 
+        self._null_model_ready = True
+
     def _compute_alt_models_full(self):
+        if self._alt_model_ready:
+            return
+
         X = self._X
         covariate = self._covariate
         ep = self._ep
@@ -139,6 +161,7 @@ class LRT(object):
 
         self._pvals = pvals
         self._lrs = lrs
+        self._alt_model_ready = True
 
     def _lml_alts(self, fep, X, covariate=None):
         if covariate is None:
@@ -173,6 +196,40 @@ class LRT(object):
     def ep(self):
         self._compute_statistics()
         return self._ep
+
+    def is_valid(self, y, QS, covariate, outcome_type):
+        Q = QS[0]
+        S = QS[1]
+        if np.any(y != self._y):
+            return False
+        if Q[0,0] != self._Q[0,0] or S[0] != self._S[0]:
+            return False
+        if np.any(S != self._S):
+            return False
+        if np.any(Q != self._Q):
+            return False
+        n = y.shape[0]
+        if np.any(_get_offset_covariate(covariate, n) != self._covariate):
+            return False
+        if outcome_type != self._outcome_type:
+            return False
+        return True
+
+def _create_LRT(y, QS, covariate, outcome_type):
+    do_create = False
+
+    if _create_LRT.cache is None:
+        do_create = True
+    else:
+        do_create = not _create_LRT.cache.is_valid(y, QS, covariate,
+                                                       outcome_type)
+
+    if do_create:
+        _create_LRT.cache = LRT(y, QS, covariate=covariate,
+                                    outcome_type=outcome_type)
+
+    return _create_LRT.cache
+_create_LRT.cache = None
 
 def scan(y, X, G=None, K=None, QS=None, covariate=None,
          outcome_type=None):
@@ -249,7 +306,8 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     X /= np.sqrt(X.shape[1])
     info['X'] = X
 
-    lrt = LRT(X, y, QS, covariate=covariate, outcome_type=outcome_type)
+    lrt = _create_LRT(y, QS, covariate, outcome_type)
+    lrt.candidate_markers = X
     info['lrs'] = lrt.lrs()
     info['effsizes'] = lrt.effsizes
     return (lrt.pvals(), info)
