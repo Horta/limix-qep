@@ -1,6 +1,5 @@
 import logging
 import numpy as np
-import scipy as sp
 from numpy import dot
 from limix_math.linalg import ddot, sum2diag
 from limix_math.linalg import solve, cho_solve
@@ -511,8 +510,6 @@ class EP(Cached):
         return (mu, sig2)
 
     def _tilted_params_binomial(self):
-
-        nsamples = self._y.shape[0]
 
         binom = self._outcome_type
         N = binom.ntrials
