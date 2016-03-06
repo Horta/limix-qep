@@ -56,21 +56,29 @@ class Joint(object):
         C = ttau * A0T
         D = 1. - C
         DQ = ddot(D, Q, left=True)
-        p1 = sigg2 * dotd(DQ, SQt) + D * sigg2 * delta
+        p1 = sigg2 * dotd(DQ, SQt)
+        if delta != 0:
+            p1 += D * sigg2 * delta
 
         # DQ_L1t = ddot(D, L1_Qt.T, left=True)
         Z = dot(ddot(dot(L1_QtA1, Q), S, left=False), Q.T)
 
-        p2 = - sigg2 * dotd(DQ, Z) - sigg2 * delta * dotd(DQ, L1_QtA1)
+        p2 = - sigg2 * dotd(DQ, Z)
+        if delta != 0:
+            p2 -= sigg2 * delta * dotd(DQ, L1_QtA1)
 
         r = p1 + p2
         self.tau[:] = 1./r
 
         mu = m - C * m - D * dot(Q, dot(L1_QtA1, m))
         u = sigg2 * dot(Q, S * dot(Q.T, teta))
-        u += sigg2 * delta * teta
+        if delta != 0:
+            u += sigg2 * delta * teta
+        
         u = u - C * u
-        mu += u - (sigg2 * dot(DQ, dot(Z, teta)) + sigg2 * delta * dot(DQ, dot(L1_QtA1, teta)))
+        mu += u - sigg2 * dot(DQ, dot(Z, teta))
+        if delta != 0:
+            mu -= sigg2 * delta * dot(DQ, dot(L1_QtA1, teta))
 
         self.eta[:] = self.tau * mu
 
