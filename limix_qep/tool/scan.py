@@ -296,7 +296,10 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         logger.debug('Computing the economic eigen decomposition.')
         QS = economic_QS((G, K), 'GK')
     else:
-        QS[1] /= QS[1].mean()
+        Q = QS[0]
+        S = QS[1]
+        S /= S.mean()
+        QS = (Q, S)
 
     logger.debug('Genetic marker candidates normalization.')
     X = X - np.mean(X, 0)
