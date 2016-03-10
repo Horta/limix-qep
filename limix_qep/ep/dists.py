@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import dot
-from limix_math.linalg import cho_solve
+from scipy.linalg.lapack import get_lapack_funcs
+from limix_math.linalg import cho_solve, sum2diag
 from limix_math.linalg import ddot, dotd
 
 class SiteLik(object):
@@ -74,11 +75,36 @@ class Joint(object):
         u = sigg2 * dot(Q, S * dot(Q.T, teta))
         if delta != 0:
             u += sigg2 * delta * teta
-        
+
         u = u - C * u
         mu += u - sigg2 * dot(DQ, dot(Z, teta))
         if delta != 0:
             mu -= sigg2 * delta * dot(DQ, dot(L1_QtA1, teta))
+
+        self.eta[:] = self.tau * mu
+
+def symmetrize(a):
+    return a + a.T - np.diag(a.diagonal())
+
+class Joint2(object):
+    def __init__(self, nsamples):
+        self.tau = np.empty(nsamples)
+        self.eta = np.empty(nsamples)
+
+    def initialize(self, m, K):
+        self.tau[:] = 1.0 / K.diagonal()
+        self.eta[:] = self.tau * m
+
+    def update(self, m, K, L, ttau, teta):
+
+        potri = get_lapack_funcs('potri', (L,))
+        TK_1 = potri(L.T)[0]
+        TK_1 = symmetrize(TK_1)
+        r = ttau * dotd(TK_1, K)
+
+        self.tau[:] = 1./r
+
+        mu = ttau * (cho_solve(L, dot(K, m)) + cho_solve(L, dot(K, teta)))
 
         self.eta[:] = self.tau * mu
 
