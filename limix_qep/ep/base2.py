@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 from numpy import dot
 from limix_math.linalg import ddot, sum2diag
-from limix_math.linalg import solve, cho_solve, lu_solve
+from limix_math.linalg import solve, lu_solve
 from limix_math.linalg import economic_QS
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
@@ -110,6 +110,7 @@ class EP2(Cached):
 
         self._Mok = ok
 
+    @cached
     def K(self):
         return sum2diag(self._sigg2*self._K0, self._sigg2 * self._delta)
 
@@ -154,6 +155,8 @@ class EP2(Cached):
     def sigg2(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
+        self.clear_cache('LU')
+        self.clear_cache('K')
         self._sigg2 = value
 
     @property
@@ -165,6 +168,8 @@ class EP2(Cached):
             assert value == 0.
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
+        self.clear_cache('LU')
+        self.clear_cache('K')
         self._delta = value
 
     @cached
@@ -211,8 +216,7 @@ class EP2(Cached):
 
     def fixed_ep(self):
         self._update()
-        (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
-            self._lml_components()
+        (p1, p3, p4, _, _, p7, p8) = self._lml_components()
 
         lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
         Q = self._Q
@@ -240,16 +244,11 @@ class EP2(Cached):
             + (smus - cmus)**2/(2*(svars + cvars))
         return np.exp(lzs)
 
-    # def L(self):
-    #     K = self.K()
-    #     ttau = self._sites.tau
-    #     return np.linalg.cholesky(sum2diag(ddot(K, ttau, left=False), 1))
-
+    @cached
     def LU(self):
         K = self.K()
         ttau = self._sites.tau
         return sp.linalg.lu_factor(sum2diag(ddot(K, ttau, left=False), 1))
-        # return sp.linalg.lu(sum2diag(ddot(K, ttau, left=False), 1))
 
     @cached
     def _update(self):
@@ -282,6 +281,7 @@ class EP2(Cached):
                                 ' or np.any(hsig2 == 0.).')
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
+            self.clear_cache('LU')
             self._joint.update(m, K, self.LU(), ttau, teta)
 
             tdiff = np.abs(self._psites.tau - ttau)
@@ -385,15 +385,16 @@ class EP2(Cached):
 
     def _opt_beta_nom(self):
         teta = self._sites.eta
-        L = self.L()
-        return dot(self.K(), cho_solve(L, teta))
+        LUf = self.LU()
+        K = self.K()
+        return lu_solve(LUf, dot(K, teta))
 
     def _opt_beta_denom(self):
         M = self._M[:,self._Mok]
-        L = self.L()
+        LUf = self.LU()
         K = self.K()
         ttau = self._sites.tau
-        return dot(M.T, ddot(ttau, cho_solve(L, dot(K, M)), left=True))
+        return dot(M.T, ddot(ttau, lu_solve(LUf, dot(K, M)), left=True))
 
     # -----------------------------------------------------------#
     # ---------------------- OPTIMIZATION ---------------------- #
