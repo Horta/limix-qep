@@ -11,6 +11,7 @@ requirements:
     - setuptools
     - conda-build
     - limix_math
+    - limix_tool
     - hcache
 
   run:
@@ -20,6 +21,7 @@ requirements:
     - setuptools
     - cython
     - limix_math
+    - limix_tool
     - hcache
 
 about:
