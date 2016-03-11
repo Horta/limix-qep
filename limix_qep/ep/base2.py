@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+import scipy as sp
 from numpy import dot
 from limix_math.linalg import ddot, sum2diag
 from limix_math.linalg import solve, cho_solve
@@ -170,43 +171,36 @@ class EP2(Cached):
     def _lml_components(self):
         self._update()
         m = self._m
-        sigg2 = self.sigg2
         ttau = self._sites.tau
         teta = self._sites.eta
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         cmu = self._cavs.mu
-        S = self._S
-        sigg2S = S*sigg2
-        delta = self.delta
         K = self.K()
-        K_1m = solve(K, m)
 
         tctau = ttau + ctau
 
         L = self.L()
-        import ipdb; ipdb.set_trace()
 
         p1 = -np.sum(np.log(np.diagonal(L)))
         p1 += 0.5 * np.log(ttau).sum()
-        p1 -= 0.5 * np.log(sigg2S + sigg2*delta).sum()
 
-        L_teta = cho_solve(L, teta)
-        p3 = dot(teta, L_teta)
-        p3 -= (teta * teta) / tctau
+        p3 = dot(teta, cho_solve(L, dot(K, teta)))
+        p3 -= np.sum((teta * teta) / tctau)
         p3 *= 0.5
 
         p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
 
-        p5 = dot(K_1m, cho_solve(L, teta))
+        p5 = dot(m, cho_solve(L, teta))
 
-        p6 = -0.5 * dot(K_1m, cho_solve(L, ttau*m))
+        p6 = -0.5 * dot(m, cho_solve(L, ttau*m))
 
         p7 = 0.5 * (np.log(ttau + ctau).sum() - np.log(ctau).sum())
         p7 -= 0.5 * np.log(ttau).sum()
 
         p8 = self._loghz.sum()
 
+        print(p1, p3, p4, p5, p6, p7, p8)
         return (p1, p3, p4, p5, p6, p7, p8)
 
     def lml(self):
@@ -244,10 +238,16 @@ class EP2(Cached):
             + (smus - cmus)**2/(2*(svars + cvars))
         return np.exp(lzs)
 
-    def L(self):
+    # def L(self):
+    #     K = self.K()
+    #     ttau = self._sites.tau
+    #     return np.linalg.cholesky(sum2diag(ddot(K, ttau, left=False), 1))
+
+    def LU(self):
         K = self.K()
         ttau = self._sites.tau
-        return np.linalg.cholesky(sum2diag(K, ttau))
+        return sp.linalg.lu_factor(sum2diag(ddot(K, ttau, left=False), 1))
+        # return sp.linalg.lu(sum2diag(ddot(K, ttau, left=False), 1))
 
     @cached
     def _update(self):
@@ -264,7 +264,7 @@ class EP2(Cached):
             self._joint.initialize(m, K)
             self._params_initialized = True
         else:
-            self._joint.update(m, K, self.L(), ttau, teta)
+            self._joint.update(m, K, self.LU(), ttau, teta)
 
         i = 0
         while i < _MAX_ITER:
@@ -280,7 +280,8 @@ class EP2(Cached):
                                 ' or np.any(hsig2 == 0.).')
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
-            self._joint.update(m, K, self.L(), ttau, teta)
+            import ipdb; ipdb.set_trace()
+            self._joint.update(m, K, self.LU(), ttau, teta)
 
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)

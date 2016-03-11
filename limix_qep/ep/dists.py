@@ -86,6 +86,7 @@ class Joint(object):
 def symmetrize(a):
     return a + a.T - np.diag(a.diagonal())
 
+import scipy as sp
 class Joint2(object):
     def __init__(self, nsamples):
         self.tau = np.empty(nsamples)
@@ -95,16 +96,20 @@ class Joint2(object):
         self.tau[:] = 1.0 / K.diagonal()
         self.eta[:] = self.tau * m
 
-    def update(self, m, K, L, ttau, teta):
+    def update(self, m, K, LU, ttau, teta):
 
-        potri = get_lapack_funcs('potri', (L,))
-        TK_1 = potri(L.T)[0]
-        TK_1 = symmetrize(TK_1)
-        r = ttau * dotd(TK_1, K)
+        # potri = get_lapack_funcs('potri', (L,))
+        getri = get_lapack_funcs('getri', LU)
+        LU_1 = getri(LU[0], LU[1])[0]
+        # LL_1 = potri(LU)[0]
+        LU_1 = symmetrize(LU_1)
+        import ipdb; ipdb.set_trace()
+        r = dotd(LU_1, K)
 
         self.tau[:] = 1./r
 
-        mu = ttau * (cho_solve(L, dot(K, m)) + cho_solve(L, dot(K, teta)))
+        # mu = cho_solve(L, m + dot(K, teta))
+        mu = sp.linalg.lu_solve(LU, m + dot(K, teta))
 
         self.eta[:] = self.tau * mu
 
