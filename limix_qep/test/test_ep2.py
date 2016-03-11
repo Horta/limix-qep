@@ -99,7 +99,7 @@ class TestEP(unittest.TestCase):
 
         self.assertAlmostEqual(ep2.lml(), ep.lml())
         self.assertAlmostEqual(ep2.sigg2, ep.sigg2)
-        np.testing.assert_allclose(ep2.beta, ep.beta)
+        np.testing.assert_allclose(ep2.beta, ep.beta, rtol=1e-4)
 
 if __name__ == '__main__':
     unittest.main()

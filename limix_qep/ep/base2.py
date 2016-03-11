@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import numpy as np
 import scipy as sp
@@ -5,6 +6,7 @@ from numpy import dot
 from limix_math.linalg import ddot, sum2diag
 from limix_math.linalg import solve, lu_solve
 from limix_math.linalg import economic_QS
+from limix_math.linalg import lu_slogdet
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
@@ -188,7 +190,10 @@ class EP2(Cached):
         LUf = self.LU()
         LU = LUf[0]
 
-        p1 = -0.5 * np.sum(np.log(np.diagonal(LU)))
+        dt = lu_slogdet(LUf)
+        if dt[0] != 1:
+            raise ValueError('The determinant of LU should always be positive.')
+        p1 = -0.5 * dt[1]
         p1 += 0.5 * np.log(ttau).sum()
 
         p3 = dot(teta, lu_solve(LUf, dot(K, teta)))
@@ -338,9 +343,9 @@ class EP2(Cached):
         lcdf = self._loghz
         lcdf[:] = logcdf(c)
         lpdf = logpdf(c)
-        mu = self._cavs.eta / self._cavs.tau + self._y11 * np.exp(lpdf - (lcdf + lb))
-
-        sig2 = 1./self._cavs.tau - np.exp(lpdf - (lcdf + 2*lb)) * (c + np.exp(lpdf - lcdf))
+        with np.errstate(under='ignore'):
+            mu = self._cavs.eta / self._cavs.tau + self._y11 * np.exp(lpdf - (lcdf + lb))
+            sig2 = 1./self._cavs.tau - np.exp(lpdf - (lcdf + 2*lb)) * (c + np.exp(lpdf - lcdf))
 
         return (mu, sig2)
 
@@ -384,17 +389,20 @@ class EP2(Cached):
     #     return u
 
     def _opt_beta_nom(self):
+        M = self._M[:,self._Mok]
+        ttau = self._sites.tau
         teta = self._sites.eta
         LUf = self.LU()
         K = self.K()
-        return lu_solve(LUf, dot(K, teta))
+        return dot(M.T, teta) - dot(M.T, ttau * lu_solve(LUf, dot(K, teta)))
 
     def _opt_beta_denom(self):
         M = self._M[:,self._Mok]
         LUf = self.LU()
         K = self.K()
         ttau = self._sites.tau
-        return dot(M.T, ddot(ttau, lu_solve(LUf, dot(K, M)), left=True))
+        return dot(M.T, ddot(ttau, M, left=True))\
+             + dot(M.T, ddot(ttau, lu_solve(LUf, ddot(ttau, dot(K, M), left=True)), left=True))
 
     # -----------------------------------------------------------#
     # ---------------------- OPTIMIZATION ---------------------- #
@@ -405,21 +413,18 @@ class EP2(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._beta)
 
-        M = self._M
-
         u = self._opt_beta_nom()
-        u = dot(M.T, u)
 
         Z = self._opt_beta_denom()
 
         try:
             ok = self._Mok
             obeta = np.zeros_like(self._beta)
-            obeta[ok] = solve(Z, u[ok])
+            obeta[ok] = solve(Z, u)
         except np.linalg.LinAlgError:
             self._logger.warn('Failed to compute the optimal beta.'+
                               ' Zeroing it.')
-            obeta = np.zeros_like(self._beta)
+            obeta[:] = 0
 
         return obeta
 
