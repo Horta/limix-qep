@@ -77,13 +77,13 @@ class TestEP(unittest.TestCase):
         K = dot(G, G.T) + np.eye(n)*1.0
         (Q, S) = economic_QS(K, 'K')
         y = np.array([1., 0., 1.])
-        ep = EP2(y, M, K)
-        # ep = EP(y, M, Q, S)
+        ep2 = EP2(y, M, K)
+        ep = EP(y, M, Q, S)
+        ep2.beta = np.array([1.])
+        ep2.sigg2 = 1.
         ep.beta = np.array([1.])
         ep.sigg2 = 1.
-        print(ep.lml())
-        # self.assertAlmostEqual(ep.lml(), -2.59563598457)
-
+        self.assertAlmostEqual(ep.lml(), ep2.lml())
 
     # def test_bernoulli_optimize(self):
     #     np.random.seed(5)

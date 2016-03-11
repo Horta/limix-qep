@@ -3,7 +3,7 @@ import numpy as np
 import scipy as sp
 from numpy import dot
 from limix_math.linalg import ddot, sum2diag
-from limix_math.linalg import solve, cho_solve
+from limix_math.linalg import solve, cho_solve, lu_solve
 from limix_math.linalg import economic_QS
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
@@ -180,27 +180,29 @@ class EP2(Cached):
 
         tctau = ttau + ctau
 
-        L = self.L()
+        LUf = self.LU()
+        LU = LUf[0]
 
-        p1 = -np.sum(np.log(np.diagonal(L)))
+        p1 = -0.5 * np.sum(np.log(np.diagonal(LU)))
         p1 += 0.5 * np.log(ttau).sum()
 
-        p3 = dot(teta, cho_solve(L, dot(K, teta)))
+        p3 = dot(teta, lu_solve(LUf, dot(K, teta)))
         p3 -= np.sum((teta * teta) / tctau)
         p3 *= 0.5
 
         p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
 
-        p5 = dot(m, cho_solve(L, teta))
+        p5 = dot(m, teta)
+        p5 -= dot(m*ttau, lu_solve(LUf, dot(K, teta)))
+        # p5 = dot(m, lu_solve(LUf, teta))
 
-        p6 = -0.5 * dot(m, cho_solve(L, ttau*m))
+        p6 = -0.5 * dot(ttau*m, lu_solve(LUf, m))
 
         p7 = 0.5 * (np.log(ttau + ctau).sum() - np.log(ctau).sum())
         p7 -= 0.5 * np.log(ttau).sum()
 
         p8 = self._loghz.sum()
 
-        print(p1, p3, p4, p5, p6, p7, p8)
         return (p1, p3, p4, p5, p6, p7, p8)
 
     def lml(self):
@@ -280,7 +282,6 @@ class EP2(Cached):
                                 ' or np.any(hsig2 == 0.).')
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
-            import ipdb; ipdb.set_trace()
             self._joint.update(m, K, self.LU(), ttau, teta)
 
             tdiff = np.abs(self._psites.tau - ttau)

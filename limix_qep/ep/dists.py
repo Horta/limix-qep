@@ -98,12 +98,8 @@ class Joint2(object):
 
     def update(self, m, K, LU, ttau, teta):
 
-        # potri = get_lapack_funcs('potri', (L,))
         getri = get_lapack_funcs('getri', LU)
         LU_1 = getri(LU[0], LU[1])[0]
-        # LL_1 = potri(LU)[0]
-        LU_1 = symmetrize(LU_1)
-        import ipdb; ipdb.set_trace()
         r = dotd(LU_1, K)
 
         self.tau[:] = 1./r

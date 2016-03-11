@@ -295,7 +295,6 @@ class EP(Cached):
 
         p8 = self._loghz.sum()
 
-        print(p1, p3, p4, p5, p6, p7, p8)
         return (p1, p3, p4, p5, p6, p7, p8, f0, A0A0pT_teta)
 
     def lml(self):
