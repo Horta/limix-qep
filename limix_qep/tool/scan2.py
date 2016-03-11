@@ -5,7 +5,7 @@ from limix_qep.ep import EP2
 import numpy as np
 from numpy import dot
 from limix_qep import Bernoulli, Binomial
-from .util import gower_kinship_normalization
+from .util import gower_normalization
 import scipy.stats as st
 
 def _get_offset_covariate(covariate, n):
@@ -268,7 +268,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if K is not None:
         logger.debug('Covariace matrix normalization.')
-        K = gower_kinship_normalization(K)
+        K = gower_normalization(K)
         info['K'] = K
 
     if G is not None:
@@ -287,7 +287,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if K is None:
         logger.debug('Estimating the kinship matrix from G.')
-        K = gower_kinship_normalization(G.dot(G.T))
+        K = gower_normalization(G.dot(G.T))
         info['K'] = K
 
     logger.debug('Genetic marker candidates normalization.')
