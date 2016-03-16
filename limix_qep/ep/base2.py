@@ -16,7 +16,7 @@ from limix_qep.lik import Binomial, Bernoulli
 from dists import SiteLik
 from dists import Joint2
 from dists import Cavity
-from fixed_ep import FixedEP
+from fixed_ep2 import FixedEP2
 from config import _MAX_ITER, _EP_EPS, _PARAM_EPS
 from scipy import optimize
 
@@ -224,12 +224,8 @@ class EP2(Cached):
         (p1, p3, p4, _, _, p7, p8) = self._lml_components()
 
         lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
-        Q = self._Q
-        L1 = self._L1()
-        A1 = self._A1()
         opt_bnom = self._opt_beta_nom()
-        vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
-                        A1, L1, Q, opt_bnom)
+        vv1 = FixedEP2(lml_nonbeta_part, opt_bnom, self._sites.tau, self._sites.eta, self.K(), self.LU())
 
         return vv1
 
@@ -394,15 +390,16 @@ class EP2(Cached):
         teta = self._sites.eta
         LUf = self.LU()
         K = self.K()
-        return dot(M.T, teta) - dot(M.T, ttau * lu_solve(LUf, dot(K, teta)))
+        return teta - ttau * lu_solve(LUf, dot(K, teta))
 
     def _opt_beta_denom(self):
         M = self._M[:,self._Mok]
         LUf = self.LU()
-        K = self.K()
         ttau = self._sites.tau
-        return dot(M.T, ddot(ttau, M, left=True))\
-             + dot(M.T, ddot(ttau, lu_solve(LUf, ddot(ttau, dot(K, M), left=True)), left=True))
+        U = lu_solve(LUf, M)
+        return dot(M.T, ddot(ttau, U, left=True))
+        # return dot(M.T, ddot(ttau, M, left=True))\
+        #      + dot(M.T, ddot(ttau, lu_solve(LUf, ddot(ttau, dot(K, M), left=True)), left=True))
 
     # -----------------------------------------------------------#
     # ---------------------- OPTIMIZATION ---------------------- #
@@ -413,7 +410,7 @@ class EP2(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._beta)
 
-        u = self._opt_beta_nom()
+        u = dot(self._M.T, self._opt_beta_nom())
 
         Z = self._opt_beta_denom()
 

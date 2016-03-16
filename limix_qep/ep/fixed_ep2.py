@@ -1,43 +1,31 @@
 import numpy as np
 from numpy import dot
-from limix_math.linalg import ddot, sum2diag
-from limix_math.linalg import solve, cho_solve
+from scipy.linalg.lapack import get_lapack_funcs
+from limix_math.linalg import ddot
+from limix_math.linalg import solve, lu_solve
 
 _ZERO_FLOOR = 1e-6
 def _is_zero(x):
     return abs(x) < 1e-9
 
-class FixedEP(object):
+class FixedEP2(object):
 
-    def __init__(self, lml_fixed_part, A0A0pT_teta, f0, A1, L1, Q, opt_bnom):
+    def __init__(self, lml_fixed_part, opt_bnom, ttau, teta, K, LUf):
         self._lml_fixed_part = lml_fixed_part
 
-        self._A0A0pT_teta = A0A0pT_teta
-        self._f0 = f0
-        self._f1 = 0.5 * dot(ddot(A1, Q, left=True), cho_solve(L1, ddot(Q.T, A1, left=False)))
-
-        self._A1 = A1
-        self._L1 = L1
-        self._Q = Q
+        self._teta = teta
+        self._f0 = ttau * lu_solve(LUf, dot(K, teta))
         self._opt_bnom = opt_bnom
 
-        QtA1 = ddot(Q.T, A1, left=False)
-
-        self._opt_bden = sum2diag(-ddot(A1, dot(Q, cho_solve(L1, QtA1)), left=True), A1)
+        getri = get_lapack_funcs('getri', LUf)
+        LU_1 = getri(LUf[0], LUf[1])[0]
+        ddot(ttau, LU_1, left=True)
+        self._opt_bden = ddot(ttau, LU_1, left=True)
 
     def lmls(self, ms):
-        A1 = self._A1
-
-        A0A0pT_teta = self._A0A0pT_teta
-        f0 = self._f0
-        p5 = dot(ms.T, A0A0pT_teta) - dot(ms.T, f0)
-
-        A1m = ms * A1[:, np.newaxis]
-
-        f1 = self._f1
-        p6 = - 0.5 * np.sum(ms * A1m, 0) +\
-            np.sum(ms * dot(f1, ms), 0)
-
+        p5 = dot(ms.T, self._teta)
+        p5 -= dot(ms.T, self._f0)
+        p6 = -0.5 * np.sum(ms * dot(self._opt_bden, ms), 0)
         return self._lml_fixed_part + p5 + p6
 
 
