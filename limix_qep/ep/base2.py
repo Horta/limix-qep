@@ -5,7 +5,6 @@ import scipy as sp
 from numpy import dot
 from limix_math.linalg import ddot, sum2diag
 from limix_math.linalg import solve, lu_solve
-from limix_math.linalg import economic_QS
 from limix_math.linalg import lu_slogdet
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
@@ -13,12 +12,23 @@ from hcache import Cached, cached
 # from limix_qep.special.nbinom_moms import NBinomMoms
 from limix_qep.special.nbinom_moms import moments_array3, init
 from limix_qep.lik import Binomial, Bernoulli
+from limix_util.report import BeginEnd
 from dists import SiteLik
 from dists import Joint2
 from dists import Cavity
 from fixed_ep2 import FixedEP2
 from config import _MAX_ITER, _EP_EPS, _PARAM_EPS
 from scipy import optimize
+
+import scipy.linalg._flapack
+_lu_factor = getattr(scipy.linalg._flapack, 'dgetrf', None)
+_lu_factor.module_name = 'flapack'
+_lu_factor.dtype = np.dtype('float64')
+_lu_factor.prefix = 'd'
+
+def lu_factor(A, overwrite_a=False):
+    lu, piv, _ = _lu_factor(A, overwrite_a=overwrite_a)
+    return lu, piv
 
 class PrecisionError(Exception):
     pass
@@ -59,13 +69,12 @@ class EP2(Cached):
         outcome_type = Bernoulli() if outcome_type is None else outcome_type
         self._outcome_type = outcome_type
         assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
-        (_, S) = economic_QS(K, 'K')
-        if S.min() <= 0:
-            raise Exception("The provided covariance matrix is not" +
-                            " positive-definite because the minimum eigvalue" +
-                            " is %f." % S.min())
+        # (_, S) = economic_QS(K, 'K')
+        # if S.min() <= 0:
+        #     raise Exception("The provided covariance matrix is not" +
+        #                     " positive-definite because the minimum eigvalue" +
+        #                     " is %f." % S.min())
 
-        self._S = S
         self._params_initialized = False
         self._nsamples = y.shape[0]
         self._y = np.asarray(y, float)
@@ -114,6 +123,8 @@ class EP2(Cached):
 
     @cached
     def K(self):
+        if self._delta == 0:
+            return self._sigg2*self._K0
         return sum2diag(self._sigg2*self._K0, self._sigg2 * self._delta)
 
     @property
@@ -249,7 +260,10 @@ class EP2(Cached):
     def LU(self):
         K = self.K()
         ttau = self._sites.tau
-        return sp.linalg.lu_factor(sum2diag(ddot(K, ttau, left=False), 1))
+        v = sum2diag(ddot(K, ttau, left=False), 1)
+        with BeginEnd('lu factor'):
+            r = lu_factor(v, True)
+        return r
 
     @cached
     def _update(self):
@@ -266,7 +280,8 @@ class EP2(Cached):
             self._joint.initialize(m, K)
             self._params_initialized = True
         else:
-            self._joint.update(m, K, self.LU(), ttau, teta)
+            with BeginEnd('init joint update'):
+                self._joint.update(m, K, self.LU(), ttau, teta)
 
         i = 0
         while i < _MAX_ITER:
@@ -283,7 +298,8 @@ class EP2(Cached):
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
             self.clear_cache('LU')
-            self._joint.update(m, K, self.LU(), ttau, teta)
+            with BeginEnd('joint update'):
+                self._joint.update(m, K, self.LU(), ttau, teta)
 
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)
@@ -462,24 +478,17 @@ class EP2(Cached):
 
     def _create_fun_cost_both(self, opt_beta):
         def fun_cost(alpha1):
-            self._logger.debug("Function cost evaluation for alpha1 %e.",
-                               alpha1)
             (alpha0_min, min_cost) = self._best_alpha0(alpha1, opt_beta)
-
-            self._logger.debug("Resulting alpha0: %e.", alpha0_min)
-            self._logger.debug("Resulting cost: %e.", min_cost)
             return min_cost
         return fun_cost
 
     def _create_fun_cost_sigg2(self, opt_beta):
         def fun_cost(sigg2):
-            self._logger.debug("Function cost evaluation for sigg2 %e.", sigg2)
             self.sigg2 = sigg2
             self._update()
             if opt_beta:
                 self._optimize_beta()
             cost = -self.lml()
-            self._logger.debug("Resulting cost: %e.", cost)
             return cost
         return fun_cost
 

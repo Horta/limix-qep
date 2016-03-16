@@ -7,6 +7,7 @@ from numpy import dot
 from limix_qep import Bernoulli, Binomial
 from .util import gower_normalization
 import scipy.stats as st
+from limix_util.report import BeginEnd
 
 def _get_offset_covariate(covariate, n):
     if covariate is None:
@@ -116,9 +117,11 @@ class LRT(object):
         outcome_type = self._outcome_type
 
         ep = EP2(y, covariate, K, outcome_type)
-        ep.optimize()
+        with BeginEnd('EP2 optimize'):
+            ep.optimize()
 
-        lml_null = ep.lml()
+        with BeginEnd('lml outside'):
+            lml_null = ep.lml()
 
         self._lml_null = lml_null
         self._ep = ep
@@ -268,7 +271,8 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if K is not None:
         logger.debug('Covariace matrix normalization.')
-        K = gower_normalization(K)
+        with BeginEnd('gower'):
+            K = gower_normalization(K)
         info['K'] = K
 
     if G is not None:

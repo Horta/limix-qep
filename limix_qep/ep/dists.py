@@ -1,8 +1,9 @@
 import numpy as np
 from numpy import dot
 from scipy.linalg.lapack import get_lapack_funcs
-from limix_math.linalg import cho_solve, sum2diag
+from limix_math.linalg import cho_solve, sum2diag, lu_solve
 from limix_math.linalg import ddot, dotd
+from limix_util.report import BeginEnd
 
 class SiteLik(object):
     def __init__(self, nsamples):
@@ -86,7 +87,16 @@ class Joint(object):
 def symmetrize(a):
     return a + a.T - np.diag(a.diagonal())
 
-import scipy as sp
+import scipy.linalg._flapack
+_tri_inv = getattr(scipy.linalg._flapack, 'dgetri', None)
+_tri_inv.module_name = 'flapack'
+_tri_inv.typecode = 'd'
+_tri_inv.dtype = np.dtype('float64')
+_tri_inv.prefix = 'd'
+
+def tri_inv(LU):
+    return _tri_inv(LU[0], LU[1])[0]
+
 class Joint2(object):
     def __init__(self, nsamples):
         self.tau = np.empty(nsamples)
@@ -98,14 +108,15 @@ class Joint2(object):
 
     def update(self, m, K, LU, ttau, teta):
 
-        getri = get_lapack_funcs('getri', LU)
-        LU_1 = getri(LU[0], LU[1])[0]
-        r = dotd(LU_1, K)
+        with BeginEnd('tri inv'):
+            LU_1 = tri_inv(LU)
+        with BeginEnd('dotd'):
+            r = dotd(LU_1, K)
 
         self.tau[:] = 1./r
 
-        # mu = cho_solve(L, m + dot(K, teta))
-        mu = sp.linalg.lu_solve(LU, m + dot(K, teta))
+        with BeginEnd('solve'):
+            mu = lu_solve(LU, m + dot(K, teta))
 
         self.eta[:] = self.tau * mu
 
