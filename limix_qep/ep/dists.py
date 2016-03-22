@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from numpy import dot
 from limix_math.linalg import cho_solve
@@ -34,6 +35,7 @@ class SiteLik(object):
 
 class Joint(object):
     def __init__(self, Q, S):
+        self._logger = logging.getLogger(__name__)
         self._Q = Q
         self._S = S
         nsamples = Q.shape[0]
@@ -48,7 +50,7 @@ class Joint(object):
         self.eta[:] = self.tau * m
 
     def update(self, m, sigg2, delta, S, Q, L1, ttau, teta, A1, A0T):
-
+        self._logger.debug('joint update has started')
         SQt = ddot(S, Q.T, left=True)
         L1_Qt = cho_solve(L1, Q.T)
         L1_QtA1 = ddot(L1_Qt, A1, left=False)
@@ -74,13 +76,14 @@ class Joint(object):
         u = sigg2 * dot(Q, S * dot(Q.T, teta))
         if delta != 0:
             u += sigg2 * delta * teta
-        
+
         u = u - C * u
         mu += u - sigg2 * dot(DQ, dot(Z, teta))
         if delta != 0:
             mu -= sigg2 * delta * dot(DQ, dot(L1_QtA1, teta))
 
         self.eta[:] = self.tau * mu
+        self._logger.debug('joint update has finished')
 
 class Cavity(object):
     def __init__(self, nsamples):

@@ -414,6 +414,7 @@ class EP(Cached):
         if self._freeze_this_thing:
             return
 
+        self._logger.debug('Main EP loop has started.')
         m = self._m
         Q = self._Q
         S = self._S
@@ -631,24 +632,17 @@ class EP(Cached):
 
     def _create_fun_cost_both(self, opt_beta):
         def fun_cost(alpha1):
-            self._logger.debug("Function cost evaluation for alpha1 %e.",
-                               alpha1)
-            (alpha0_min, min_cost) = self._best_alpha0(alpha1, opt_beta)
-
-            self._logger.debug("Resulting alpha0: %e.", alpha0_min)
-            self._logger.debug("Resulting cost: %e.", min_cost)
+            (_, min_cost) = self._best_alpha0(alpha1, opt_beta)
             return min_cost
         return fun_cost
 
     def _create_fun_cost_sigg2(self, opt_beta):
         def fun_cost(sigg2):
-            self._logger.debug("Function cost evaluation for sigg2 %e.", sigg2)
             self.sigg2 = sigg2
             self._update()
             if opt_beta:
                 self._optimize_beta()
             cost = -self.lml()
-            self._logger.debug("Resulting cost: %e.", cost)
             return cost
         return fun_cost
 
