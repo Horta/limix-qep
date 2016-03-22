@@ -274,12 +274,12 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     info = dict()
 
     if K is not None:
-        logger.debug('Covariace matrix normalization.')
+        logger.info('Covariace matrix normalization.')
         K = gower_kinship_normalization(K)
         info['K'] = K
 
     if G is not None:
-        logger.debug('Genetic markers normalization.')
+        logger.info('Genetic markers normalization.')
         G = G - np.mean(G, 0)
         s = np.std(G, 0)
         ok = s > 0.
@@ -293,7 +293,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         raise Exception('G, K, and QS cannot be all None.')
 
     if QS is None:
-        logger.debug('Computing the economic eigen decomposition.')
+        logger.info('Computing the economic eigen decomposition.')
         QS = economic_QS((G, K), 'GK')
     else:
         Q = QS[0]
@@ -301,7 +301,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         S /= S.mean()
         QS = (Q, S)
 
-    logger.debug('Genetic marker candidates normalization.')
+    logger.info('Genetic marker candidates normalization.')
     X = X - np.mean(X, 0)
     s = np.std(X, 0)
     ok = s > 0.

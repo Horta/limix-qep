@@ -1,10 +1,19 @@
+from __future__ import division
 import numpy as np
 from numpy import asarray
 import logging
 from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_math.linalg import economic_QS
+from limix_tool.h2 import nh2
 from .util import gower_kinship_normalization
+
+def _ascertainment(y):
+    u = np.unique(y)
+    assert len(u) == 2
+    ma = np.max(u)
+    ascertainment = np.sum(y == ma) / len(y)
+    return ascertainment
 
 def estimate(y, G=None, K=None, QS=None, covariate=None,
              outcome_type=None, prevalence=None):
@@ -86,10 +95,14 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
 
     if prevalence is None:
         h2 = ep.h2
+        logger.info('Found heritability before correction: %.5f.', h2)
     elif isinstance(outcome_type, Bernoulli):
         h2 = ep.h2
-        # ascertainment = _calc_ascertainment(y)
-        # h2 = _correct_h2(ep.h2, prevalence, ascertainment)
+        logger.info('Found heritability before correction: %.5f.', h2)
+        ascertainment = _ascertainment(y)
+        h2 = nh2(ep.h2, ascertainment, prevalence)
+
+    logger.info('Found heritability after correction: %.5f.', h2)
 
     info['ep'] = ep
 
