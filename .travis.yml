@@ -7,7 +7,7 @@ cache:
 
 python:
   - 2.7
-  # - 3.5
+  - 3.5
 
 addons:
   apt:
@@ -33,14 +33,10 @@ before_install:
   - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
-  # Useful for debugging any issues with conda
   - conda info -a
-
-  # Replace dep1 dep2 ... with your dependencies
   - conda install conda-build
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy cython setuptools
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy cython setuptools numba
   - source activate test-environment
-
 
 install: python setup.py install
 script: python setup.py test
