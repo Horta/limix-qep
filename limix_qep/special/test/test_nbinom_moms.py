@@ -23,9 +23,12 @@ class TestNBinomMoms(unittest.TestCase):
         #              double[:] eta, double[:] tau,
         #              double[:] lmom0, double[:] mu_res, double[:] var_res)
         # (lmom0n, mu_resn, var_resn) = self._bm.moments(N, K, mu, var)
-        self.assertAlmostEqual(lmom0n, lmom0, places=3)
-        self.assertAlmostEqual(mu_resn, mu_res, places=3)
-        self.assertAlmostEqual(var_resn, var_res, places=4)
+        np.testing.assert_almost_equal(lmom0n, lmom0, decimal=3)
+        np.testing.assert_almost_equal(mu_resn, mu_res, decimal=3)
+        np.testing.assert_almost_equal(var_resn, var_res, decimal=4)
+        # self.assertAlmostEqual(lmom0n, lmom0, places=3)
+        # self.assertAlmostEqual(mu_resn, mu_res, places=3)
+        # self.assertAlmostEqual(var_resn, var_res, places=4)
 
     def test_moments(self):
 
