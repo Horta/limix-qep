@@ -614,6 +614,7 @@ class EP(Cached):
         min_cost = np.inf
         alpha0_min = None
         for i in xrange(_NALPHAS0):
+            print(i)
 
             (sigg2, delta) = _alphas2hyperparams(_ALPHAS0[i], alpha1)
 
@@ -664,7 +665,7 @@ class EP(Cached):
             self.sigg2 = res.x
         elif opt_delta and opt_sigg2:
             fun_cost = self._create_fun_cost_both(opt_beta)
-
+            import ipdb; ipdb.set_trace()
             opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
             res = optimize.minimize_scalar(fun_cost, options=opt,
                                               bounds=(_ALPHAS1_EPS,
