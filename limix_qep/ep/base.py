@@ -665,7 +665,6 @@ class EP(Cached):
             self.sigg2 = res.x
         elif opt_delta and opt_sigg2:
             fun_cost = self._create_fun_cost_both(opt_beta)
-            import ipdb; ipdb.set_trace()
             opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
             res = optimize.minimize_scalar(fun_cost, options=opt,
                                               bounds=(_ALPHAS1_EPS,

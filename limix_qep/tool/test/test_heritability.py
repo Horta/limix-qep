@@ -57,7 +57,6 @@ class TestHeritability(unittest.TestCase):
         import logging
         logging.basicConfig(level=logging.DEBUG)
         h2 = estimate(y, K=Kg, covariate=M, outcome_type=outcome)[0]
-        import ipdb; ipdb.set_trace()
         self.assertAlmostEqual(h2, 0.403163261934)
 
 if __name__ == '__main__':
