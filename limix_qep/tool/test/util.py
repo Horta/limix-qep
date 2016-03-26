@@ -41,7 +41,7 @@ def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
     Z[Z <= 0.] = 0.
 
     y = np.empty(nsamples)
-    for i in xrange(y.shape[0]):
+    for i in range(y.shape[0]):
         y[i] = np.sum(Z[i,:ntrials[i]])
 
     return (y, X)

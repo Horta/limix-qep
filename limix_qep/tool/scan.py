@@ -147,7 +147,7 @@ class LRT(object):
         ep = self._ep
 
         lml_alts = []
-        for i in xrange(X.shape[1]):
+        for i in range(X.shape[1]):
             ep.M = np.hstack( (covariate, X[:,i][:,np.newaxis]) )
             assert False, 'fix me'
             # ep.optimize(only_step2=True)

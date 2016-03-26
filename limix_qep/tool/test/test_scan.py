@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 import unittest
 import numpy as np
 from numpy import dot
 
-from util import create_bernoulli
-from util import create_binomial
+from .util import create_bernoulli
+from .util import create_binomial
 
 from limix_qep.lik import Binomial
 from limix_qep.tool.scan import scan

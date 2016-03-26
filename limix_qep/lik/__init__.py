@@ -51,7 +51,7 @@ class Binomial(object):
     def assert_outcome(self, y):
         ntrials = self.ntrials
         y = np.asarray(y)
-        for i in xrange(self.ntrials.shape[0]):
+        for i in range(self.ntrials.shape[0]):
             if y[i] > ntrials[i] or y[i] < 0 or int(y[i]) != y[i]:
                 raise Exception("Wrong outcome value: %s." % str(y[i]))
 

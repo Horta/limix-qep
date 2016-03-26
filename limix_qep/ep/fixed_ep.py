@@ -86,7 +86,7 @@ class FixedEP(object):
         row0 = dot(Ms[:,0:p].T, dens)
 
         obetas = []
-        for i in xrange(p, Ms.shape[1]):
+        for i in range(p, Ms.shape[1]):
             nom = np.append(noms[0:p], noms[i]); nom = nom[:, np.newaxis]
 
 

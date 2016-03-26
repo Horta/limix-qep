@@ -613,7 +613,7 @@ class EP(Cached):
     def _best_alpha0(self, alpha1, opt_beta):
         min_cost = np.inf
         alpha0_min = None
-        for i in xrange(_NALPHAS0):
+        for i in range(_NALPHAS0):
             print(i)
 
             (sigg2, delta) = _alphas2hyperparams(_ALPHAS0[i], alpha1)
