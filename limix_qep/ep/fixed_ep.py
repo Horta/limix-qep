@@ -100,7 +100,7 @@ class FixedEP(object):
             try:
                 s = solve(den, nom)
             except np.linalg.LinAlgError as e:
-                print 'Warning: %s. Returning zeros for beta.' % str(e)
+                print('Warning: %s. Returning zeros for beta.' % str(e))
                 s = np.zeros(den.shape[1])
             obetas.append(s)
 

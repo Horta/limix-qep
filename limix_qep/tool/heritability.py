@@ -126,4 +126,4 @@ if __name__ == '__main__':
     y = np.random.randint(ntrials + 1, size=n)
     y = np.asarray(y, dtype=float)
 
-    print estimate(y, K=K, covariate=M)
+    print(estimate(y, K=K, covariate=M))
