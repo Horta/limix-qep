@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import logging
 import numpy as np
 from numpy import dot
@@ -7,14 +8,13 @@ from limix_math.linalg import trace2
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
-# from limix_qep.special.nbinom_moms import NBinomMoms
 from limix_qep.special.nbinom_moms import moments_array3, init
 from limix_qep.lik import Binomial, Bernoulli
-from dists import SiteLik
-from dists import Joint
-from dists import Cavity
-from fixed_ep import FixedEP
-from config import _MAX_ITER, _EP_EPS, _PARAM_EPS
+from .dists import SiteLik
+from .dists import Joint
+from .dists import Cavity
+from .fixed_ep import FixedEP
+from .config import _MAX_ITER, _EP_EPS, _PARAM_EPS
 from scipy import optimize
 from scipy.misc import logsumexp
 
