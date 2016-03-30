@@ -18,7 +18,7 @@ else:
     conda_present = True
 
 try:
-    import numpy as np
+    import numpy
 except ImportError:
     print("Error: numpy package couldn't be found." +
           " Please, install it so I can proceed.")
@@ -76,7 +76,7 @@ def special_extension():
 
     ext = Extension('limix_qep/special/nbinom_moms',
                     src+ci['src'],
-                    include_dirs=ci['include_dirs']+[np.get_include()],
+                    include_dirs=ci['include_dirs'],
                     extra_compile_args=ci['extra_compile_args'],
                     define_macros=ci['define_macros'],
                     depends=depends)

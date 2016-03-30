@@ -193,8 +193,10 @@ cdef void moments_array2(int nintervals, double[:] N, double[:] K,
         moments(left, step, nintervals, N[i], K[i], mu, var,
                 &lmom0[i], &mu_res[i], &var_res[i])
 
-import numpy as np
-cimport numpy as np
+# import numpy as np
+# cimport numpy as np
+from cpython cimport array
+import array
 
 cdef int _nintervals
 cdef double[:] _height
@@ -203,8 +205,9 @@ cdef double[:] _weight
 cpdef init(int nintervals):
     global _nintervals, _height, _weight
     _nintervals = nintervals
-    _height = np.empty(nintervals+1)
-    _weight = np.empty(nintervals)
+
+    _height = array.clone(array.array('d', []), nintervals+1, zero=False)
+    _weight = array.clone(array.array('d', []), nintervals, zero=False)
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -227,20 +230,3 @@ cpdef void moments_array3(double[:] N, double[:] K,
         step = (right - left) / _nintervals
         moments(left, step, _nintervals, N[i], K[i], mu, var,
                 &lmom0[i], &mu_res[i], &var_res[i])
-
-# class NBinomMoms(object):
-#     def __init__(self, nintervals):
-#         self._nintervals = nintervals
-#         self._height = np.empty(nintervals+1)
-#         self._weight = np.empty(nintervals)
-#
-#     def moments(self, N, K, mu, var):
-#         return pmoments(self._nintervals, N, K, mu, var, self._height, self._weight)
-#
-#     def moments_array(self, N, K, mu, var, lmom0, mu_res, var_res):
-#         moments_array(self._nintervals, N, K, mu, var, self._height,
-#                       self._weight, lmom0, mu_res, var_res)
-#
-#     def moments_array2(self, N, K, eta, tau, lmom0, mu_res, var_res):
-#         moments_array2(self._nintervals, N, K, eta, tau, self._height,
-#                        self._weight, lmom0, mu_res, var_res)
