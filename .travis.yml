@@ -13,9 +13,6 @@ addons:
   apt:
     packages:
       - build-essential
-      - python-dev
-      - python-numpy
-      - python-scipy
       - libc6
       - g++
       - gfortran
@@ -39,4 +36,6 @@ before_install:
   - source activate test-environment
 
 install: python setup.py install
+
+before_script: source activate test-environment
 script: python setup.py test
