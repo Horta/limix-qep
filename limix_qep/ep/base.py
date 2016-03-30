@@ -614,8 +614,6 @@ class EP(Cached):
         min_cost = np.inf
         alpha0_min = None
         for i in range(_NALPHAS0):
-            print(i)
-
             (sigg2, delta) = _alphas2hyperparams(_ALPHAS0[i], alpha1)
 
             self.sigg2 = sigg2
