@@ -697,6 +697,8 @@ class EP(Cached):
 
         self._logger.debug("Starting optimization.")
         self._optimize_step1(opt_beta, opt_sigg2, opt_delta, disp)
+        self._logger.debug("Parameters: sigg2=%e, delta=%e).",
+                           self.sigg2, self.delta)
         self._logger.debug("End of optimization.")
 
 def _alphas2hyperparams(alpha0, alpha1):

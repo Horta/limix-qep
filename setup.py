@@ -100,10 +100,6 @@ version = '%(version)s'
     finally:
         a.close()
 
-def get_version_filename(package_name):
-    filename = os.path.join(package_name, 'version.py')
-    return filename
-
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     old_path = os.getcwd()
