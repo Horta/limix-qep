@@ -10,6 +10,7 @@ from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
 from limix_qep.special.nbinom_moms import moments_array3, init
 from limix_qep.lik import Binomial, Bernoulli
+import limix_util as lxu
 from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
@@ -59,6 +60,11 @@ class EP(Cached):
         self._outcome_type = outcome_type
         assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q.shape[0], 'Number of individuals mismatch.'
+
+        if lxu.array_.issingleton(y):
+            raise ValueError("The phenotype array has a single unique value" +
+                             " only.")
+
         if S.min() <= 0:
             raise Exception("The provided covariance matrix is not" +
                             " positive-definite because the minimum eigvalue" +
