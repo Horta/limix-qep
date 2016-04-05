@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import logging
 import numpy as np
 from numpy import dot
-from limix_math.linalg import ddot, sum2diag
+from limix_math.linalg import ddot, sum2diag, dotd
 from limix_math.linalg import solve, cho_solve
 from limix_math.linalg import trace2
 from limix_math.dist.norm import logpdf, logcdf
@@ -125,15 +125,17 @@ class EP(Cached):
     # --------------------------------------------------------#
     # ---------------------- Interface ---------------------- #
     # --------------------------------------------------------#
-    def _predict(self, M, var, covar):
+    def predict(self, M, var, covar):
         covar = np.asarray(covar)
-        assert covar.ndim == 1
+
+        if covar.ndim == 2:
+            assert len(var) == covar.shape[0]
 
         sigg2 = self.sigg2
         delta = self.delta
         beta = self._beta
 
-        covar *= sigg2
+        covar = covar * sigg2
         var = sigg2*var + sigg2 * delta
 
         A1 = self._A1()
@@ -143,39 +145,57 @@ class EP(Cached):
         # A1tmu = self._sites.eta # assuming Bernoulli
         mu = dot(M, beta) + dot(covar, self._A1tmuLm())
 
-        covarA1 = covar*A1
-        part3 = dot(covarA1, dot(Q, cho_solve(L1, dot(Q.T, covarA1))))
-        sig2 = var - dot(covarA1, covar) + part3
+        A1cov = ddot(A1, covar.T, left=True)
+        part3 = dotd(A1cov.T, dot(Q, cho_solve(L1, dot(Q.T, A1cov))))
+        sig2 = var - dotd(A1cov.T, covar.T) + part3
 
-        p = dict()
-        p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
-        p[0] = 1 - p[1]
-
-        return p
-
-    def predict(self, M, var, covar):
-        covar = np.asarray(covar)
         if covar.ndim == 1:
-            return self._predict(M, var, covar)
-
-        elif covar.ndim == 2:
-            M = np.asarray(M)
-            var = np.asarray(var)
-
-            sigg2 = self.sigg2
-            delta = self.delta
-            beta = self._beta
-
-            cvA1 = ddot(A1, covar, left=True)
-            part3 = dot(cvA1.T, dot(Q, cho_solve(L1, dot(Q.T, cvA1))))
-
-            sig2 = var - dot(cvA1, covar) + part3
             p = dict()
             p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
             p[0] = 1 - p[1]
+        else:
+            v = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+            p = [dict([(0, 1-vi), (1, vi)]) for vi in v]
 
-            return p
-        raise ValueError("Wrong covar layout.")
+        return p
+
+    # def predict(self, M, var, covar):
+    #     covar = np.asarray(covar)
+    #
+    #     sigg2 = self.sigg2
+    #     delta = self.delta
+    #     beta = self._beta
+    #
+    #     covar *= sigg2
+    #     var = sigg2*var + sigg2 * delta
+    #
+    #     A1 = self._A1()
+    #     L1 = self._L1()
+    #     Q = self._Q
+    #
+    #     assert isinstance(self._outcome_type, Bernoulli)
+    #     # A1tmu = self._sites.eta # assuming Bernoulli
+    #     mu = dot(M, beta) + dot(covar, self._A1tmuLm())
+    #
+    #     if covar.ndim == 1:
+    #         return self._predict(M, var, covar)
+    #
+    #     elif covar.ndim == 2:
+    #         M = np.asarray(M)
+    #         var = np.asarray(var)
+    #
+    #
+    #
+    #         cvA1 = ddot(A1, covar, left=True)
+    #         part3 = dot(cvA1.T, dot(Q, cho_solve(L1, dot(Q.T, cvA1))))
+    #
+    #         sig2 = var - dot(cvA1, covar) + part3
+    #         p = dict()
+    #         p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+    #         p[0] = 1 - p[1]
+    #
+    #         return p
+    #     raise ValueError("Wrong covar layout.")
 
     def K(self):
         Q = self._Q

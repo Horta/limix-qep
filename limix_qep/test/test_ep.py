@@ -176,6 +176,10 @@ class TestEP(unittest.TestCase):
                    0.6716752034901522, 0.76492854182849079, 0.78968303655938143]
 
         np.testing.assert_almost_equal(prob_y[:6], prob_yi)
+        K = dot(G, G.T)
+        parr = ep.predict(M, K.diagonal(), K)
+        parr = [p[y[i]] for (i, p) in enumerate(parr[:6])]
+        np.testing.assert_almost_equal(parr, prob_yi)
 
     def test_bernoulli_optimize_degenerated_covariate(self):
         seed = 15
