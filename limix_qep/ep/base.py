@@ -125,7 +125,7 @@ class EP(Cached):
     # --------------------------------------------------------#
     # ---------------------- Interface ---------------------- #
     # --------------------------------------------------------#
-    def predict(self, M, var, covar):
+    def _predict(self, M, var, covar):
         covar = np.asarray(covar)
         assert covar.ndim == 1
 
@@ -133,20 +133,15 @@ class EP(Cached):
         delta = self.delta
         beta = self._beta
 
-        var *= sigg2
-        covar += sigg2 * delta
+        covar *= sigg2
+        var = sigg2*var + sigg2 * delta
 
         A1 = self._A1()
         L1 = self._L1()
         Q = self._Q
-        _m = self._m
-        A1m = A1*_m
         assert isinstance(self._outcome_type, Bernoulli)
-        A1tmu = self._sites.eta # assuming Bernoulli
-        part1 = A1tmu - A1*dot(Q, cho_solve(L1, dot(Q.T, A1tmu)))
-        part2 = -A1m + A1*dot(Q, cho_solve(L1, dot(Q.T, A1m)))
-
-        mu = dot(M, beta) + dot(covar, part1 + part2)
+        # A1tmu = self._sites.eta # assuming Bernoulli
+        mu = dot(M, beta) + dot(covar, self._A1tmuLm())
 
         covarA1 = covar*A1
         part3 = dot(covarA1, dot(Q, cho_solve(L1, dot(Q.T, covarA1))))
@@ -157,6 +152,30 @@ class EP(Cached):
         p[0] = 1 - p[1]
 
         return p
+
+    def predict(self, M, var, covar):
+        covar = np.asarray(covar)
+        if covar.ndim == 1:
+            return self._predict(M, var, covar)
+
+        elif covar.ndim == 2:
+            M = np.asarray(M)
+            var = np.asarray(var)
+
+            sigg2 = self.sigg2
+            delta = self.delta
+            beta = self._beta
+
+            cvA1 = ddot(A1, covar, left=True)
+            part3 = dot(cvA1.T, dot(Q, cho_solve(L1, dot(Q.T, cvA1))))
+
+            sig2 = var - dot(cvA1, covar) + part3
+            p = dict()
+            p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+            p[0] = 1 - p[1]
+
+            return p
+        raise ValueError("Wrong covar layout.")
 
     def K(self):
         Q = self._Q
@@ -177,6 +196,7 @@ class EP(Cached):
         self.clear_cache('_L1')
         self.clear_cache('_B1')
         self.clear_cache('_update')
+        self.clear_cache('_A1tmuLm')
         self._beta = np.zeros(value.shape[1])
         self._covariate_setup()
 
@@ -202,6 +222,7 @@ class EP(Cached):
         self.clear_cache('_L1')
         self.clear_cache('_B1')
         self.clear_cache('_update')
+        self.clear_cache('_A1tmuLm')
         self._beta[:] = value
 
     @property
@@ -213,6 +234,7 @@ class EP(Cached):
         self.clear_cache('_L1')
         self.clear_cache('_B1')
         self.clear_cache('_update')
+        self.clear_cache('_A1tmuLm')
         self._sigg2 = value
 
     @property
@@ -226,6 +248,7 @@ class EP(Cached):
         self.clear_cache('_L1')
         self.clear_cache('_B1')
         self.clear_cache('_update')
+        self.clear_cache('_A1tmuLm')
         self._delta = value
 
     def _A0T(self):
@@ -268,6 +291,28 @@ class EP(Cached):
         Q = self._Q
         A1 = self._A1()
         return dot(Q.T, ddot(A1, Q, left=True))
+
+    @cached
+    def _A1tmuLm(self):
+        return self._A1tmuL() - self._A1mL()
+
+    def _A1tmuL(self):
+        A1 = self._A1()
+        L1 = self._L1()
+        Q = self._Q
+        if _is_zero(self.delta):
+            A1tmu = self._sites.eta
+        else:
+            A1tmu = A1*self._sites.tau
+        return A1tmu - A1*dot(Q, cho_solve(L1, dot(Q.T, A1tmu)))
+
+    def _A1mL(self):
+        m = self._m
+        A1 = self._A1()
+        A1m = A1*m
+        L1 = self._L1()
+        Q = self._Q
+        return A1m - A1*dot(Q, cho_solve(L1, dot(Q.T, A1m)))
 
     @cached
     def _B1(self):
@@ -435,6 +480,7 @@ class EP(Cached):
         self.clear_cache('_L1')
         self.clear_cache('_B1')
         self.clear_cache('_update')
+        self.clear_cache('_A1tmuLm')
 
         m = self._m
         sigg2 = self.sigg2
@@ -487,6 +533,7 @@ class EP(Cached):
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
             self.clear_cache('_L1')
             self.clear_cache('_B1')
+            self.clear_cache('_A1tmuLm')
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
                                      ttau, teta, self._A1(), self._A0T())
 

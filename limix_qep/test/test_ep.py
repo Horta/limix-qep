@@ -172,8 +172,8 @@ class TestEP(unittest.TestCase):
             p = ep.predict(M[i,:], var, covar)
             prob_y.append(p[y[i]])
 
-        prob_yi = [0.70250647, 0.63972456, 0.61230543, 0.60487673, 0.65824316,
-                   0.67618558]
+        prob_yi = [0.8556713722622542, 0.77216318988898869, 0.6857027517284553,
+                   0.6716752034901522, 0.76492854182849079, 0.78968303655938143]
 
         np.testing.assert_almost_equal(prob_y[:6], prob_yi)
 
