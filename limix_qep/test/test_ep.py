@@ -130,7 +130,6 @@ class TestEP(unittest.TestCase):
         ep.sigg2 = 1.
         self.assertAlmostEqual(ep.lml(), -2.59563598457)
 
-
     def test_bernoulli_optimize(self):
         seed = 15
         nsamples = 500
@@ -149,6 +148,34 @@ class TestEP(unittest.TestCase):
         self.assertAlmostEqual(ep.sigg2, 1.6795458112344945)
         np.testing.assert_allclose(ep.beta, [0.13111], rtol=1e-5)
         self.assertEqual(ep.delta, 0.)
+
+    def test_bernoulli_prediction(self):
+        seed = 15
+        nsamples = 500
+        nfeatures = 600
+        ntrials = 1
+
+        M = np.ones((nsamples, 1))
+
+        (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+                                 delta=1e-6, seed=seed)
+
+        (Q, S) = economic_QS(G, 'G')
+
+        ep = EP(y, M, Q, S)
+        ep.optimize(opt_delta=False)
+
+        prob_y = []
+        for (i, g) in enumerate(G):
+            var = dot(g, g)
+            covar = dot(g, G.T)
+            p = ep.predict(M[i,:], var, covar)
+            prob_y.append(p[y[i]])
+
+        prob_yi = [0.70250647, 0.63972456, 0.61230543, 0.60487673, 0.65824316,
+                   0.67618558]
+
+        np.testing.assert_almost_equal(prob_y[:6], prob_yi)
 
     def test_bernoulli_optimize_degenerated_covariate(self):
         seed = 15

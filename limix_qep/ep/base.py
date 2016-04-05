@@ -52,7 +52,7 @@ def _process_S(S):
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
 class EP(Cached):
-    def __init__(self, y, M, Q, S, outcome_type=None, X=None,
+    def __init__(self, y, M, Q, S, outcome_type=None,
                  nintp=_DEFAULT_NINTP):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
@@ -79,7 +79,6 @@ class EP(Cached):
         self._S = S
 
         self._Q = Q
-        self._X = X
 
         self._psites = SiteLik(self._nsamples)
         self._sites = SiteLik(self._nsamples)
@@ -121,9 +120,44 @@ class EP(Cached):
 
         self._Mok = ok
 
+
+
     # --------------------------------------------------------#
     # ---------------------- Interface ---------------------- #
     # --------------------------------------------------------#
+    def predict(self, M, var, covar):
+        covar = np.asarray(covar)
+        assert covar.ndim == 1
+
+        sigg2 = self.sigg2
+        delta = self.delta
+        beta = self._beta
+
+        var *= sigg2
+        covar += sigg2 * delta
+
+        A1 = self._A1()
+        L1 = self._L1()
+        Q = self._Q
+        _m = self._m
+        A1m = A1*_m
+        assert isinstance(self._outcome_type, Bernoulli)
+        A1tmu = self._sites.eta # assuming Bernoulli
+        part1 = A1tmu - A1*dot(Q, cho_solve(L1, dot(Q.T, A1tmu)))
+        part2 = -A1m + A1*dot(Q, cho_solve(L1, dot(Q.T, A1m)))
+
+        mu = dot(M, beta) + dot(covar, part1 + part2)
+
+        covarA1 = covar*A1
+        part3 = dot(covarA1, dot(Q, cho_solve(L1, dot(Q.T, covarA1))))
+        sig2 = var - dot(covarA1, covar) + part3
+
+        p = dict()
+        p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+        p[0] = 1 - p[1]
+
+        return p
+
     def K(self):
         Q = self._Q
         S = self._S
