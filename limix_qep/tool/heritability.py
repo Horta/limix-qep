@@ -6,7 +6,8 @@ from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_qep import Binomial
 from limix_math.linalg import economic_QS
-from limix_tool.h2 import nh2
+# from limix_tool.h2 import nh2
+from limix_tool.heritability import h2_correct
 from .util import gower_kinship_normalization
 
 def _ascertainment(y):
@@ -101,7 +102,8 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
         h2 = ep.h2
         logger.info('Found heritability before correction: %.5f.', h2)
         ascertainment = _ascertainment(y)
-        h2 = nh2(ep.h2, ascertainment, prevalence)
+        h2 = h2_correct(ep.h2, prevalence, ascertainment)
+        # h2 = nh2(ep.h2, ascertainment, prevalence)
     elif isinstance(outcome_type, Binomial):
         h2 = ep.h2
 
