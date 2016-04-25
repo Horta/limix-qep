@@ -18,7 +18,7 @@ def _ascertainment(y):
     return ascertainment
 
 def estimate(y, G=None, K=None, QS=None, covariate=None,
-             outcome_type=None, prevalence=None):
+             outcome_type=None, prevalence=None, **kwargs):
     """Estimate the so-called narrow-sense heritability.
 
     It supports Bernoulli and Binomial phenotypes (see `outcome_type`).
@@ -47,6 +47,11 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
 
     if outcome_type is None:
         outcome_type = Bernoulli()
+
+    if isinstance(outcome_type, Binomial):
+        ign_samp_noise = False
+        if 'ign_samp_noise' in kwargs:
+            ign_samp_noise = kwargs['ign_samp_noise']
 
     logger = logging.getLogger(__name__)
     logger.info('Heritability estimation has started.')
@@ -96,16 +101,16 @@ def estimate(y, G=None, K=None, QS=None, covariate=None,
     ep.optimize()
 
     if prevalence is None:
-        h2 = ep.h2
+        h2 = ep.h2()
         logger.info('Found heritability before correction: %.5f.', h2)
     elif isinstance(outcome_type, Bernoulli):
-        h2 = ep.h2
+        h2 = ep.h2()
         logger.info('Found heritability before correction: %.5f.', h2)
         ascertainment = _ascertainment(y)
-        h2 = h2_correct(ep.h2, prevalence, ascertainment)
-        # h2 = nh2(ep.h2, ascertainment, prevalence)
+        h2 = h2_correct(ep.h2(), prevalence, ascertainment)
+        # h2 = nh2(ep.h2(), ascertainment, prevalence)
     elif isinstance(outcome_type, Binomial):
-        h2 = ep.h2
+        h2 = ep.h2(ign_samp_noise=ign_samp_noise)
 
     logger.info('Found heritability after correction: %.5f.', h2)
 

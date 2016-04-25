@@ -125,25 +125,24 @@ class EP(Cached):
     # --------------------------------------------------------#
     # ---------------------- Interface ---------------------- #
     # --------------------------------------------------------#
-    def predict(self, M, var, covar):
+    def predict(self, m, var, covar):
+        from limix_util.scalar import isnumber
+
         covar = np.asarray(covar)
 
-        if covar.ndim == 2:
+        if covar.ndim == 1:
+            assert isnumber(var) and isnumber(m)
+        elif covar.ndim == 2:
             assert len(var) == covar.shape[0]
-
-        sigg2 = self.sigg2
-        delta = self.delta
-        beta = self._beta
-
-        covar = covar * sigg2
-        var = sigg2*var + sigg2 * delta
+        else:
+            raise ValueError("covar has a wrong layout.")
 
         A1 = self._A1()
         L1 = self._L1()
         Q = self._Q
         assert isinstance(self._outcome_type, Bernoulli)
         # A1tmu = self._sites.eta # assuming Bernoulli
-        mu = dot(M, beta) + dot(covar, self._A1tmuLm())
+        mu = m + dot(covar, self._A1tmuLm())
 
         A1cov = ddot(A1, covar.T, left=True)
         part3 = dotd(A1cov.T, dot(Q, cho_solve(L1, dot(Q.T, A1cov))))
@@ -220,8 +219,7 @@ class EP(Cached):
         self._beta = np.zeros(value.shape[1])
         self._covariate_setup()
 
-    @property
-    def h2(self):
+    def h2(self, **kwargs):
         sigg2 = self.sigg2
         varc = np.var(dot(self.M, self.beta))
         delta = self.delta
@@ -229,8 +227,16 @@ class EP(Cached):
         ot = self._outcome_type
         if isinstance(ot, Bernoulli):
             assert delta == 0.
+            return sigg2 / (sigg2 + varc + 1.)
+        elif isinstance(ot, Binomial):
+            ign_samp_noise = False
+            if 'ign_samp_noise' in kwargs:
+                ign_samp_noise = kwargs['ign_samp_noise']
+            if ign_samp_noise:
+                return sigg2 / (sigg2 + sigg2*delta + varc)
+            return sigg2 / (sigg2 + sigg2*delta + varc + 1.)
 
-        return sigg2 / (sigg2 + sigg2*delta + varc + 1.)
+        assert False
 
     @property
     def beta(self):

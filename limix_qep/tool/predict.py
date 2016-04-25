@@ -11,44 +11,50 @@ from limix_tool.heritability import h2_correct
 from .util import gower_kinship_normalization
 
 class Model(object):
-    def __init__(self, ep, G, sub, mult, ok):
+    def __init__(self, ep, G, sub, div, ok):
         self._ep = ep
         self._G = G
         self._sub = sub
-        self._mult = mult
+        self._div = div
         self._ok = ok
 
     def predict(self, X, G):
+        ep = self._ep
+        ok = self._ok
+        sub = self._sub
+        div = self._div
+        G = G[:, ok]
+
+        M = np.dot(X, self._ep.beta)
+
         p = []
-        M = np.dot(X, self._ep.beta[:,np.newaxis])
         for (i, g) in enumerate(G):
-            g = g - self._sub
-            g[self._ok] *= self._mult[self._ok]
-            var = np.dot(g, g)
-            covar = np.dot(g, self._G.T)
-            p.append(self._ep.predict(M[i,:], var, covar))
+            g = (g - sub) / div
+            var = ep.sigg2 * np.dot(g, g) + ep.sigg2 * ep.delta
+            covar = ep.sigg2 * np.dot(g, self._G.T)
+            p.append(ep.predict(M[i], var, covar))
+
         return p
 
-def learn(y, G, covariate,
-             outcome_type=None, prevalence=None):
+def learn(y, G, covariate, outcome_type=None, prevalence=None):
 
     assert G is not None
-    Gbak = G.copy()
+
+    logger = logging.getLogger(__name__)
+    logger.info('Model learning has started.')
+
+    ok = np.std(G, 0) > 0.
+    G = G[:, ok]
+
     sub = np.mean(G, 0)
-    G = G - sub
-    mult = np.std(G, 0)
-    ok = mult > 0.
-    mult *= np.sqrt(G.shape[1])
-    mult = 1./mult[ok]
-    G[:,ok] *= mult[ok]
-    # G[:,ok] /= std[ok]
-    # G /= np.sqrt(G.shape[1])
+    div = np.std(G, 0) * np.sqrt(G.shape[1])
+
+    Graw = G
+    G = (G - sub) / div
 
     if outcome_type is None:
         outcome_type = Bernoulli()
 
-    logger = logging.getLogger(__name__)
-    logger.info('Model learning has started.')
     y = asarray(y, dtype=float)
 
     outcome_type.assert_outcome(y)
@@ -63,7 +69,7 @@ def learn(y, G, covariate,
 
     logger.info('Model learning has finished.')
 
-    return Model(ep, Gbak, sub, mult, ok)
+    return Model(ep, Graw, sub, div, ok)
 
 # if __name__ == '__main__':
 #     np.random.seed(987)

@@ -28,10 +28,12 @@ class TestPredict(unittest.TestCase):
         y[z>0] = 1.
 
         model = learn(y, G=G, covariate=X)
-        import ipdb; ipdb.set_trace()
-        model.predict(X, G)
-        # h2 = estimate(y, K=Kg, covariate=M)[0]
-        # self.assertAlmostEqual(h2, 0.403163261934)
+        p = model.predict(X, G)
+
+        self.assertAlmostEqual(0.857912746548,
+                               np.mean([p[i][y[i]] for i in range(n)]))
+        self.assertAlmostEqual(0.142087253452,
+                               np.mean([1-p[i][y[i]] for i in range(n)]))
 
 if __name__ == '__main__':
     unittest.main()
