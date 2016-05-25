@@ -6,7 +6,6 @@ from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_qep import Binomial
 from limix_math.linalg import economic_QS
-# from limix_tool.h2 import nh2
 from limix_tool.heritability import h2_correct
 from .util import gower_kinship_normalization
 

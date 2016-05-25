@@ -16,6 +16,8 @@ class Model(object):
         self._G = G
         self._sub = sub
         self._div = div
+        if min(abs(div)) < 1e-14:
+            raise ValueError("min(abs(div)) < 1e-14")
         self._ok = ok
 
     def predict(self, X, G):
@@ -23,15 +25,16 @@ class Model(object):
         ok = self._ok
         sub = self._sub
         div = self._div
-        G = G[:, ok]
+        G = (G[:, ok] - sub) / div
+        _G = (self._G - sub) / div
 
         M = np.dot(X, self._ep.beta)
 
         p = []
         for (i, g) in enumerate(G):
-            g = (g - sub) / div
+            # g = (g - sub) / div
             var = ep.sigg2 * np.dot(g, g) + ep.sigg2 * ep.delta
-            covar = ep.sigg2 * np.dot(g, self._G.T)
+            covar = ep.sigg2 * np.dot(g, _G.T)
             p.append(ep.predict(M[i], var, covar))
 
         return p

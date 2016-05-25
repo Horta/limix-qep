@@ -166,20 +166,47 @@ class TestEP(unittest.TestCase):
         ep.optimize(opt_delta=False)
 
         prob_y = []
-        for (i, g) in enumerate(G):
+        for i in range(4):
+            g = G[i,:]
             var = dot(g, g)
             covar = dot(g, G.T)
             p = ep.predict(M[i,:], var, covar)
-            prob_y.append(p[y[i]])
+            prob_y.append(p.pdf(y[i])[0])
 
-        prob_yi = [0.8556713722622542, 0.77216318988898869, 0.6857027517284553,
-                   0.6716752034901522, 0.76492854182849079, 0.78968303655938143]
+        prob_yi = [0.48705911290518589, 0.40605290158743768,
+                   0.84365032664655915, 0.83794141874476269]
 
-        np.testing.assert_almost_equal(prob_y[:6], prob_yi)
-        K = dot(G, G.T)
-        parr = ep.predict(M, K.diagonal(), K)
-        parr = [p[y[i]] for (i, p) in enumerate(parr[:6])]
-        np.testing.assert_almost_equal(parr, prob_yi)
+        np.testing.assert_almost_equal(prob_y[:4], prob_yi)
+
+    # def test_binomial_prediction(self):
+    #     seed = 10
+    #     nsamples = 20
+    #     nfeatures = 60
+    #     ntrials = 50
+    #
+    #     M = np.ones((nsamples, 1))
+    #
+    #     (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+    #                              delta=0.5, seed=seed)
+    #
+    #     (Q, S) = economic_QS(G, 'G')
+    #
+    #     ep = EP(y, M, Q, S, Binomial(ntrials, nsamples))
+    #     ep.optimize()
+    #
+    #     prob_y = []
+    #     for i in range(4):
+    #         g = G[i,:]
+    #         var = dot(g, g)
+    #         covar = dot(g, G.T)
+    #         import ipdb; ipdb.set_trace()
+    #         p = ep.predict(ep.beta * M[i,:], ep.sigg2 * var + ep.sigg2 * ep.delta, ep.sigg2 * covar)
+    #         prob_y.append(p.pdf(y[i], ntrials)[0])
+    #
+    #     prob_yi = [0.48705911290518589, 0.40605290158743768,
+    #                0.84365032664655915, 0.83794141874476269]
+    #
+    #     np.testing.assert_almost_equal(prob_y[:4], prob_yi)
 
     def test_bernoulli_optimize_degenerated_covariate(self):
         seed = 15

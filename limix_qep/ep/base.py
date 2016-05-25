@@ -47,7 +47,43 @@ def _process_S(S):
         m = np.mean(S)
         S += eps
         S *= m / np.mean(S)
-    return S
+
+class BernPredictorEP(object):
+    def __init__(self, mean, cov):
+        self._mean = mean
+        self._cov = cov
+
+    def logpdf(self, y):
+        ind = 2*y - 1
+        return logcdf(ind * self._mean / np.sqrt(1 + self._cov))
+
+    def pdf(self, y):
+        return np.exp(self.logpdf(y))
+
+class BinomPredictorEP(object):
+    def __init__(self, mean, cov):
+        self._mean = mean
+        self._cov = cov
+        self._tau = 1./cov
+        self._eta = self._tau * mean
+
+    def logpdf(self, y, ntrials):
+        # ind = 2*y - 1
+        # return logcdf(ind * self._mean / np.sqrt(1 + self._cov))
+        y = np.asarray(y, float)
+        ntrials = np.asarray(ntrials, float)
+        y = np.atleast_1d(y)
+        ntrials = np.atleast_1d(ntrials)
+        n = len(y)
+        lmom0 = np.empty(n)
+        mu1 = np.empty(n)
+        var2 = np.empty(n)
+
+        moments_array3(ntrials, y, self._eta, self._tau, lmom0, mu1, var2)
+        return lmom0
+
+    def pdf(self, y, ntrials):
+        return np.exp(self.logpdf(y, ntrials))
 
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
@@ -70,7 +106,7 @@ class EP(Cached):
                             " positive-definite because the minimum eigvalue" +
                             " is %f." % S.min())
 
-        S = _process_S(S)
+        _process_S(S)
 
         self._params_initialized = False
         self._nsamples = y.shape[0]
@@ -126,37 +162,40 @@ class EP(Cached):
     # ---------------------- Interface ---------------------- #
     # --------------------------------------------------------#
     def predict(self, m, var, covar):
-        from limix_util.scalar import isnumber
+        m = np.atleast_1d(m)
+        var = np.atleast_2d(var)
+        covar = np.atleast_2d(covar)
 
-        covar = np.asarray(covar)
-
-        if covar.ndim == 1:
-            assert isnumber(var) and isnumber(m)
-        elif covar.ndim == 2:
-            assert len(var) == covar.shape[0]
-        else:
-            raise ValueError("covar has a wrong layout.")
+        # if covar.ndim == 1:
+        #     assert isnumber(var) and isnumber(m)
+        # elif covar.ndim == 2:
+        #     assert len(var) == covar.shape[0]
+        # else:
+        #     raise ValueError("covar has a wrong layout.")
 
         A1 = self._A1()
         L1 = self._L1()
         Q = self._Q
-        assert isinstance(self._outcome_type, Bernoulli)
-        # A1tmu = self._sites.eta # assuming Bernoulli
         mu = m + dot(covar, self._A1tmuLm())
 
         A1cov = ddot(A1, covar.T, left=True)
         part3 = dotd(A1cov.T, dot(Q, cho_solve(L1, dot(Q.T, A1cov))))
-        sig2 = var - dotd(A1cov.T, covar.T) + part3
+        sig2 = var.diagonal() - dotd(A1cov.T, covar.T) + part3
 
-        if covar.ndim == 1:
-            p = dict()
-            p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
-            p[0] = 1 - p[1]
+        if isinstance(self._outcome_type, Bernoulli):
+            return BernPredictorEP(mu, sig2)
         else:
-            v = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
-            p = [dict([(0, 1-vi), (1, vi)]) for vi in v]
-
-        return p
+            return BinomPredictorEP(mu, sig2)
+        #
+        # if covar.ndim == 1:
+        #     p = dict()
+        #     p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+        #     p[0] = 1 - p[1]
+        # else:
+        #     v = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
+        #     p = [dict([(0, 1-vi), (1, vi)]) for vi in v]
+        #
+        # return p
 
     # def predict(self, M, var, covar):
     #     covar = np.asarray(covar)
@@ -814,24 +853,3 @@ def _alphas2hyperparams(alpha0, alpha1):
     sigg2 = alpha0 / (a0*a1)
     delta = (a0 * alpha1)/alpha0
     return (sigg2, delta)
-
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    np.random.seed(5)
-    ntrials = 3
-    n = 5
-    p = n+4
-
-    M = np.ones((n, 1)) * 0.4
-    G = np.random.randint(3, size=(n, p))
-    G = np.asarray(G, dtype=float)
-    G -= G.mean(axis=0)
-    G /= G.std(axis=0)
-    G /= np.sqrt(p)
-
-    K = dot(G, G.T) + np.eye(n)*0.1
-    (S, Q) = np.linalg.eigh(K)
-
-    y = np.array([1., 0., 1., 1., 1.])
-    ep = EP(y, M, Q, S)
-    ep.optimize()
