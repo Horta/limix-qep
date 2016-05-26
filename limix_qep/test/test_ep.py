@@ -2,11 +2,13 @@ import numpy as np
 from numpy import newaxis
 from numpy import dot
 import unittest
+from numpy.testing import assert_almost_equal
 
 from limix_qep import Binomial
 from limix_qep.ep import EP
 from limix_math.linalg import economic_QS
 from limix_math.linalg import _QS_from_K
+from scipy.misc import logsumexp
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
 def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
@@ -31,6 +33,9 @@ def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
     u *= np.sqrt(sigg2)
 
     g1 = dot(X, u)
+    g1 -= np.mean(g1)
+    g1 /= np.std(g1)
+    g1 *= np.sqrt(sigg2)
     g2 = np.random.randn(nsamples)
     g2 -= np.mean(g2)
     g2 /= np.std(g2)
@@ -178,35 +183,35 @@ class TestEP(unittest.TestCase):
 
         np.testing.assert_almost_equal(prob_y[:4], prob_yi)
 
-    # def test_binomial_prediction(self):
-    #     seed = 10
-    #     nsamples = 20
-    #     nfeatures = 60
-    #     ntrials = 50
-    #
-    #     M = np.ones((nsamples, 1))
-    #
-    #     (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
-    #                              delta=0.5, seed=seed)
-    #
-    #     (Q, S) = economic_QS(G, 'G')
-    #
-    #     ep = EP(y, M, Q, S, Binomial(ntrials, nsamples))
-    #     ep.optimize()
-    #
-    #     prob_y = []
-    #     for i in range(4):
-    #         g = G[i,:]
-    #         var = dot(g, g)
-    #         covar = dot(g, G.T)
-    #         import ipdb; ipdb.set_trace()
-    #         p = ep.predict(ep.beta * M[i,:], ep.sigg2 * var + ep.sigg2 * ep.delta, ep.sigg2 * covar)
-    #         prob_y.append(p.pdf(y[i], ntrials)[0])
-    #
-    #     prob_yi = [0.48705911290518589, 0.40605290158743768,
-    #                0.84365032664655915, 0.83794141874476269]
-    #
-    #     np.testing.assert_almost_equal(prob_y[:4], prob_yi)
+    def test_binomial_prediction(self):
+        seed = 1
+        nsamples = 20
+        nfeatures = 50
+        ntrials = 100
+
+        M = np.ones((nsamples, 1))
+
+        (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+                                 delta=0.5, seed=seed)
+
+        (Q, S) = economic_QS(G, 'G')
+
+        ep = EP(y, M, Q, S, Binomial(ntrials, nsamples))
+        ep.optimize()
+
+        logpdfs = []
+        for i in range(4):
+            g = G[i,:]
+            var = dot(g, g)
+            covar = dot(g, G.T)
+
+            p = ep.predict(ep.beta * M[i,:], ep.sigg2 * var + ep.sigg2 * ep.delta, ep.sigg2 * covar)
+            logpdfs.append(p.logpdf(y[i], ntrials)[0])
+
+        assert_almost_equal(logpdfs, [-2.6465067277259564,
+                                      -2.1481110362156208,
+                                      -1.2882192451708478,
+                                      -2.9608451283086055])
 
     def test_bernoulli_optimize_degenerated_covariate(self):
         seed = 15

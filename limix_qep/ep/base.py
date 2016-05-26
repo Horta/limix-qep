@@ -2,8 +2,9 @@ from __future__ import absolute_import
 import logging
 import numpy as np
 from numpy import dot
-from limix_math.linalg import ddot, sum2diag, dotd
-from limix_math.linalg import solve, cho_solve
+from scipy.linalg import lu_factor
+from limix_math.linalg import ddot, sum2diag, dotd, sum2diag_inplace
+from limix_math.linalg import solve, cho_solve, lu_solve
 from limix_math.linalg import trace2
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
@@ -156,7 +157,21 @@ class EP(Cached):
 
         self._Mok = ok
 
+    def _LU(self):
+        Sd = self.sigg2 * (self._S + self.delta)
+        Q = self._Q
+        ttau = self._sites.tau
+        R = ddot(Sd, Q.T, left=True)
+        R = ddot(ttau, dot(Q, R), left=True)
+        sum2diag_inplace(R, 1.0)
+        return lu_factor(R, overwrite_a=True, check_finite=False)
 
+    def _LUM(self):
+        m = self._m
+        ttau = self._sites.tau
+        teta = self._sites.eta
+        LU = self._LU()
+        return lu_solve(LU, ttau * m + teta)
 
     # --------------------------------------------------------#
     # ---------------------- Interface ---------------------- #
@@ -165,6 +180,9 @@ class EP(Cached):
         m = np.atleast_1d(m)
         var = np.atleast_2d(var)
         covar = np.atleast_2d(covar)
+
+        if isinstance(self._outcome_type, Binomial):
+            return self._predict_binom(m, var, covar)
 
         # if covar.ndim == 1:
         #     assert isnumber(var) and isnumber(m)
@@ -196,6 +214,20 @@ class EP(Cached):
         #     p = [dict([(0, 1-vi), (1, vi)]) for vi in v]
         #
         # return p
+
+    def _predict_binom(self, m, var, covar):
+        m = np.atleast_1d(m)
+        var = np.atleast_2d(var)
+        covar = np.atleast_2d(covar)
+
+        mu = m + covar.dot(self._LUM())
+
+        LU = self._LU()
+        ttau = self._sites.tau
+
+        sig2 = var.diagonal() - dotd(covar, lu_solve(LU, ddot(ttau, covar.T, left=True)))
+
+        return BinomPredictorEP(mu, sig2)
 
     # def predict(self, M, var, covar):
     #     covar = np.asarray(covar)
