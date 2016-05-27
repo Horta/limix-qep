@@ -121,7 +121,7 @@ class TestEP(unittest.TestCase):
         ep = EP(y, M, Q, S, outcome_type=Binomial(1, nsamples))
         ep.optimize(disp=True)
 
-        self.assertAlmostEqual(ep.lml(), -19.2257156813, places=5)
+        self.assertAlmostEqual(ep.lml(), -19.649207220129359, places=5)
 
     def test_bernoulli_lml(self):
         n = 3
