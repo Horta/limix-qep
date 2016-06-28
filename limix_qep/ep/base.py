@@ -19,6 +19,7 @@ from .fixed_ep import FixedEP
 from .config import _MAX_ITER, _EP_EPS, _PARAM_EPS
 from scipy import optimize
 from scipy.misc import logsumexp
+import scipy as sp
 
 class PrecisionError(Exception):
     pass
