@@ -288,7 +288,6 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         info['G'] = G
 
     outcome_type.assert_outcome(y)
-
     if G is None and K is None and QS is None:
         raise Exception('G, K, and QS cannot be all None.')
 

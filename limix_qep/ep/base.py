@@ -617,28 +617,29 @@ class EP(Cached):
 
         i = 0
         while i < _MAX_ITER:
-
+            self._logger.debug('Iteration %d.', i)
             self._psites.tau[:] = ttau
             self._psites.eta[:] = teta
 
+            self._logger.debug('step 1')
             self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
-
+            self._logger.debug('step 2')
             (hmu, hsig2) = self._tilted_params()
             if not np.all(np.isfinite(hsig2)) or np.any(hsig2 == 0.):
                 raise Exception('Error: not np.all(np.isfinite(hsig2))' +
                                 ' or np.any(hsig2 == 0.).')
-
+            self._logger.debug('step 3')
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
             self.clear_cache('_L1')
             self.clear_cache('_B1')
             self.clear_cache('_A1tmuLm')
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
                                      ttau, teta, self._A1(), self._A0T())
-
+            self._logger.debug('step 4')
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)
             aerr = tdiff.max() + ediff.max()
-
+            self._logger.debug('step 5')
 
             if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
                 rerr = np.inf
@@ -647,6 +648,7 @@ class EP(Cached):
                 rediff = ediff/np.abs(self._psites.eta)
                 rerr = rtdiff.max() + rediff.max()
 
+            self._logger.debug('step 6')
             if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
                 break
 
