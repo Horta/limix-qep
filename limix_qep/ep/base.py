@@ -11,7 +11,7 @@ from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
 from limix_qep.special.nbinom_moms import moments_array3, init
 from limix_qep.lik import Binomial, Bernoulli
-from limix_util.array_ import issingleton
+from limix_math.array import issingleton
 from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
