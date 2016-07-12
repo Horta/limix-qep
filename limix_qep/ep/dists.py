@@ -3,6 +3,7 @@ import numpy as np
 from numpy import dot
 from limix_math.linalg import cho_solve
 from limix_math.linalg import ddot, dotd
+from time import time
 
 class SiteLik(object):
     def __init__(self, nsamples):
@@ -42,17 +43,27 @@ class Joint(object):
         self.tau = np.empty(nsamples)
         self.eta = np.empty(nsamples)
 
+        self._time_elapsed = dict(update=0, initialize=0, cho_solve=0, mult=0)
+        self._calls = dict(update=0, initialize=0, cho_solve=0, mult=0)
+
     def initialize(self, m, sigg2, delta):
+        before = time()
         Q = self._Q
         S = self._S
         v = sigg2 * dotd(ddot(Q, S, left=False), Q.T) + sigg2 * delta
         self.tau[:] = 1.0 / v
         self.eta[:] = self.tau * m
+        self._time_elapsed['initialize'] += time() - before
+        self._calls['initialize'] += 1
 
     def update(self, m, sigg2, delta, S, Q, L1, ttau, teta, A1, A0T):
         self._logger.debug('joint update has started')
+        before_ = time()
         SQt = ddot(S, Q.T, left=True)
-        L1_Qt = cho_solve(L1, Q.T)
+        before = time()
+        L1_Qt = cho_solve(L1, Q.T) # !!!CUBIC!!!
+        self._time_elapsed['cho_solve'] += time() - before
+        self._calls['cho_solve'] += 1
         L1_QtA1 = ddot(L1_Qt, A1, left=False)
 
         C = ttau * A0T
@@ -63,7 +74,10 @@ class Joint(object):
             p1 += D * sigg2 * delta
 
         # DQ_L1t = ddot(D, L1_Qt.T, left=True)
-        Z = dot(ddot(dot(L1_QtA1, Q), S, left=False), Q.T)
+        before = time()
+        Z = dot(ddot(dot(L1_QtA1, Q), S, left=False), Q.T) # !!!CUBIC!!!
+        self._time_elapsed['mult'] += time() - before
+        self._calls['mult'] += 1
 
         p2 = - sigg2 * dotd(DQ, Z)
         if delta != 0:
@@ -83,6 +97,8 @@ class Joint(object):
             mu -= sigg2 * delta * dot(DQ, dot(L1_QtA1, teta))
 
         self.eta[:] = self.tau * mu
+        self._time_elapsed['update'] += time() - before_
+        self._calls['update'] += 1
         self._logger.debug('joint update has finished')
 
 class Cavity(object):

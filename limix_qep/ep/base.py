@@ -6,6 +6,7 @@ from scipy.linalg import lu_factor
 from limix_math.linalg import ddot, sum2diag, dotd, sum2diag_inplace
 from limix_math.linalg import solve, cho_solve, lu_solve
 from limix_math.linalg import trace2
+from limix_math.linalg import stl
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
 from hcache import Cached, cached
@@ -19,6 +20,8 @@ from .fixed_ep import FixedEP
 from .config import _MAX_ITER, _EP_EPS, _PARAM_EPS
 from scipy import optimize
 from scipy.misc import logsumexp
+from time import time
+from collections import OrderedDict
 import scipy as sp
 
 class PrecisionError(Exception):
@@ -93,6 +96,12 @@ class EP(Cached):
     def __init__(self, y, M, Q, S, outcome_type=None,
                  nintp=_DEFAULT_NINTP):
         Cached.__init__(self)
+        self._time_elapsed = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
+                                  eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
+                                  tilted_params_bernoulli=0)
+        self._calls = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
+                           eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
+                           tilted_params_bernoulli=0)
         self._logger = logging.getLogger(__name__)
         outcome_type = Bernoulli() if outcome_type is None else outcome_type
         self._outcome_type = outcome_type
@@ -116,6 +125,9 @@ class EP(Cached):
         self._M = M
         self._S = S
 
+        # self._MAX_EP_ITER = 2
+        self._update_calls = 0
+
         self._Q = Q
 
         self._psites = SiteLik(self._nsamples)
@@ -124,6 +136,8 @@ class EP(Cached):
         self._cavs = Cavity(self._nsamples)
 
         self._joint = Joint(Q, S)
+
+        self._ttau = OrderedDict()
 
         if isinstance(outcome_type, Bernoulli):
             self._y11 = 2. * self._y - 1.0
@@ -140,8 +154,14 @@ class EP(Cached):
         self._loghz = np.empty(self._nsamples)
         self._freeze_this_thing = False
 
+        self._prev_sigg2 = np.inf
+        self._prev_delta = np.inf
+        self._prev_beta = np.full(M.shape[1], np.inf)
+
         self._nfuncost = 0
         self._covariate_setup()
+        self._last_ep_error = np.inf
+        self._update()
         self._logger.debug('An EP object has been initialized'+
                            ' with outcome type %s.', type(outcome_type))
 
@@ -284,8 +304,8 @@ class EP(Cached):
         self._M = value
         self.clear_cache('_m')
         self.clear_cache('_lml_components')
-        self.clear_cache('_L1')
-        self.clear_cache('_B1')
+        # self.clear_cache('_L1')
+        # self.clear_cache('_B1')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
         self._beta = np.zeros(value.shape[1])
@@ -317,8 +337,8 @@ class EP(Cached):
     def beta(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_m')
-        self.clear_cache('_L1')
-        self.clear_cache('_B1')
+        # self.clear_cache('_L1')
+        # self.clear_cache('_B1')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
         self._beta[:] = value
@@ -330,7 +350,7 @@ class EP(Cached):
     def sigg2(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L1')
-        self.clear_cache('_B1')
+        # self.clear_cache('_B1')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
         self._sigg2 = value
@@ -344,7 +364,8 @@ class EP(Cached):
             assert value == 0.
         self.clear_cache('_lml_components')
         self.clear_cache('_L1')
-        self.clear_cache('_B1')
+        self.clear_cache('_QtA1Q')
+        # self.clear_cache('_B1')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
         self._delta = value
@@ -385,10 +406,15 @@ class EP(Cached):
         L0 = np.linalg.cholesky(self._B0())
         return L0
 
+    @cached
     def _QtA1Q(self):
         Q = self._Q
         A1 = self._A1()
-        return dot(Q.T, ddot(A1, Q, left=True))
+        before = time()
+        return_ = dot(Q.T, ddot(A1, Q, left=True))
+        self._time_elapsed['_QtA1Q'] += time() - before
+        self._calls['_QtA1Q'] += 1
+        return return_
 
     @cached
     def _A1tmuLm(self):
@@ -412,17 +438,29 @@ class EP(Cached):
         Q = self._Q
         return A1m - A1*dot(Q, cho_solve(L1, dot(Q.T, A1m)))
 
-    @cached
+    # @cached
     def _B1(self):
+        before = time()
         sigg2 = self._sigg2
         S = self._S
         sigg2S = sigg2 * S
         B1 = sum2diag(self._QtA1Q(), 1./sigg2S)
+        self._time_elapsed['_B1'] += time() - before
+        self._calls['_B1'] += 1
         return B1
 
     @cached
     def _L1(self):
-        L1 = np.linalg.cholesky(self._B1())
+        before = time()
+        B1 = self._B1()
+        # L1_ = np.linalg.cholesky(B1)
+        # L1 = sp.linalg.tril(sp.linalg.cho_factor(B1, lower=True)[0])
+        L1 = sp.linalg.cho_factor(B1, lower=True)[0]
+        # L1 = sp.linalg.cholesky(B1, lower=True)
+        # print(np.linalg.norm(sp.linalg.tril(L1 - L1_)))
+        # print(np.linalg.norm(L1 - L1_))
+        self._time_elapsed['L1'] += time() - before
+        self._calls['L1'] += 1
         return L1
 
     @cached
@@ -456,7 +494,7 @@ class EP(Cached):
         A0A0pT_teta = A0A0T * teta
         QtA0A0pT_teta = dot(Q.T, A0A0pT_teta)
         L1 = self._L1()
-        L1_0 = np.linalg.solve(L1, QtA0A0pT_teta)
+        L1_0 = stl(L1, QtA0A0pT_teta)
         p3 += dot(L1_0.T, L1_0)
         vv = 2*np.log(np.abs(teta))
         p3 -= np.exp(logsumexp(vv - np.log(tctau)))
@@ -567,28 +605,28 @@ class EP(Cached):
             + (smus - cmus)**2/(2*(svars + cvars))
         return np.exp(lzs)
 
-    def get_site_likelihoods(self):
-        return self._sites.copy()
-
-    def set_site_likelihoods(self, s):
-        self._sites.tau[:] = s.tau
-        self._sites.eta[:] = s.eta
-
-        self.clear_cache('_lml_components')
-        self.clear_cache('_L1')
-        self.clear_cache('_B1')
-        self.clear_cache('_update')
-        self.clear_cache('_A1tmuLm')
-
-        m = self._m
-        sigg2 = self.sigg2
-        delta = self.delta
-        S = self._S
-        Q = self._Q
-        self._joint.update(m, sigg2, delta, S, Q, self._L1(),
-                           s.tau, s.eta, self._A1(), self._A0T())
-        self._cavs.update(self._joint.tau, self._joint.eta, s.tau, s.eta)
-        self._compute_hz()
+    # def get_site_likelihoods(self):
+    #     return self._sites.copy()
+    #
+    # def set_site_likelihoods(self, s):
+    #     self._sites.tau[:] = s.tau
+    #     self._sites.eta[:] = s.eta
+    #
+    #     self.clear_cache('_lml_components')
+    #     self.clear_cache('_L1')
+    #     # self.clear_cache('_B1')
+    #     self.clear_cache('_update')
+    #     self.clear_cache('_A1tmuLm')
+    #
+    #     m = self._m
+    #     sigg2 = self.sigg2
+    #     delta = self.delta
+    #     S = self._S
+    #     Q = self._Q
+    #     self._joint.update(m, sigg2, delta, S, Q, self._L1(),
+    #                        s.tau, s.eta, self._A1(), self._A0T())
+    #     self._cavs.update(self._joint.tau, self._joint.eta, s.tau, s.eta)
+    #     self._compute_hz()
 
     # --------------------------------------------------------#
     # ---------------------- MAIN LOOP ---------------------- #
@@ -598,6 +636,12 @@ class EP(Cached):
         if self._freeze_this_thing:
             return
 
+        print("Lasf ep error %.5f" % self._last_ep_error)
+        # if self._last_ep_error < 1e-3:
+        #     print("doing only one EP iteration")
+        #     NITERS = 1
+
+        before = time()
         self._logger.debug('Main EP loop has started.')
         m = self._m
         Q = self._Q
@@ -608,15 +652,48 @@ class EP(Cached):
         ttau = self._sites.tau
         teta = self._sites.eta
 
+        before2 = time()
         if not self._params_initialized:
+            before3 = time()
             self._joint.initialize(m, sigg2, delta)
+            self._time_elapsed['eploop_init'] += time() - before3
+            self._calls['eploop_init'] += 1
             self._params_initialized = True
         else:
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
                                      ttau, teta, self._A1(), self._A0T())
+        self._time_elapsed['before_eploop'] += time() - before2
+        self._calls['before_eploop'] += 1
 
+        if self.sigg2 not in self._ttau:
+            self._ttau[self.sigg2] = []
+
+        self._ttau[self.sigg2].append(self._sites.tau.copy())
+
+        self._update_calls += 1
+
+        # if self._update_calls == 1:
+        #     print("UPDATE CALL EQUAL TO 1")
+        #     i = -2
+        # else:
         i = 0
-        while i < _MAX_ITER:
+        # while i < _MAX_ITER:
+        # while i < self._MAX_EP_ITER:
+        # while i < NITERS:
+
+        # self._prev_sigg2 = np.inf
+        # self._prev_delta = np.inf
+        # self._prev_beta = np.full(M.shape[1], np.inf)
+
+        NMAX = 3
+        # if self._update_calls <= 4:
+        #     NMAX = 4
+        # elif self._update_calls <= 12:
+        #     NMAX = 2
+        # else:
+        #     NMAX = 1
+
+        while i < NMAX:
             self._logger.debug('Iteration %d.', i)
             self._psites.tau[:] = ttau
             self._psites.eta[:] = teta
@@ -631,7 +708,8 @@ class EP(Cached):
             self._logger.debug('step 3')
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
             self.clear_cache('_L1')
-            self.clear_cache('_B1')
+            self.clear_cache('_QtA1Q')
+            # self.clear_cache('_B1')
             self.clear_cache('_A1tmuLm')
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
                                      ttau, teta, self._A1(), self._A0T())
@@ -648,12 +726,16 @@ class EP(Cached):
                 rediff = ediff/np.abs(self._psites.eta)
                 rerr = rtdiff.max() + rediff.max()
 
+            i += 1
             self._logger.debug('step 6')
+            self._ttau[self.sigg2].append(self._sites.tau.copy())
+            self._last_ep_error = min(aerr, rerr)
             if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
                 break
 
-            i += 1
-
+        print(i)
+        self._calls['eploop'] += i
+        self._time_elapsed['eploop'] += time() - before
 
         if i + 1 == _MAX_ITER:
             self._logger.warn('Maximum number of EP iterations has'+
@@ -685,6 +767,8 @@ class EP(Cached):
             self._tilted_params_binomial()
 
     def _tilted_params_bernoulli(self):
+        self._calls['tilted_params_bernoulli'] += 1
+        before = time()
         b = np.sqrt(self._cavs.tau**2 + self._cavs.tau)
         lb = np.log(b)
         c = self._y11 * self._cavs.eta / b
@@ -694,6 +778,8 @@ class EP(Cached):
         mu = self._cavs.eta / self._cavs.tau + self._y11 * np.exp(lpdf - (lcdf + lb))
 
         sig2 = 1./self._cavs.tau - np.exp(lpdf - (lcdf + 2*lb)) * (c + np.exp(lpdf - lcdf))
+
+        self._time_elapsed['tilted_params_bernoulli'] += time() - before
 
         return (mu, sig2)
 
@@ -736,15 +822,6 @@ class EP(Cached):
         u = c - A1 * dot(Q, d)
         return u
 
-    def _opt_beta_denom_old(self):
-        A1 = self._A1()
-        M = self._M
-        Q = self._Q
-        L1 = self._L1()
-        A1M = ddot(A1, M, left=True)
-        QtA1M = dot(Q.T, A1M)
-        return dot(M.T, A1M) - dot(A1M.T, dot(Q, cho_solve(L1, QtA1M)))
-
     def _opt_beta_denom(self):
         A1 = self._A1()
         M = self._M
@@ -759,7 +836,7 @@ class EP(Cached):
     # ---------------------- OPTIMIZATION ---------------------- #
     # -----------------------------------------------------------#
     def _optimal_beta(self):
-        self._update()
+        # self._update()
 
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._beta)
@@ -783,6 +860,8 @@ class EP(Cached):
         return obeta
 
     def _optimize_beta(self):
+        self._calls['beta'] += 1
+        before = time()
         pbeta = np.empty_like(self._beta)
 
         max_ii = 100
@@ -796,6 +875,7 @@ class EP(Cached):
 
         self._logger.debug('Number of iterations for beta optimization: %d.',
                           ii)
+        self._time_elapsed['beta'] += time() - before
 
     def _best_alpha0(self, alpha1, opt_beta):
         min_cost = np.inf
@@ -824,11 +904,14 @@ class EP(Cached):
 
     def _create_fun_cost_sigg2(self, opt_beta):
         def fun_cost(sigg2):
+            before = time()
             self.sigg2 = sigg2
-            self._update()
+            # self._update()
             if opt_beta:
                 self._optimize_beta()
             cost = -self.lml()
+            self._time_elapsed['sigg2'] += time() - before
+            self._calls['sigg2'] += 1
             return cost
         return fun_cost
 
@@ -843,10 +926,13 @@ class EP(Cached):
             opt = dict(xatol=_PARAM_EPS, disp=disp)
             bounds_sigg2 = (1e-4, 30.0)
             fun_cost = self._create_fun_cost_sigg2(opt_beta)
+            before = time()
             res = optimize.minimize_scalar(fun_cost,
                                               options=opt,
                                               bounds=bounds_sigg2,
                                               method='Bounded')
+            total = time() - before
+            print("optimize.minimize_scalar: %.5f" % total)
             self.sigg2 = res.x
         elif opt_delta and opt_sigg2:
             fun_cost = self._create_fun_cost_both(opt_beta)

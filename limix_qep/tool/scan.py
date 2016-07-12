@@ -8,6 +8,7 @@ from limix_qep import Bernoulli, Binomial
 from limix_math.linalg import economic_QS
 from .util import gower_kinship_normalization
 import scipy.stats as st
+from time import time
 
 def _get_offset_covariate(covariate, n):
     if covariate is None:
@@ -73,11 +74,17 @@ class LRT(object):
     def _compute_statistics(self):
         self._logger.info('Statistics computation has started.')
 
+        before = time()
         self._compute_null_model()
+        total = time() - before
+        print("Null model: %.5f" % total)
+        before = time()
         if self._full:
             self._compute_alt_models_full()
         else:
             self._compute_alt_models()
+        total = time() - before
+        print("Alt model: %.5f" % total)
 
     def _compute_alt_models(self):
         if self._alt_model_ready:
@@ -118,8 +125,14 @@ class LRT(object):
         covariate = self._covariate
         outcome_type = self._outcome_type
 
+        before = time()
         ep = EP(y, covariate, Q, S, outcome_type)
+        total = time() - before
+        print("EP init: %.5f" % total)
+        before = time()
         ep.optimize()
+        total = time() - before
+        print("ep.optimize(): %.5f" % total)
 
         lml_null = ep.lml()
 
@@ -264,6 +277,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
                           additional information, respectively.
     """
 
+    before_all = time()
     if outcome_type is None:
         outcome_type = Bernoulli()
 
@@ -275,17 +289,23 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if K is not None:
         logger.info('Covariace matrix normalization.')
+        before = time()
         K = gower_kinship_normalization(K)
+        total = time() - before
+        print("Gower normalization: %.5f" % total)
         info['K'] = K
 
     if G is not None:
         logger.info('Genetic markers normalization.')
+        before = time()
         G = G - np.mean(G, 0)
         s = np.std(G, 0)
         ok = s > 0.
         G[:,ok] /= s[ok]
         G /= np.sqrt(G.shape[1])
         info['G'] = G
+        total = time() - before
+        print("markers normalization: %.5f" % total)
 
     outcome_type.assert_outcome(y)
     if G is None and K is None and QS is None:
@@ -301,15 +321,92 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         QS = (Q, S)
 
     logger.info('Genetic marker candidates normalization.')
+    before = time()
     X = X - np.mean(X, 0)
     s = np.std(X, 0)
     ok = s > 0.
     X[:,ok] /= s[ok]
     X /= np.sqrt(X.shape[1])
     info['X'] = X
+    total = time() - before
+    print("candidates normalization: %.5f" % total)
 
+    before = time()
     lrt = _create_LRT(y, QS, covariate, outcome_type)
+    total = time() - before
+    print("Total create LRT: %.5f" % total)
     lrt.candidate_markers = X
+    before = time()
     info['lrs'] = lrt.lrs()
+    total = time() - before
+    print("lrt.lrs() : %.5f" % total)
     info['effsizes'] = lrt.effsizes
-    return (lrt.pvals(), info)
+    before = time()
+    return_ = (lrt.pvals(), info)
+    total = time() - before
+    print("lrt.pvals() : %.5f" % total)
+
+    print("Total time spend: %.5f" % (time() - before_all))
+
+    print("beta %d %.5f %.5f" % (lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']/lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']))
+    print("sigg2 %d %.5f %.5f" % (lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']/lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']))
+    print("sigg2-beta %.5f %.5f" % ((lrt._ep._time_elapsed['sigg2']-lrt._ep._calls['beta'])/lrt._ep._calls['sigg2'], (lrt._ep._time_elapsed['sigg2']-lrt._ep._calls['beta'])))
+
+    print("eploop %d %.5f %.5f" % (lrt._ep._calls['eploop'], lrt._ep._time_elapsed['eploop']/lrt._ep._calls['eploop'], lrt._ep._time_elapsed['eploop']))
+
+    print("before_eploop %d %.5f %.5f" % (lrt._ep._calls['before_eploop'], lrt._ep._time_elapsed['before_eploop']/lrt._ep._calls['before_eploop'], lrt._ep._time_elapsed['before_eploop']))
+
+    print("eploop_init %d %.5f %.5f" % (lrt._ep._calls['eploop_init'], lrt._ep._time_elapsed['eploop_init']/lrt._ep._calls['eploop_init'], lrt._ep._time_elapsed['eploop_init']))
+
+    print("L1 %d %.5f %.5f" % (lrt._ep._calls['L1'], lrt._ep._time_elapsed['L1']/lrt._ep._calls['L1'], lrt._ep._time_elapsed['L1']))
+
+    print("_QtA1Q %d %.5f %.5f" % (lrt._ep._calls['_QtA1Q'], lrt._ep._time_elapsed['_QtA1Q']/lrt._ep._calls['_QtA1Q'], lrt._ep._time_elapsed['_QtA1Q']))
+
+    print("_B1 %d %.5f %.5f" % (lrt._ep._calls['_B1'], lrt._ep._time_elapsed['_B1']/lrt._ep._calls['_B1'], lrt._ep._time_elapsed['_B1']))
+
+    print("tilted_params_bernoulli %d %.5f %.5f" % (lrt._ep._calls['tilted_params_bernoulli'], lrt._ep._time_elapsed['tilted_params_bernoulli']/lrt._ep._calls['tilted_params_bernoulli'], lrt._ep._time_elapsed['tilted_params_bernoulli']))
+
+
+    print("JOINT initialize %d %.5f %.5f" % (lrt._ep._joint._calls['initialize'], lrt._ep._joint._time_elapsed['initialize']/lrt._ep._joint._calls['initialize'], lrt._ep._joint._time_elapsed['initialize']))
+    print("JOINT update %d %.5f %.5f" % (lrt._ep._joint._calls['update'], lrt._ep._joint._time_elapsed['update']/lrt._ep._joint._calls['update'], lrt._ep._joint._time_elapsed['update']))
+
+    print("JOINT cho_solve %d %.5f %.5f" % (lrt._ep._joint._calls['cho_solve'], lrt._ep._joint._time_elapsed['cho_solve']/lrt._ep._joint._calls['cho_solve'], lrt._ep._joint._time_elapsed['cho_solve']))
+    print("JOINT mult %d %.5f %.5f" % (lrt._ep._joint._calls['mult'], lrt._ep._joint._time_elapsed['mult']/lrt._ep._joint._calls['mult'], lrt._ep._joint._time_elapsed['mult']))
+
+    import pylab as plt
+    N = 7
+
+    outer_iter = 1
+    for k in lrt._ep._ttau:
+        plt.figure()
+        i = 0
+        for ttau in lrt._ep._ttau[k]:
+            plt.plot(ttau)
+            i += 1
+            if i == N:
+                break
+
+        plt.axhline(1./(k+1), color='black')
+        plt.axhline(np.mean(lrt._ep._ttau[k][-1]), color='white')
+        plt.ylim([0, 1.0])
+        plt.savefig('%d/iter/%02d_%f.png' % (N, outer_iter, k))
+        plt.savefig('%d/sig/%f_%02d.png' % (N, k, outer_iter))
+        plt.close()
+        outer_iter += 1
+
+
+    outer_iter = 1
+    for k in lrt._ep._ttau:
+        plt.figure()
+        i = 0
+        for ttau in lrt._ep._ttau[k]:
+            plt.plot(np.argsort(ttau))
+            i += 1
+            if i == N:
+                break
+
+        plt.savefig('%d/rank/%02d_%f.png' % (N, outer_iter, k))
+        plt.close()
+        outer_iter += 1
+
+    return return_
