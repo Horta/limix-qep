@@ -29,11 +29,12 @@ class TestPredict(unittest.TestCase):
 
         model = learn(y, G=G, covariate=X)
         p = model.predict(X, G)
-
         self.assertAlmostEqual(0.857912746548,
-                               np.mean([p[i].pdf(y[i])[0] for i in range(n)]))
+                               np.mean([p[i].pdf(y[i])[0] for i in range(n)]),
+                               places=5)
         self.assertAlmostEqual(0.142087253452,
-                               np.mean([1-p[i].pdf(y[i])[0] for i in range(n)]))
+                               np.mean([1-p[i].pdf(y[i])[0] for i in range(n)]),
+                               places=5)
 
     def test_bernoulli_predict(self):
         random = np.random.RandomState(981)

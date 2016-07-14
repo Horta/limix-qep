@@ -127,6 +127,20 @@ class LRT(object):
 
         before = time()
         ep = EP(y, covariate, Q, S, outcome_type)
+        # import pylab as plt
+        # lmls_ = []
+        # h2s_ = []
+        # for h2i in np.linspace(1e-4, 1 - 1e-4, 1000):
+        #     h2s_.append(h2i)
+        #     sigg2 = ep.h2tosigg2(h2i)
+        #     ep.sigg2 = sigg2
+        #     lmls_.append(ep.lml())
+        # plt.plot(h2s_, lmls_)
+        # mindx = np.argmax(lmls_)
+        # plt.axvline(h2s_[mindx])
+        # print(h2s_[mindx])
+        # plt.savefig('lml.png')
+        # plt.close()
         total = time() - before
         print("EP init: %.5f" % total)
         before = time()
@@ -346,7 +360,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     total = time() - before
     print("lrt.pvals() : %.5f" % total)
 
-    print("Total time spend: %.5f" % (time() - before_all))
+    print("Total time spend:            !!__%.5f__!!" % (time() - before_all))
 
     print("beta %d %.5f %.5f" % (lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']/lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']))
     print("sigg2 %d %.5f %.5f" % (lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']/lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']))
@@ -372,6 +386,12 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     print("JOINT cho_solve %d %.5f %.5f" % (lrt._ep._joint._calls['cho_solve'], lrt._ep._joint._time_elapsed['cho_solve']/lrt._ep._joint._calls['cho_solve'], lrt._ep._joint._time_elapsed['cho_solve']))
     print("JOINT mult %d %.5f %.5f" % (lrt._ep._joint._calls['mult'], lrt._ep._joint._time_elapsed['mult']/lrt._ep._joint._calls['mult'], lrt._ep._joint._time_elapsed['mult']))
+    print("JOINT ddot1 %d %.5f %.5f" % (lrt._ep._joint._calls['ddot1'], lrt._ep._joint._time_elapsed['ddot1']/lrt._ep._joint._calls['ddot1'], lrt._ep._joint._time_elapsed['ddot1']))
+    print("JOINT ddot2 %d %.5f %.5f" % (lrt._ep._joint._calls['ddot2'], lrt._ep._joint._time_elapsed['ddot2']/lrt._ep._joint._calls['ddot2'], lrt._ep._joint._time_elapsed['ddot2']))
+    print("JOINT ddot3 %d %.5f %.5f" % (lrt._ep._joint._calls['ddot3'], lrt._ep._joint._time_elapsed['ddot3']/lrt._ep._joint._calls['ddot3'], lrt._ep._joint._time_elapsed['ddot3']))
+    print("JOINT dotvec %d %.5f %.5f" % (lrt._ep._joint._calls['dotvec'], lrt._ep._joint._time_elapsed['dotvec']/lrt._ep._joint._calls['dotvec'], lrt._ep._joint._time_elapsed['dotvec']))
+
+    print('Heritability: %.8f' % lrt._ep.h2())
 
     import pylab as plt
     N = 7
@@ -389,7 +409,7 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
         plt.axhline(1./(k+1), color='black')
         plt.axhline(np.mean(lrt._ep._ttau[k][-1]), color='white')
         plt.ylim([0, 1.0])
-        plt.savefig('%d/iter/%02d_%f.png' % (N, outer_iter, k))
+        plt.savefig('%d/iter/%02d_%f_%f.png' % (N, outer_iter, k, lrt._ep._betas[outer_iter-1]))
         plt.savefig('%d/sig/%f_%02d.png' % (N, k, outer_iter))
         plt.close()
         outer_iter += 1

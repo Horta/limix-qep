@@ -29,7 +29,7 @@ class TestHeritability(unittest.TestCase):
         y[z>0] = 1.
 
         h2 = estimate(y, K=Kg, covariate=M)[0]
-        self.assertAlmostEqual(h2, 0.403163261934)
+        self.assertAlmostEqual(h2, 0.403163261934, places=5)
 
     # def test_h2_binomial(self):
     #     random = np.random.RandomState(981)

@@ -23,6 +23,8 @@ from scipy.misc import logsumexp
 from time import time
 from collections import OrderedDict
 import scipy as sp
+import scipy.stats
+from .haseman_elston import heritability
 
 class PrecisionError(Exception):
     pass
@@ -138,6 +140,9 @@ class EP(Cached):
         self._joint = Joint(Q, S)
 
         self._ttau = OrderedDict()
+        self._betas = []
+        self._sigg2 = None
+        self._beta = None
 
         if isinstance(outcome_type, Bernoulli):
             self._y11 = 2. * self._y - 1.0
@@ -149,8 +154,6 @@ class EP(Cached):
             self._mu1 = np.empty(self._nsamples)
             self._var2 = np.empty(self._nsamples)
 
-        self._beta = np.zeros(M.shape[1])
-        self._sigg2 = 1.0
         self._loghz = np.empty(self._nsamples)
         self._freeze_this_thing = False
 
@@ -158,12 +161,16 @@ class EP(Cached):
         self._prev_delta = np.inf
         self._prev_beta = np.full(M.shape[1], np.inf)
 
+        self._K = None
+
         self._nfuncost = 0
+
         self._covariate_setup()
         self._last_ep_error = np.inf
-        self._update()
+        # self._update()
         self._logger.debug('An EP object has been initialized'+
                            ' with outcome type %s.', type(outcome_type))
+
 
     def _covariate_setup(self):
         M = self._M
@@ -177,6 +184,9 @@ class EP(Cached):
         ok[np.logical_and(v == 0., m == 0.)] = False
 
         self._Mok = ok
+
+    def _use_low_rank_trick(self):
+        return self._Q.shape[0] - self._S.shape[0] > 1
 
     def _LU(self):
         Sd = self.sigg2 * (self._S + self.delta)
@@ -330,8 +340,26 @@ class EP(Cached):
 
         assert False
 
+    def h2tosigg2(self, h2):
+        # sigg2 = self.sigg2
+        varc = np.var(dot(self.M, self.beta))
+        delta = self.delta
+
+        ot = self._outcome_type
+        if isinstance(ot, Bernoulli):
+            assert delta == 0.
+            # return h2 = sigg2 / (sigg2 + varc + 1.)
+            return h2 * (1 + varc) / (1 - h2)
+        elif isinstance(ot, Binomial):
+            # return h2 = sigg2 / (sigg2 + sigg2*delta + varc + 1.)
+            return h2 * (1 + varc) / (1 - h2 - delta*h2)
+
+        assert False
+
     @property
     def beta(self):
+        if self._beta is None:
+            self._beta = np.empty(self._M.shape[1])
         return self._beta.copy()
     @beta.setter
     def beta(self, value):
@@ -341,19 +369,24 @@ class EP(Cached):
         # self.clear_cache('_B1')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
+        if self._beta is None:
+            self._beta = np.empty(self._M.shape[1])
         self._beta[:] = value
 
     @property
     def sigg2(self):
+        if self._sigg2 is None:
+            self._sigg2 = 1.0
         return self._sigg2
     @sigg2.setter
     def sigg2(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L1')
         # self.clear_cache('_B1')
+        self.clear_cache('_sigg2dotdQSQt')
         self.clear_cache('_update')
         self.clear_cache('_A1tmuLm')
-        self._sigg2 = value
+        self._sigg2 = max(value, 1e-4)
 
     @property
     def delta(self):
@@ -415,6 +448,19 @@ class EP(Cached):
         self._time_elapsed['_QtA1Q'] += time() - before
         self._calls['_QtA1Q'] += 1
         return return_
+
+    @cached
+    def _SQt(self):
+        return ddot(self._S, self._Q.T, left=True)
+
+    @cached
+    def _dotdQSQt(self):
+        Q = self._Q
+        return dotd(Q, self._SQt())
+
+    @cached
+    def _sigg2dotdQSQt(self):
+        return self.sigg2 * self._dotdQSQt()
 
     @cached
     def _A1tmuLm(self):
@@ -652,16 +698,39 @@ class EP(Cached):
         ttau = self._sites.tau
         teta = self._sites.eta
 
+        SQt = self._SQt()
+        sigg2dotdQSQt = self._sigg2dotdQSQt()
+
         before2 = time()
         if not self._params_initialized:
             before3 = time()
-            self._joint.initialize(m, sigg2, delta)
+            outcome_type = self._outcome_type
+            y = self._y
+
+            if not self._use_low_rank_trick():
+                self._K = self._Q.dot(self._SQt())
+                if self._sigg2 is None:
+                    self.sigg2 = max(1e-3, self.h2tosigg2(heritability(y, self._K)))
+            else:
+                # tirar isso daqui
+                if self._sigg2 is None:
+                    self.sigg2 = self.h2tosigg2(heritability(y, self._Q.dot(self._SQt())))
+
+            if isinstance(outcome_type, Bernoulli) and self._beta is None:
+                ratio = sum(y) / float(y.shape[0])
+                f = sp.stats.norm(0,1).isf(1-ratio)
+                self._beta = np.linalg.lstsq(self._M, np.full(y.shape[0], f))[0]
+            else:
+                self._beta = np.zeros(self._M.shape[1])
+                self._joint.initialize(m, sigg2, delta)
+
             self._time_elapsed['eploop_init'] += time() - before3
             self._calls['eploop_init'] += 1
             self._params_initialized = True
         else:
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
-                                     ttau, teta, self._A1(), self._A0T())
+                                     ttau, teta, self._A1(), self._A0T(),
+                                     sigg2dotdQSQt, SQt, self._K)
         self._time_elapsed['before_eploop'] += time() - before2
         self._calls['before_eploop'] += 1
 
@@ -669,6 +738,7 @@ class EP(Cached):
             self._ttau[self.sigg2] = []
 
         self._ttau[self.sigg2].append(self._sites.tau.copy())
+        self._betas.append(self.beta[0])
 
         self._update_calls += 1
 
@@ -685,7 +755,8 @@ class EP(Cached):
         # self._prev_delta = np.inf
         # self._prev_beta = np.full(M.shape[1], np.inf)
 
-        NMAX = 3
+        # NMAX = 3
+        NMAX = 10
         # if self._update_calls <= 4:
         #     NMAX = 4
         # elif self._update_calls <= 12:
@@ -712,7 +783,8 @@ class EP(Cached):
             # self.clear_cache('_B1')
             self.clear_cache('_A1tmuLm')
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
-                                     ttau, teta, self._A1(), self._A0T())
+                                     ttau, teta, self._A1(), self._A0T(),
+                                     sigg2dotdQSQt, SQt, self._K)
             self._logger.debug('step 4')
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)
@@ -733,7 +805,6 @@ class EP(Cached):
             if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
                 break
 
-        print(i)
         self._calls['eploop'] += i
         self._time_elapsed['eploop'] += time() - before
 
@@ -836,7 +907,7 @@ class EP(Cached):
     # ---------------------- OPTIMIZATION ---------------------- #
     # -----------------------------------------------------------#
     def _optimal_beta(self):
-        # self._update()
+        self._update()
 
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._beta)
@@ -851,8 +922,9 @@ class EP(Cached):
         try:
             ok = self._Mok
             obeta = np.zeros_like(self._beta)
-            obeta[ok] = solve(Z, u[ok])
-        except np.linalg.LinAlgError:
+            with np.errstate(all='raise'):
+                obeta[ok] = solve(Z, u[ok])
+        except (np.linalg.LinAlgError, FloatingPointError):
             self._logger.warn('Failed to compute the optimal beta.'+
                               ' Zeroing it.')
             obeta = np.zeros_like(self._beta)
@@ -865,6 +937,7 @@ class EP(Cached):
         pbeta = np.empty_like(self._beta)
 
         max_ii = 100
+        max_ii = 1
         ii = 0
         while ii < max_ii:
             ii += 1
@@ -873,8 +946,8 @@ class EP(Cached):
             if np.sum((self.beta - pbeta)**2) < _PARAM_EPS:
                 break
 
-        self._logger.debug('Number of iterations for beta optimization: %d.',
-                          ii)
+        # self._logger.debug('Number of iterations for beta optimization: %d.',
+        #                   ii)
         self._time_elapsed['beta'] += time() - before
 
     def _best_alpha0(self, alpha1, opt_beta):
@@ -903,9 +976,10 @@ class EP(Cached):
         return fun_cost
 
     def _create_fun_cost_sigg2(self, opt_beta):
-        def fun_cost(sigg2):
+        def fun_cost(h2):
             before = time()
-            self.sigg2 = sigg2
+            print("Trying h2 sigg2: %.5f %.5f" % (h2, self.h2tosigg2(h2)))
+            self.sigg2 = self.h2tosigg2(h2)
             # self._update()
             if opt_beta:
                 self._optimize_beta()
@@ -924,16 +998,31 @@ class EP(Cached):
 
         if not opt_delta and opt_sigg2:
             opt = dict(xatol=_PARAM_EPS, disp=disp)
-            bounds_sigg2 = (1e-4, 30.0)
+            gs = 0.5 * (3.0 - np.sqrt(5.0))
+            # golden_section = (1 + np.sqrt(5)) / 2
+            # gs = 1 - 1./golden_section
+            # sigg2_left = 1e-4
+            sigg2_left = 1e-4
+            h2_left = sigg2_left / (sigg2_left + 1)
+            curr_h2 = self.h2()
+            h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
+            h2_right = min(h2_right, 0.967)
+            # h2_right = h2_left + (curr_h2 - h2_left) * gs
+            # bounds_sigg2 = [sigg2_left, h2_right / (1 - h2_right)]
+            bounds_h2 = [h2_left, h2_right]
+            print("H2 bound: (%.5f, %.5f)" % (h2_left, h2_right))
+            # bounds_sigg2 = [1e-4, 30.0]
+            # golden_section = (1 + np.sqrt(5)) / 2
+            # bounds_sigg2 + golden_section * (bounds_sigg2[1] - bounds_sigg2[0])
             fun_cost = self._create_fun_cost_sigg2(opt_beta)
             before = time()
             res = optimize.minimize_scalar(fun_cost,
                                               options=opt,
-                                              bounds=bounds_sigg2,
+                                              bounds=bounds_h2,
                                               method='Bounded')
             total = time() - before
             print("optimize.minimize_scalar: %.5f" % total)
-            self.sigg2 = res.x
+            self.sigg2 = self.h2tosigg2(res.x)
         elif opt_delta and opt_sigg2:
             fun_cost = self._create_fun_cost_both(opt_beta)
             opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
