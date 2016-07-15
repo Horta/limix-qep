@@ -25,6 +25,7 @@ from collections import OrderedDict
 import scipy as sp
 import scipy.stats
 from .haseman_elston import heritability
+import limix_ext as lxt
 
 class PrecisionError(Exception):
     pass
@@ -98,12 +99,12 @@ class EP(Cached):
     def __init__(self, y, M, Q, S, outcome_type=None,
                  nintp=_DEFAULT_NINTP):
         Cached.__init__(self)
-        self._time_elapsed = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
-                                  eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
-                                  tilted_params_bernoulli=0)
-        self._calls = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
-                           eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
-                           tilted_params_bernoulli=0)
+        # self._time_elapsed = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
+        #                           eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
+        #                           tilted_params_bernoulli=0)
+        # self._calls = dict(beta=0, sigg2=0, eploop=0, before_eploop=0,
+        #                    eploop_init=0, L1=0, _QtA1Q=0, _B1=0,
+        #                    tilted_params_bernoulli=0)
         self._logger = logging.getLogger(__name__)
         outcome_type = Bernoulli() if outcome_type is None else outcome_type
         self._outcome_type = outcome_type
@@ -120,6 +121,8 @@ class EP(Cached):
                             " is %f." % S.min())
 
         _process_S(S)
+
+        self._nchol = 0
 
         self._params_initialized = False
         self._nsamples = y.shape[0]
@@ -139,8 +142,8 @@ class EP(Cached):
 
         self._joint = Joint(Q, S)
 
-        self._ttau = OrderedDict()
-        self._betas = []
+        # self._ttau = OrderedDict()
+        # self._betas = []
         self._sigg2 = None
         self._beta = None
 
@@ -162,6 +165,8 @@ class EP(Cached):
         self._prev_beta = np.full(M.shape[1], np.inf)
 
         self._K = None
+        if not self._use_low_rank_trick():
+            self._K = self._Q.dot(self._SQt())
 
         self._nfuncost = 0
 
@@ -171,6 +176,14 @@ class EP(Cached):
         self._logger.debug('An EP object has been initialized'+
                            ' with outcome type %s.', type(outcome_type))
 
+    def nchol(self):
+        return self._nchol
+
+    def nmult(self):
+        return self._joint._nmult
+
+    def ncholm(self):
+         return self._joint._nchol
 
     def _covariate_setup(self):
         M = self._M
@@ -376,7 +389,13 @@ class EP(Cached):
     @property
     def sigg2(self):
         if self._sigg2 is None:
-            self._sigg2 = 1.0
+            if self._K is None:
+                self._sigg2 = 1.0
+            else:
+                p = sum(self._y) / float(self._y.shape[0])
+                self._sigg2 = max(1e-3, lxt.lmm.h2(self._y, self._M, self._K, p))
+                # self._sigg2 = max(1e-3, self.h2tosigg2(heritability(self._y, self._K)))
+            print("Initial h2 sigg2 guess: %.5f %.5f" % (self.h2(), self._sigg2))
         return self._sigg2
     @sigg2.setter
     def sigg2(self, value):
@@ -443,10 +462,10 @@ class EP(Cached):
     def _QtA1Q(self):
         Q = self._Q
         A1 = self._A1()
-        before = time()
+        # before = time()
         return_ = dot(Q.T, ddot(A1, Q, left=True))
-        self._time_elapsed['_QtA1Q'] += time() - before
-        self._calls['_QtA1Q'] += 1
+        # self._time_elapsed['_QtA1Q'] += time() - before
+        # self._calls['_QtA1Q'] += 1
         return return_
 
     @cached
@@ -486,27 +505,28 @@ class EP(Cached):
 
     # @cached
     def _B1(self):
-        before = time()
+        # before = time()
         sigg2 = self._sigg2
         S = self._S
         sigg2S = sigg2 * S
         B1 = sum2diag(self._QtA1Q(), 1./sigg2S)
-        self._time_elapsed['_B1'] += time() - before
-        self._calls['_B1'] += 1
+        # self._time_elapsed['_B1'] += time() - before
+        # self._calls['_B1'] += 1
         return B1
 
     @cached
     def _L1(self):
-        before = time()
+        # before = time()
         B1 = self._B1()
         # L1_ = np.linalg.cholesky(B1)
         # L1 = sp.linalg.tril(sp.linalg.cho_factor(B1, lower=True)[0])
+        self._nchol += 1
         L1 = sp.linalg.cho_factor(B1, lower=True)[0]
         # L1 = sp.linalg.cholesky(B1, lower=True)
         # print(np.linalg.norm(sp.linalg.tril(L1 - L1_)))
         # print(np.linalg.norm(L1 - L1_))
-        self._time_elapsed['L1'] += time() - before
-        self._calls['L1'] += 1
+        # self._time_elapsed['L1'] += time() - before
+        # self._calls['L1'] += 1
         return L1
 
     @cached
@@ -682,12 +702,9 @@ class EP(Cached):
         if self._freeze_this_thing:
             return
 
-        print("Lasf ep error %.5f" % self._last_ep_error)
-        # if self._last_ep_error < 1e-3:
-        #     print("doing only one EP iteration")
-        #     NITERS = 1
+        # print("Lasf ep error %.5f" % self._last_ep_error)
 
-        before = time()
+        # before = time()
         self._logger.debug('Main EP loop has started.')
         m = self._m
         Q = self._Q
@@ -701,15 +718,16 @@ class EP(Cached):
         SQt = self._SQt()
         sigg2dotdQSQt = self._sigg2dotdQSQt()
 
-        before2 = time()
+        # before2 = time()
         if not self._params_initialized:
-            before3 = time()
+            # before3 = time()
             outcome_type = self._outcome_type
             y = self._y
 
             if not self._use_low_rank_trick():
                 self._K = self._Q.dot(self._SQt())
                 if self._sigg2 is None:
+                    print("Initial h2 sigg2 guess: %.5f %.5f" % (self.h2(), self.sigg2))
                     self.sigg2 = max(1e-3, self.h2tosigg2(heritability(y, self._K)))
             else:
                 # tirar isso daqui
@@ -724,21 +742,21 @@ class EP(Cached):
                 self._beta = np.zeros(self._M.shape[1])
                 self._joint.initialize(m, sigg2, delta)
 
-            self._time_elapsed['eploop_init'] += time() - before3
-            self._calls['eploop_init'] += 1
+            # self._time_elapsed['eploop_init'] += time() - before3
+            # self._calls['eploop_init'] += 1
             self._params_initialized = True
         else:
             self._joint.update(m, sigg2, delta, S, Q, self._L1(),
                                      ttau, teta, self._A1(), self._A0T(),
                                      sigg2dotdQSQt, SQt, self._K)
-        self._time_elapsed['before_eploop'] += time() - before2
-        self._calls['before_eploop'] += 1
+        # self._time_elapsed['before_eploop'] += time() - before2
+        # self._calls['before_eploop'] += 1
 
-        if self.sigg2 not in self._ttau:
-            self._ttau[self.sigg2] = []
+        # if self.sigg2 not in self._ttau:
+        #     self._ttau[self.sigg2] = []
 
-        self._ttau[self.sigg2].append(self._sites.tau.copy())
-        self._betas.append(self.beta[0])
+        # self._ttau[self.sigg2].append(self._sites.tau.copy())
+        # self._betas.append(self.beta[0])
 
         self._update_calls += 1
 
@@ -800,13 +818,13 @@ class EP(Cached):
 
             i += 1
             self._logger.debug('step 6')
-            self._ttau[self.sigg2].append(self._sites.tau.copy())
+            # self._ttau[self.sigg2].append(self._sites.tau.copy())
             self._last_ep_error = min(aerr, rerr)
             if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
                 break
 
-        self._calls['eploop'] += i
-        self._time_elapsed['eploop'] += time() - before
+        # self._calls['eploop'] += i
+        # self._time_elapsed['eploop'] += time() - before
 
         if i + 1 == _MAX_ITER:
             self._logger.warn('Maximum number of EP iterations has'+
@@ -838,8 +856,8 @@ class EP(Cached):
             self._tilted_params_binomial()
 
     def _tilted_params_bernoulli(self):
-        self._calls['tilted_params_bernoulli'] += 1
-        before = time()
+        # self._calls['tilted_params_bernoulli'] += 1
+        # before = time()
         b = np.sqrt(self._cavs.tau**2 + self._cavs.tau)
         lb = np.log(b)
         c = self._y11 * self._cavs.eta / b
@@ -850,7 +868,7 @@ class EP(Cached):
 
         sig2 = 1./self._cavs.tau - np.exp(lpdf - (lcdf + 2*lb)) * (c + np.exp(lpdf - lcdf))
 
-        self._time_elapsed['tilted_params_bernoulli'] += time() - before
+        # self._time_elapsed['tilted_params_bernoulli'] += time() - before
 
         return (mu, sig2)
 
@@ -932,8 +950,8 @@ class EP(Cached):
         return obeta
 
     def _optimize_beta(self):
-        self._calls['beta'] += 1
-        before = time()
+        # self._calls['beta'] += 1
+        # before = time()
         pbeta = np.empty_like(self._beta)
 
         max_ii = 100
@@ -948,7 +966,7 @@ class EP(Cached):
 
         # self._logger.debug('Number of iterations for beta optimization: %d.',
         #                   ii)
-        self._time_elapsed['beta'] += time() - before
+        # self._time_elapsed['beta'] += time() - before
 
     def _best_alpha0(self, alpha1, opt_beta):
         min_cost = np.inf
@@ -977,15 +995,15 @@ class EP(Cached):
 
     def _create_fun_cost_sigg2(self, opt_beta):
         def fun_cost(h2):
-            before = time()
+            # before = time()
             print("Trying h2 sigg2: %.5f %.5f" % (h2, self.h2tosigg2(h2)))
             self.sigg2 = self.h2tosigg2(h2)
             # self._update()
             if opt_beta:
                 self._optimize_beta()
             cost = -self.lml()
-            self._time_elapsed['sigg2'] += time() - before
-            self._calls['sigg2'] += 1
+            # self._time_elapsed['sigg2'] += time() - before
+            # self._calls['sigg2'] += 1
             return cost
         return fun_cost
 
@@ -1007,6 +1025,8 @@ class EP(Cached):
             curr_h2 = self.h2()
             h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
             h2_right = min(h2_right, 0.967)
+
+
             # h2_right = h2_left + (curr_h2 - h2_left) * gs
             # bounds_sigg2 = [sigg2_left, h2_right / (1 - h2_right)]
             bounds_h2 = [h2_left, h2_right]
@@ -1021,7 +1041,7 @@ class EP(Cached):
                                               bounds=bounds_h2,
                                               method='Bounded')
             total = time() - before
-            print("optimize.minimize_scalar: %.5f" % total)
+            # print("optimize.minimize_scalar: %.5f" % total)
             self.sigg2 = self.h2tosigg2(res.x)
         elif opt_delta and opt_sigg2:
             fun_cost = self._create_fun_cost_both(opt_beta)

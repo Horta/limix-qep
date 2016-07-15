@@ -31,10 +31,10 @@ class TestPredict(unittest.TestCase):
         p = model.predict(X, G)
         self.assertAlmostEqual(0.857912746548,
                                np.mean([p[i].pdf(y[i])[0] for i in range(n)]),
-                               places=5)
+                               places=4)
         self.assertAlmostEqual(0.142087253452,
                                np.mean([1-p[i].pdf(y[i])[0] for i in range(n)]),
-                               places=5)
+                               places=4)
 
     def test_bernoulli_predict(self):
         random = np.random.RandomState(981)
