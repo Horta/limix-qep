@@ -361,8 +361,8 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     print("Total time spend:            !!__%.5f__!!" % (time() - before_all))
 
-    print("nchol:%d, ncholm:%d, nmult: %d" % (lrt._ep.nchol(), lrt._ep.ncholm(),
-          lrt._ep.nmult()))
+    # print("nchol:%d, ncholm:%d, nmult: %d" % (lrt._ep.nchol(), lrt._ep.ncholm(),
+        #   lrt._ep.nmult()))
 
     # print("beta %d %.5f %.5f" % (lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']/lrt._ep._calls['beta'], lrt._ep._time_elapsed['beta']))
     # print("sigg2 %d %.5f %.5f" % (lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']/lrt._ep._calls['sigg2'], lrt._ep._time_elapsed['sigg2']))
