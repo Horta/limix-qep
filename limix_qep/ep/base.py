@@ -5,7 +5,6 @@ from numpy import dot
 from scipy.linalg import lu_factor
 from limix_math.linalg import ddot, sum2diag, dotd, sum2diag_inplace
 from limix_math.linalg import solve, cho_solve, lu_solve
-from limix_math.linalg import trace2
 from limix_math.linalg import stl
 from limix_math.dist.norm import logpdf, logcdf
 from limix_math.dist.beta import isf as bisf
@@ -504,58 +503,6 @@ class EP(Cached):
     def lml(self):
         (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
         return p1 + p3 + p4 + p5 + p6 + p7 + p8
-
-    def lml_grad(self):
-        self._update()
-        A0 = self._A0()
-        A1 = self._A1()
-        L1 = self._L1()
-
-        Q = self._Q
-        S = self._S
-        delta = self.delta
-        sigg2 = self.sigg2
-
-        m = self._m
-
-        ttau = self._sites.tau
-        teta = self._sites.eta
-
-        C = A0 / (A0 + ttau)
-        Cteta = C * teta
-
-        p1 = Cteta - A1 * dot(Q, cho_solve(L1, dot(Q.T, Cteta)))
-
-        p2 = A1 * m - A1 * dot(Q, cho_solve(L1, dot(Q.T, A1 * m)))
-
-        A1Q = ddot(A1, Q, left=True)
-        SQt = ddot(S, Q.T, left=True)
-        L1_QtA1 = cho_solve(L1, ddot(Q.T, A1, left=False))
-        L1_QtA1Q = dot(L1_QtA1, Q)
-        p3_sigg2 = trace2(A1Q, SQt) + np.sum(A1 * delta) - trace2(dot(ddot(S, A1Q.T, left=True), Q), L1_QtA1Q) -\
-                delta * trace2(A1Q, L1_QtA1)
-
-        p3_delta = sigg2 * np.sum(A1) - sigg2 * trace2(A1Q, L1_QtA1)
-
-        Qtp2 = dot(Q.T, p2)
-        deltap2 = delta * p2
-        dKsigg2p2 = dot(Q, ddot(S, Qtp2, left=True)) + deltap2
-
-        Qtp1 = dot(Q.T, p1)
-        deltap1 = delta * p1
-        dKsigg2p1 = dot(Q, ddot(S, Qtp1, left=True)) + deltap1
-
-        dsigg2 = 0.5 * dot(p2, dKsigg2p2) - dot(p2, dKsigg2p1) + 0.5 * dot(p1, dKsigg2p1) -\
-            0.5 * p3_sigg2
-
-        dKdeltap1 = sigg2 * p1
-        dKdeltap2 = sigg2 * p2
-
-        ddelta = 0.5 * dot(p2, dKdeltap2) - dot(p2, dKdeltap1) + 0.5 * dot(p1, dKdeltap1) -\
-            0.5 * p3_delta
-
-        return (ddelta, dsigg2)
-
 
     def fixed_ep(self):
         self._update()
