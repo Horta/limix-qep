@@ -1,0 +1,56 @@
+
+from numpy import dot
+from numpy import sqrt
+from numpy import full
+from numpy import asarray
+from numpy import isscalar
+from numpy import empty
+from numpy import random
+from numpy import newaxis
+
+# K = \sigma_g^2 Q (S + \delta I) Q.T
+def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
+                    sige2=1., seed=None):
+    if seed is not None:
+        random.seed(seed)
+
+    if isscalar(ntrials):
+        ntrials = full(nsamples, ntrials, dtype=int)
+    else:
+        ntrials = asarray(ntrials, int)
+
+    X = random.randn(nsamples, nfeatures)
+    X -= X.mean(0)
+    X /= X.std(0)
+    X /= sqrt(nfeatures)
+
+    u = random.randn(nfeatures) * sqrt(sigg2)
+
+    u -= u.mean()
+    u /= u.std()
+    u *= sqrt(sigg2)
+
+    g1 = dot(X, u)
+    g1 -= g1.mean()
+    g1 /= g1.std()
+    g1 *= sqrt(sigg2)
+    g2 = random.randn(nsamples)
+    g2 -= g2.mean()
+    g2 /= g2.std()
+    g2 *= sqrt(sigg2 * delta)
+
+    g = g1 + g2
+
+    E = random.randn(nsamples, max(ntrials))
+    E *= sqrt(sige2)
+
+    Z = g[:, newaxis] + E
+
+    Z[Z >  0.] = 1.
+    Z[Z <= 0.] = 0.
+
+    y = empty(nsamples)
+    for i in range(y.shape[0]):
+        y[i] = sum(Z[i,:ntrials[i]])
+
+    return (y, X)

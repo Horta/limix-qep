@@ -42,7 +42,7 @@ class BernoulliEP(EP):
         y = self._y
         tM = self._tM
         ratio = sum(y) / float(y.shape[0])
-        self._sigg2 = max(1e-3, lxt.lmm.h2(y, tM, self._K, ratio))
+        self._sigg2 = max(1e-3, lxt.lmm.h2(y, tM, self._QSQt(), ratio))
 
     def _init_beta(self):
         from scipy.stats import norm

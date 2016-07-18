@@ -40,8 +40,10 @@ class EP(Cached):
     .. math::
         K = \\sigma_g^2 Q S Q.T
         M = svd_U svd_S svd_V.T
+        \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
+        \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
         m = M \\beta
-        \\tilde beta = svd_S^{1/2} svd_V.T \\beta
+        m = \\tilde M \\tilde \\beta
     """
     def __init__(self, y, M, Q, S, QSQt=None):
         Cached.__init__(self)
@@ -115,11 +117,11 @@ class EP(Cached):
 
     @cached
     def _init_ep_params(self):
-        self._logger.debug("Initializing EP parameters.")
+        self._logger.debug("EP parameters initialization.")
         m = self.m()
         sigg2 = self.sigg2
         self._joint.initialize(m, sigg2)
-        self._logger.debug("End of EP parameters initialization.")
+        self._sites.initialize()
 
     def _init_sigg2(self):
         raise NotImplementedError
@@ -129,7 +131,7 @@ class EP(Cached):
 
     @cached
     def K(self):
-        return self._sigg2 * self._QSQt()
+        return self.sigg2 * self._QSQt()
 
     @cached
     def m(self):
@@ -182,10 +184,6 @@ class EP(Cached):
         if self.__tbeta is None:
             self._init_beta()
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
-
-    @property
-    def delta(self):
-        return self._delta
 
     @property
     def sigg2(self):
@@ -277,7 +275,7 @@ class EP(Cached):
     def _update(self):
         self._init_ep_params()
 
-        self._logger.debug('Main EP loop has started.')
+        self._logger.debug('EP loop has started.')
         m = self.m()
         Q = self._Q
         S = self._S
@@ -322,6 +320,7 @@ class EP(Cached):
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
+            self._logger.debug('EP step size: %e.', max(aerr, rerr))
             if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
                 break
 
@@ -335,7 +334,6 @@ class EP(Cached):
         A = self._A()
         L = self._L()
         Q = self._Q
-        ttau = self._sites.tau
         teta = self._sites.eta
 
         c = teta
@@ -345,55 +343,58 @@ class EP(Cached):
 
     def _opt_beta_denom(self):
         A = self._A()
-        M = self._M
-        ok = self._Mok
+        tM = self._tM
         Q = self._Q
         L = self._L()
-        AM = ddot(A, M[:,ok], left=True)
+        AM = ddot(A, tM, left=True)
         QtAM = dot(Q.T, AM)
-        return dot(M[:,ok].T, AM) - dot(AM.T, dot(Q, cho_solve(L, QtAM)))
+        return dot(tM.T, AM) - dot(AM.T, dot(Q, cho_solve(L, QtAM)))
 
-    def _optimal_beta(self):
+    def _optimal_tbeta(self):
         self._update()
 
         if np.all(np.abs(self._M) < 1e-15):
-            return np.zeros_like(self._beta)
+            return np.zeros_like(self._tbeta)
 
-        M = self._M
+        tM = self._tM
 
         u = self._opt_beta_nom()
-        u = dot(M.T, u)
+        u = dot(tM.T, u)
 
         Z = self._opt_beta_denom()
 
         try:
-            ok = self._Mok
-            obeta = np.zeros_like(self._beta)
             with np.errstate(all='raise'):
-                obeta[ok] = solve(Z, u[ok])
+                self._tbeta = solve(Z, u)
         except (np.linalg.LinAlgError, FloatingPointError):
             self._logger.warn('Failed to compute the optimal beta.'+
                               ' Zeroing it.')
-            obeta = np.zeros_like(self._beta)
+            self.__tbeta[:] = 0.
 
-        return obeta
+        return self.__tbeta
 
     def _optimize_beta(self):
-        pbeta = empty_like(self._beta)
+        self._logger.debug("Beta optimization.")
+        ptbeta = empty_like(self._tbeta)
 
-        max_ii = 100
-        max_ii = 1
+        max_ii = 5
         ii = 0
         while ii < max_ii:
             ii += 1
-            pbeta[:] = self._beta
-            self.beta = self._optimal_beta()
-            if np.sum((self.beta - pbeta)**2) < _PARAM_EPS:
+            ptbeta[:] = self._tbeta
+            self._optimal_tbeta()
+            step = np.sum((self._tbeta - ptbeta)**2)
+            self._logger.debug("Beta step: %e.", step)
+            if step < _PARAM_EPS:
                 break
+
+        self._logger.debug("Beta optimization performed %d steps " +
+                           "and to find %s.", ii, bytes(self._tbeta))
 
     def _create_fun_cost_sigg2(self, opt_beta):
         def fun_cost(h2):
-            print("Trying h2 sigg2: %.5f %.5f" % (h2, self.h2tosigg2(h2)))
+            self._logger.debug("Evaluating for h2:%e, sigg2:%e", h2,
+                               self.h2tosigg2(h2))
             self.sigg2 = self.h2tosigg2(h2)
             if opt_beta:
                 self._optimize_beta()
@@ -418,7 +419,7 @@ class EP(Cached):
 
 
             bounds_h2 = [h2_left, h2_right]
-            print("H2 bound: (%.5f, %.5f)" % (h2_left, h2_right))
+            self._logger.debug("H2 bound: (%.5f, %.5f)", h2_left, h2_right)
             fun_cost = self._create_fun_cost_sigg2(opt_beta)
             res = optimize.minimize_scalar(fun_cost,
                                               options=opt,
@@ -431,6 +432,12 @@ class EP(Cached):
 
         self._logger.debug("End of optimization.")
 
+
+
+
+    ############################################################################
+    ###############Key but Intermediary Matrix Definitions######################
+    ############################################################################
     def _A(self):
         """ $\tilde T$ """
         return self._sites.tau
@@ -455,7 +462,7 @@ class EP(Cached):
 
     def _QSQt(self):
         """ $QSQ^t$ """
-        if self._QSQt is None:
+        if self.__QSQt is None:
             Q = self._Q
             self.__QSQt = dot(Q, self._SQt())
         return self.__QSQt

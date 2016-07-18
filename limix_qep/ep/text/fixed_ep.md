@@ -6,7 +6,7 @@ taking the gradient of LML and setting to zero.
 
 \[
   \beta^* = (M^\intercal (\tilde \Sigma + K)^{-1} M)^{-1}
-    (\tilde \Sigma + K)^{-1} \tilde \mu.
+    M^\intercal (\tilde \Sigma + K)^{-1} \tilde \mu.
 \]
 
 ## Implementation

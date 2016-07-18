@@ -12,9 +12,9 @@ class SiteLik(object):
         self.tau = np.zeros(nsamples)
         self.eta = np.zeros(nsamples)
 
-    def initialize(self, ok):
-        self.tau[ok] = 0.
-        self.eta[ok] = 0.
+    def initialize(self):
+        self.tau[:] = 0.
+        self.eta[:] = 0.
 
     def update(self, ctau, ceta, hmu, hsig2):
         zf = 1e-16
@@ -71,7 +71,6 @@ class Joint(object):
 
     # K is provided if low-rank stuff does not make sense
     def update(self, m, sigg2, S, Q, L1, teta, A1, sigg2dotdQSQt, SQt, K=None):
-        self._logger.debug('joint update has started')
 
         L1_Qt = cho_solve(L1, Q.T) # !!!CUBIC!!!
         self._nchol += 1
@@ -100,8 +99,6 @@ class Joint(object):
         mu += u - sigg2 * dot(Q, dot(Z, teta))
 
         self.eta[:] = self.tau * mu
-
-        self._logger.debug('joint update has finished')
 
 class JointOverdispersion(object):
     def __init__(self, Q, S):

@@ -134,18 +134,6 @@ def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
     #
     #     self.assertAlmostEqual(ep.lml(), -19.649207220129359, places=5)
 
-def test_bernoulli_lml():
-    n = 3
-    M = ones((n, 1)) * 1.
-    G = array([[1.2, 3.4], [-.1, 1.2], [0.0, .2]])
-    K = dot(G, G.T) + eye(n)*1.0
-    (Q, S) = _QS_from_K(K)
-    y = array([1., 0., 1.])
-    ep = BernoulliEP(y, M, Q, S)
-    ep.beta = array([1.])
-    ep.sigg2 = 1.
-    assert_almost_equal(ep.lml(), -2.59563598457)
-
     # def test_bernoulli_optimize(self):
     #     seed = 15
     #     nsamples = 500
