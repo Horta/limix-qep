@@ -27,8 +27,9 @@ from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
 from .fixed_ep import FixedEP
-from .config import _MAX_ITER, _EP_EPS, _PARAM_EPS
-from scipy import optimize
+from .config import _MAX_ITER, _EP_EPS
+from .config import _HYPERPARAM_EPS
+from scipy.optimize import minimize_scalar
 from scipy.misc import logsumexp
 import scipy as sp
 
@@ -99,6 +100,21 @@ class EP(Cached):
         self._tM = ddot(self._svd_U, self._svd_S12, left=False)
         self.__tbeta = None
 
+    def fixed_ep(self):
+        self._update()
+        (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
+            self._lml_components()
+
+        lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
+        Q = self._Q
+        L = self._L()
+        A = self._A()
+        opt_bnom = self._opt_beta_nom()
+        vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
+                        A, L, Q, opt_bnom)
+
+        return vv1
+
     def _posterior_normal(self, m, var, covar):
         m = atleast_1d(m)
         var = atleast_2d(var)
@@ -137,18 +153,12 @@ class EP(Cached):
     def m(self):
         return dot(self._tM, self._tbeta)
 
-    @property
-    def M(self):
-        return self._M
 
-    @M.setter
-    def M(self, value):
-        self._covariate_setup(value)
-        self.clear_cache('m')
-        self.clear_cache('_lml_components')
-        self.clear_cache('_update')
-        self.clear_cache('_AtmuLm')
-
+    ############################################################################
+    ############################################################################
+    ######################## Getters and setters ###############################
+    ############################################################################
+    ############################################################################
     def h2(self):
         sigg2 = self.sigg2
         varc = variance(self.m())
@@ -200,6 +210,23 @@ class EP(Cached):
         self.clear_cache('_AtmuLm')
         self._sigg2 = max(value, 1e-4)
 
+    @property
+    def M(self):
+        return self._M
+
+    @M.setter
+    def M(self, value):
+        self._covariate_setup(value)
+        self.clear_cache('m')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_update')
+        self.clear_cache('_AtmuLm')
+
+    ############################################################################
+    ############################################################################
+    ###################### Log Marginal Likelihood #############################
+    ############################################################################
+    ############################################################################
     @cached
     def _lml_components(self):
         self._update()
@@ -256,21 +283,11 @@ class EP(Cached):
         (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
         return p1 + p3 + p4 + p5 + p6 + p7 + p8
 
-    def fixed_ep(self):
-        self._update()
-        (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
-            self._lml_components()
-
-        lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
-        Q = self._Q
-        L = self._L()
-        A = self._A()
-        opt_bnom = self._opt_beta_nom()
-        vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
-                        A, L, Q, opt_bnom)
-
-        return vv1
-
+    ############################################################################
+    ############################################################################
+    ########################### Main EP loop ###################################
+    ############################################################################
+    ############################################################################
     @cached
     def _update(self):
         self._init_ep_params()
@@ -330,18 +347,22 @@ class EP(Cached):
 
         self._logger.debug('EP loop has performed %d iterations.', i+1)
 
-    def _opt_beta_nom(self):
+
+    ############################################################################
+    ############################################################################
+    ################## Optimization of hyperparameters #########################
+    ############################################################################
+    ############################################################################
+    def _optimal_tbeta_nom(self):
         A = self._A()
         L = self._L()
         Q = self._Q
         teta = self._sites.eta
 
-        c = teta
-        d = cho_solve(L, dot(Q.T, c))
-        u = c - A * dot(Q, d)
-        return u
+        d = cho_solve(L, dot(Q.T, teta))
+        return teta - A * dot(Q, d)
 
-    def _opt_beta_denom(self):
+    def _optimal_tbeta_denom(self):
         A = self._A()
         tM = self._tM
         Q = self._Q
@@ -356,16 +377,13 @@ class EP(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._tbeta)
 
-        tM = self._tM
-
-        u = self._opt_beta_nom()
-        u = dot(tM.T, u)
-
-        Z = self._opt_beta_denom()
+        u = dot(self._tM.T, self._optimal_tbeta_nom())
+        Z = self._optimal_tbeta_denom()
 
         try:
             with np.errstate(all='raise'):
                 self._tbeta = solve(Z, u)
+
         except (np.linalg.LinAlgError, FloatingPointError):
             self._logger.warn('Failed to compute the optimal beta.'+
                               ' Zeroing it.')
@@ -377,30 +395,39 @@ class EP(Cached):
         self._logger.debug("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
-        max_ii = 5
-        ii = 0
-        while ii < max_ii:
-            ii += 1
+        step = -1.
+        i = 0
+        while step < _HYPERPARAM_EPS and i < 5:
             ptbeta[:] = self._tbeta
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
             self._logger.debug("Beta step: %e.", step)
-            if step < _PARAM_EPS:
-                break
+            i += 1
 
         self._logger.debug("Beta optimization performed %d steps " +
-                           "and to find %s.", ii, bytes(self._tbeta))
+                           "to find %s.", i, bytes(self._tbeta))
 
-    def _create_fun_cost_sigg2(self, opt_beta):
-        def fun_cost(h2):
-            self._logger.debug("Evaluating for h2:%e, sigg2:%e", h2,
-                               self.h2tosigg2(h2))
-            self.sigg2 = self.h2tosigg2(h2)
-            if opt_beta:
-                self._optimize_beta()
-            cost = -self.lml()
-            return cost
-        return fun_cost
+    def _nlml(self, h2, opt_beta):
+        sigg2 = self.h2tosigg2(h2)
+        self._logger.debug("Evaluating for h2:%e, sigg2:%e", h2, sigg2)
+        self.sigg2 = sigg2
+        if opt_beta:
+            self._optimize_beta()
+        return -self.lml()
+
+    def _h2_bounds(self):
+        # golden ratio
+        gs = 0.5 * (3.0 - np.sqrt(5.0))
+        sigg2_left = 1e-4
+        h2_left = sigg2_left / (sigg2_left + 1)
+        curr_h2 = self.h2()
+        h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
+        h2_right = min(h2_right, 0.967)
+        h2_bounds = (h2_left, h2_right)
+
+        self._logger.debug("H2 bound: (%.5f, %.5f)", h2_left, h2_right)
+
+        return h2_bounds
 
     def optimize(self, opt_beta=True, opt_sigg2=True, disp=False):
 
@@ -409,34 +436,27 @@ class EP(Cached):
                            self.sigg2, bytes(self.beta))
 
         if opt_sigg2:
-            opt = dict(xatol=_PARAM_EPS, disp=disp)
-            gs = 0.5 * (3.0 - np.sqrt(5.0))
-            sigg2_left = 1e-4
-            h2_left = sigg2_left / (sigg2_left + 1)
-            curr_h2 = self.h2()
-            h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
-            h2_right = min(h2_right, 0.967)
+            opt = dict(xatol=_HYPERPARAM_EPS, disp=disp)
 
-
-            bounds_h2 = [h2_left, h2_right]
-            self._logger.debug("H2 bound: (%.5f, %.5f)", h2_left, h2_right)
-            fun_cost = self._create_fun_cost_sigg2(opt_beta)
-            res = optimize.minimize_scalar(fun_cost,
-                                              options=opt,
-                                              bounds=bounds_h2,
-                                              method='Bounded')
-            self.sigg2 = self.h2tosigg2(res.x)
+            r = minimize_scalar(self._nlml, options=opt,
+                                bounds=self._h2_bounds(),
+                                method='Bounded', args=opt_beta)
+            self.sigg2 = self.h2tosigg2(r.x)
+            self._logger.debug("%d function evaluations request by the" +
+                               " optimizer.", r.nfev)
+            self._logger.debug("Optimizer message: %s.", r.message)
+            if r.status != 0:
+                self._logger.warn("Optimizer failed with status %d.", r.status)
 
         if opt_beta:
             self._optimize_beta()
 
         self._logger.debug("End of optimization.")
 
-
-
-
     ############################################################################
-    ###############Key but Intermediary Matrix Definitions######################
+    ############################################################################
+    ############## Key but Intermediary Matrix Definitions #####################
+    ############################################################################
     ############################################################################
     def _A(self):
         """ $\tilde T$ """
@@ -457,8 +477,7 @@ class EP(Cached):
     @cached
     def _dotdQSQt(self):
         """:math:`\\mathrm{Diag}\\{Q S Q^t\\}`"""
-        Q = self._Q
-        return dotd(Q, self._SQt())
+        return dotd(self._Q, self._SQt())
 
     def _QSQt(self):
         """ $QSQ^t$ """

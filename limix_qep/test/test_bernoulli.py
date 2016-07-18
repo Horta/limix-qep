@@ -40,3 +40,32 @@ def test_bernoulli_optimize():
     ep = BernoulliEP(y, M, Q, S)
     ep.optimize()
     assert_almost_equal(ep.sigg2, 1.6795435940073431, decimal=5)
+
+def test_bernoulli_prediction():
+    seed = 15
+    nsamples = 500
+    nfeatures = 600
+    ntrials = 1
+
+    M = ones((nsamples, 1))
+
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+                             delta=1e-6, seed=seed)
+
+    (Q, S) = economic_QS(G, 'G')
+
+    ep = BernoulliEP(y, M, Q, S)
+    ep.optimize()
+
+    prob_y = []
+    for i in range(4):
+        g = G[i,:]
+        var = dot(g, g)
+        covar = dot(g, G.T)
+        p = ep.predict(M[i,:], var, covar)
+        prob_y.append(p.pdf(y[i])[0])
+
+    prob_yi = [0.48705911290518589, 0.40605290158743768,
+               0.84365032664655915, 0.83794141874476269]
+
+    assert_almost_equal(prob_y[:4], prob_yi, decimal=6)
