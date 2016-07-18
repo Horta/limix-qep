@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 import logging
 from numpy import asarray
-from limix_qep.ep import EP
+# from limix_qep.ep import EP
 import numpy as np
 from numpy import dot
 from limix_qep import Bernoulli, Binomial

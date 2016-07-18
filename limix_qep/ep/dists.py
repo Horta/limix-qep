@@ -1,9 +1,11 @@
 import logging
 import numpy as np
+
 from numpy import dot
+
 from limix_math.linalg import cho_solve
-from limix_math.linalg import ddot, dotd
-from time import time
+from limix_math.linalg import ddot
+from limix_math.linalg import dotd
 
 class SiteLik(object):
     def __init__(self, nsamples):
@@ -48,7 +50,74 @@ class Joint(object):
         # self._time_elapsed = dict(update=0, initialize=0, cho_solve=0, mult=0, ddot1=0, ddot2=0, ddot3=0, dotvec=0)
         # self._calls = dict(update=0, initialize=0, cho_solve=0, mult=0, ddot1=0, ddot2=0, ddot3=0, dotvec=0)
 
-    def initialize(self, m, sigg2, delta):
+    def initialize(self, m, sigg2, delta=0.):
+        # before = time()
+        Q = self._Q
+        S = self._S
+        v = sigg2 * dotd(ddot(Q, S, left=False), Q.T) + sigg2 * delta
+        # if not np.all(np.isfinite(v)):
+        #     import ipdb; ipdb.set_trace()
+        #     pass
+        # if np.any(v == 0.):
+        #     import ipdb; ipdb.set_trace()
+        #     pass
+        self.tau[:] = 1.0 / v
+        # if not np.all(np.isfinite(m)):
+        #     import ipdb; ipdb.set_trace()
+        #     pass
+        self.eta[:] = self.tau * m
+        # self._time_elapsed['initialize'] += time() - before
+        # self._calls['initialize'] += 1
+
+    # K is provided if low-rank stuff does not make sense
+    def update(self, m, sigg2, S, Q, L1, teta, A1, sigg2dotdQSQt, SQt, K=None):
+        self._logger.debug('joint update has started')
+
+        L1_Qt = cho_solve(L1, Q.T) # !!!CUBIC!!!
+        self._nchol += 1
+
+        L1_QtA1 = ddot(L1_Qt, A1, left=False)
+
+        p1 = sigg2dotdQSQt
+
+        if K is None:
+            Z = np.linalg.multi_dot([L1_QtA1, Q, SQt]) # !!!CUBIC!!!
+        else:
+            Z = L1_QtA1.dot(K) # !!!CUBIC!!!
+
+        self._nmult += 1
+
+        p2 = - sigg2 * dotd(Q, Z)
+
+        r = p1 + p2
+        self.tau[:] = 1./r
+
+        # before = time()
+
+        mu = m - dot(Q, dot(L1_QtA1, m))
+        u = sigg2 * dot(Q, S * dot(Q.T, teta))
+
+        mu += u - sigg2 * dot(Q, dot(Z, teta))
+
+        self.eta[:] = self.tau * mu
+
+        self._logger.debug('joint update has finished')
+
+class JointOverdispersion(object):
+    def __init__(self, Q, S):
+        self._logger = logging.getLogger(__name__)
+        self._Q = Q
+        self._S = S
+        nsamples = Q.shape[0]
+        self.tau = np.empty(nsamples)
+        self.eta = np.empty(nsamples)
+        self._nchol = 0
+        self._nmult = 0
+
+        # self._time_elapsed = dict(update=0, initialize=0, cho_solve=0, mult=0, ddot1=0, ddot2=0, ddot3=0, dotvec=0)
+        # self._calls = dict(update=0, initialize=0, cho_solve=0, mult=0, ddot1=0, ddot2=0, ddot3=0, dotvec=0)
+
+    def initialize(self, m, sigg2, delta=0.):
         # before = time()
         Q = self._Q
         S = self._S

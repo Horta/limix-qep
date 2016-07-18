@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 from numpy import asarray
 import logging
-from limix_qep.ep import EP
+# from limix_qep.ep import EP
 from limix_qep import Bernoulli
 from limix_qep import Binomial
 from limix_math.linalg import economic_QS
