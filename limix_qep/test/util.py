@@ -9,7 +9,7 @@ from numpy import random
 from numpy import newaxis
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
-def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
+def create_binomial(nsamples, nfeatures, ntrials, var=0.8, delta=0.2,
                     sige2=1., seed=None):
     if seed is not None:
         random.seed(seed)
@@ -24,20 +24,20 @@ def create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
     X /= X.std(0)
     X /= sqrt(nfeatures)
 
-    u = random.randn(nfeatures) * sqrt(sigg2)
+    u = random.randn(nfeatures) * sqrt(var)
 
     u -= u.mean()
     u /= u.std()
-    u *= sqrt(sigg2)
+    u *= sqrt(var)
 
     g1 = dot(X, u)
     g1 -= g1.mean()
     g1 /= g1.std()
-    g1 *= sqrt(sigg2)
+    g1 *= sqrt(var)
     g2 = random.randn(nsamples)
     g2 -= g2.mean()
     g2 /= g2.std()
-    g2 *= sqrt(sigg2 * delta)
+    g2 *= sqrt(var * delta)
 
     g = g1 + g2
 

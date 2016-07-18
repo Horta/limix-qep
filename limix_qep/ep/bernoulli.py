@@ -14,7 +14,6 @@ from limix_math.dist.norm import logpdf
 import limix_ext as lxt
 
 from .base import EP
-from .fixed_ep import FixedEP
 
 class BernoulliPredictor(object):
     def __init__(self, mean, cov):
@@ -37,12 +36,11 @@ class BernoulliEP(EP):
 
         self._y11 = 2. * self._y - 1.0
 
-    def _init_sigg2(self):
-        from scipy.stats import norm
+    def _init_var(self):
         y = self._y
         tM = self._tM
         ratio = sum(y) / float(y.shape[0])
-        self._sigg2 = max(1e-3, lxt.lmm.h2(y, tM, self._QSQt(), ratio))
+        self._var = max(1e-3, lxt.lmm.h2(y, tM, self._QSQt(), ratio))
 
     def _init_beta(self):
         from scipy.stats import norm
@@ -54,21 +52,6 @@ class BernoulliEP(EP):
     def predict(self, m, var, covar):
         (mu, sig2) = self._posterior_normal(m, var, covar)
         return BernoulliPredictor(mu, sig2)
-
-    def fixed_ep(self):
-        self._update()
-        (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
-            self._lml_components()
-
-        lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
-        Q = self._Q
-        L1 = self._L1()
-        A1 = self._A1()
-        opt_bnom = self._opt_beta_nom()
-        vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
-                        A1, L1, Q, opt_bnom)
-
-        return vv1
 
     def _tilted_params(self):
         b = sqrt(self._cavs.tau**2 + self._cavs.tau)

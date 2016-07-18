@@ -21,7 +21,7 @@ def test_bernoulli_lml():
     y = array([1., 0., 1.])
     ep = BernoulliEP(y, M, Q, S)
     ep.beta = array([1.])
-    ep.sigg2 = 1.
+    ep.var = 1.
     assert_almost_equal(ep.lml(), -2.59563598457)
 
 def test_bernoulli_optimize():
@@ -32,14 +32,14 @@ def test_bernoulli_optimize():
 
     M = ones((nsamples, 1))
 
-    (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
                              delta=1e-6, seed=seed)
 
     (Q, S) = economic_QS(G, 'G')
 
     ep = BernoulliEP(y, M, Q, S)
     ep.optimize()
-    assert_almost_equal(ep.sigg2, 1.6795435940073431, decimal=5)
+    assert_almost_equal(ep.var, 1.6795435940073431, decimal=5)
 
 def test_bernoulli_prediction():
     seed = 15
@@ -49,7 +49,7 @@ def test_bernoulli_prediction():
 
     M = ones((nsamples, 1))
 
-    (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.0,
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
                              delta=1e-6, seed=seed)
 
     (Q, S) = economic_QS(G, 'G')

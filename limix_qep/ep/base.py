@@ -85,7 +85,7 @@ class EP(Cached):
         self._cavs = Cavity(nsamples)
         self._joint = Joint(Q, S)
 
-        self._sigg2 = None
+        self._var = None
         self._delta = 0.
         self.__tbeta = None
 
@@ -135,11 +135,11 @@ class EP(Cached):
     def _init_ep_params(self):
         self._logger.debug("EP parameters initialization.")
         m = self.m()
-        sigg2 = self.sigg2
-        self._joint.initialize(m, sigg2)
+        var = self.var
+        self._joint.initialize(m, var)
         self._sites.initialize()
 
-    def _init_sigg2(self):
+    def _init_var(self):
         raise NotImplementedError
 
     def _init_beta(self):
@@ -147,7 +147,7 @@ class EP(Cached):
 
     @cached
     def K(self):
-        return self.sigg2 * self._QSQt()
+        return self.var * self._QSQt()
 
     @cached
     def m(self):
@@ -160,11 +160,11 @@ class EP(Cached):
     ############################################################################
     ############################################################################
     def h2(self):
-        sigg2 = self.sigg2
+        var = self.var
         varc = variance(self.m())
-        return sigg2 / (sigg2 + varc + 1.)
+        return var / (var + varc + 1.)
 
-    def h2tosigg2(self, h2):
+    def h2tovar(self, h2):
         varc = variance(self.m())
         return h2 * (1 + varc) / (1 - h2)
 
@@ -196,19 +196,19 @@ class EP(Cached):
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
     @property
-    def sigg2(self):
-        if self._sigg2 is None:
-            self._init_sigg2()
-        return self._sigg2
+    def var(self):
+        if self._var is None:
+            self._init_var()
+        return self._var
 
-    @sigg2.setter
-    def sigg2(self, value):
+    @var.setter
+    def var(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
-        self.clear_cache('_sigg2dotdQSQt')
+        self.clear_cache('_vardotdQSQt')
         self.clear_cache('_update')
         self.clear_cache('_AtmuLm')
-        self._sigg2 = max(value, 1e-4)
+        self._var = max(value, 1e-4)
 
     @property
     def M(self):
@@ -233,7 +233,7 @@ class EP(Cached):
         Q = self._Q
         S = self._S
         m = self.m()
-        sigg2 = self.sigg2
+        var = self.var
         ttau = self._sites.tau
         teta = self._sites.eta
         ctau = self._cavs.tau
@@ -241,14 +241,14 @@ class EP(Cached):
         cmu = self._cavs.mu
         A = self._A()
 
-        sigg2S = sigg2 * S
+        varS = var * S
         tctau = ttau + ctau
         Am = A*m
 
         L = self._L()
 
         p1 = - np.sum(np.log(np.diagonal(L)))
-        p1 += - 0.5 * np.log(sigg2S).sum()
+        p1 += - 0.5 * np.log(varS).sum()
         p1 += 0.5 * np.log(A).sum()
 
         p3 = 0.0
@@ -296,13 +296,13 @@ class EP(Cached):
         m = self.m()
         Q = self._Q
         S = self._S
-        sigg2 = self.sigg2
+        var = self.var
 
         ttau = self._sites.tau
         teta = self._sites.eta
 
         SQt = self._SQt()
-        sigg2dotdQSQt = self._sigg2dotdQSQt()
+        vardotdQSQt = self._vardotdQSQt()
 
         i = 0
         while i < 10:
@@ -321,9 +321,9 @@ class EP(Cached):
             self.clear_cache('_QtAQ')
             self.clear_cache('_AtmuLm')
 
-            self._joint.update(m, sigg2, S, Q, self._L(),
+            self._joint.update(m, var, S, Q, self._L(),
                                      teta, self._A(),
-                                     sigg2dotdQSQt, SQt, self._K)
+                                     vardotdQSQt, SQt, self._K)
 
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)
@@ -408,9 +408,9 @@ class EP(Cached):
                            "to find %s.", i, bytes(self._tbeta))
 
     def _nlml(self, h2, opt_beta):
-        sigg2 = self.h2tosigg2(h2)
-        self._logger.debug("Evaluating for h2:%e, sigg2:%e", h2, sigg2)
-        self.sigg2 = sigg2
+        var = self.h2tovar(h2)
+        self._logger.debug("Evaluating for h2:%e, var:%e", h2, var)
+        self.var = var
         if opt_beta:
             self._optimize_beta()
         return -self.lml()
@@ -418,8 +418,8 @@ class EP(Cached):
     def _h2_bounds(self):
         # golden ratio
         gs = 0.5 * (3.0 - np.sqrt(5.0))
-        sigg2_left = 1e-4
-        h2_left = sigg2_left / (sigg2_left + 1)
+        var_left = 1e-4
+        h2_left = var_left / (var_left + 1)
         curr_h2 = self.h2()
         h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
         h2_right = min(h2_right, 0.967)
@@ -429,19 +429,19 @@ class EP(Cached):
 
         return h2_bounds
 
-    def optimize(self, opt_beta=True, opt_sigg2=True, disp=False):
+    def optimize(self, opt_beta=True, opt_var=True, disp=False):
 
         self._logger.debug("Start of optimization.")
-        self._logger.debug("Initial parameters: sigg2=%e, beta=%s).",
-                           self.sigg2, bytes(self.beta))
+        self._logger.debug("Initial parameters: var=%e, beta=%s).",
+                           self.var, bytes(self.beta))
 
-        if opt_sigg2:
+        if opt_var:
             opt = dict(xatol=_HYPERPARAM_EPS, disp=disp)
 
             r = minimize_scalar(self._nlml, options=opt,
                                 bounds=self._h2_bounds(),
                                 method='Bounded', args=opt_beta)
-            self.sigg2 = self.h2tosigg2(r.x)
+            self.var = self.h2tovar(r.x)
             self._logger.debug("%d function evaluations request by the" +
                                " optimizer.", r.nfev)
             self._logger.debug("Optimizer message: %s.", r.message)
@@ -487,9 +487,9 @@ class EP(Cached):
         return self.__QSQt
 
     @cached
-    def _sigg2dotdQSQt(self):
+    def _vardotdQSQt(self):
         """:math:`\\sigma_g^2 \\mathrm{Diag}\\{ Q S Q^t \\}`"""
-        return self.sigg2 * self._dotdQSQt()
+        return self.var * self._dotdQSQt()
 
     @cached
     def _AtmuLm(self):
@@ -516,7 +516,7 @@ class EP(Cached):
 
     def _B(self):
         """:math:`B = Q^t \\tilde T Q + S^{-1} \\sigma_g^{-2}`"""
-        return sum2diag(self._QtAQ(), 1./(self.sigg2 * self._S))
+        return sum2diag(self._QtAQ(), 1./(self.var * self._S))
 
     @cached
     def _L(self):
