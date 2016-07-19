@@ -15,7 +15,6 @@ def test_bernoulli_lml():
     n = 3
     M = ones((n, 1)) * 1.
     G = array([[1.2, 3.4], [-.1, 1.2], [0.0, .2]])
-    # K = dot(G, G.T) + eye(n)*1.0
     (Q, S) = qs_decomposition(G)
     y = array([1., 0., 1.])
     ep = BernoulliEP(y, M, np.hstack(Q), np.empty((n,0)), np.hstack(S) + 1.0)

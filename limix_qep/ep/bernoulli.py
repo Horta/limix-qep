@@ -6,8 +6,12 @@ from numpy import log
 from numpy import sqrt
 from numpy import exp
 from numpy import full
+from numpy import asarray
+from numpy import isfinite
+from numpy import all as all_
 from numpy.linalg import lstsq
 
+from limix_math.array import issingleton
 from limix_math.dist.norm import logcdf
 from limix_math.dist.norm import logpdf
 
@@ -31,9 +35,22 @@ class BernoulliPredictor(object):
 # K = \sigma_g^2 Q S Q.T
 class BernoulliEP(EP):
     def __init__(self, y, M, Q0, Q1, S0, QSQt=None):
-        super(BernoulliEP, self).__init__(y, M, Q0, S0, QSQt=QSQt)
-
+        super(BernoulliEP, self).__init__(M, Q0, S0, QSQt=QSQt)
         self._logger = logging.getLogger(__name__)
+
+        y = asarray(y, float)
+        self._y = y
+
+        if issingleton(y):
+            raise ValueError("The phenotype array has a single unique value" +
+                             " only.")
+
+        if not all_(isfinite(y)):
+            raise ValueError("There are non-finite numbers in phenotype.")
+
+        assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
+        assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
+        assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
         self._y11 = 2. * self._y - 1.0
         self._Q1 = Q1

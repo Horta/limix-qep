@@ -25,7 +25,6 @@ from limix_math.linalg import stl
 
 from hcache import Cached, cached
 
-from limix_math.array import issingleton
 from limix_math.linalg import economic_svd
 
 from .dists import SiteLik
@@ -51,23 +50,15 @@ class EP(Cached):
         m = M \\beta
         m = \\tilde M \\tilde \\beta
     """
-    def __init__(self, y, M, Q, S, QSQt=None):
+    def __init__(self, M, Q, S, QSQt=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
 
-        if issingleton(y):
-            raise ValueError("The phenotype array has a single unique value" +
-                             " only.")
-
-        if not np.all(np.isfinite(y)):
-            raise ValueError("There are non-finite numbers in phenotype.")
+        nsamples = M.shape[0]
 
         if not np.all(np.isfinite(Q)) or not np.all(np.isfinite(S)):
             raise ValueError("There are non-finite numbers in the provided" +
                              " eigen decomposition.")
-
-        assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
-        assert y.shape[0] == Q.shape[0], 'Number of individuals mismatch.'
 
         if S.min() <= 0:
             raise ValueError("The provided covariance matrix is not" +
@@ -76,14 +67,11 @@ class EP(Cached):
 
         make_sure_reasonable_conditioning(S)
 
-        self._y = asarray(y, float)
         self._covariate_setup(M)
         self._S = S
         self._Q = Q
         self.__QSQt = QSQt
         self._K = None
-
-        nsamples = y.shape[0]
 
         self._psites = SiteLik(nsamples)
         self._sites = SiteLik(nsamples)
@@ -91,7 +79,6 @@ class EP(Cached):
         self._joint = Joint(Q, S)
 
         self._var = None
-        self._delta = 0.
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
@@ -257,8 +244,8 @@ class EP(Cached):
         p1 += - 0.5 * np.log(varS).sum()
         p1 += 0.5 * np.log(A).sum()
 
-        p3 = 0.0
-        A0A0pT_teta = teta
+        p3 = np.sum(teta*teta*self._AAA())
+        A0A0pT_teta = teta / self._iAAT()
         QtA0A0pT_teta = dot(Q.T, A0A0pT_teta)
         L = self._L()
         L_0 = stl(L, QtA0A0pT_teta)
@@ -366,7 +353,7 @@ class EP(Cached):
         teta = self._sites.eta
 
         d = cho_solve(L, dot(Q.T, teta))
-        return teta - A * dot(Q, d)
+        return (teta - A * dot(Q, d)) / self._iAAT()
 
     def _optimal_tbeta_denom(self):
         A = self._A()
@@ -476,6 +463,12 @@ class EP(Cached):
     def _A(self):
         """:math:`\\tilde T`"""
         return self._sites.tau
+
+    def _iAAT(self):
+        return 1.0
+
+    def _AAA(self):
+        return 0.0
 
     @cached
     def _QtAQ(self):

@@ -100,7 +100,7 @@ class Joint(object):
 
         self.eta[:] = self.tau * mu
 
-class JointOverdispersion(object):
+class OverdispersionJoint(object):
     def __init__(self, Q, S):
         self._logger = logging.getLogger(__name__)
         self._Q = Q
