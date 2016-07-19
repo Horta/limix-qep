@@ -1,7 +1,6 @@
 
 from numpy import dot
 from numpy import ones
-# from numpy import eye
 from numpy import array
 from numpy.testing import assert_almost_equal
 import numpy as np

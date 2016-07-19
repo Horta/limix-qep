@@ -149,10 +149,12 @@ class EP(Cached):
 
     @cached
     def K(self):
+        """:math:`K = v Q S Q.T`"""
         return self.var * self._QSQt()
 
     @cached
     def m(self):
+        """:math:`m = M \\beta`"""
         return dot(self._tM, self._tbeta)
 
 
@@ -466,26 +468,25 @@ class EP(Cached):
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
 
-
     ############################################################################
     ############################################################################
     ############## Key but Intermediary Matrix Definitions #####################
     ############################################################################
     ############################################################################
     def _A(self):
-        """ $\tilde T$ """
+        """:math:`\\tilde T`"""
         return self._sites.tau
 
     @cached
     def _QtAQ(self):
-        """ $Q^t A Q$ """
+        """:math:`Q^t A Q`"""
         Q = self._Q
         A = self._A()
         return dot(Q.T, ddot(A, Q, left=True))
 
     @cached
     def _SQt(self):
-        """ $S Q^t$ """
+        """:math:`S Q^t`"""
         return ddot(self._S, self._Q.T, left=True)
 
     @cached
@@ -534,5 +535,8 @@ class EP(Cached):
 
     @cached
     def _L(self):
-        """:math:`L L^T = \\mathrm{Chol}\\{ Q^t A Q + S^{-1} \\sigma_g^{-2} \\}`"""
+        """
+        .. math::
+            L L^T = \\mathrm{Chol}\\{ Q^t A Q + S^{-1} \\sigma_g^{-2} \\}
+        """
         return cho_factor(self._B(), lower=True)[0]
