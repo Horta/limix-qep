@@ -8,7 +8,7 @@ from limix_math.linalg import qs_decomposition
 
 from limix_qep.ep import BinomialEP
 
-def test_binomial_lml(self):
+def test_binomial_lml():
 
     random.seed(6)
     n = 3
@@ -17,7 +17,7 @@ def test_binomial_lml(self):
 
     (Q, S) = qs_decomposition(G)
     y = array([1., 0., 1.])
-    ep = BinomialEP(y, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
+    ep = BinomialEP(y, 1, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
     ep.beta = array([1.])
     ep.sigg2 = 1.
     lml1 = ep.lml()

@@ -87,11 +87,11 @@ class BernoulliEP(EP):
         lcdf = self._loghz
         lcdf[:] = logcdf(c)
         lpdf = logpdf(c)
-        mu = self._cavs.eta / self._cavs.tau + self._y11 * exp(lpdf - (lcdf + lb))
+        self._hmu[:] = self._cavs.eta / self._cavs.tau \
+                       + self._y11 * exp(lpdf - (lcdf + lb))
 
-        sig2 = 1./self._cavs.tau - exp(lpdf - (lcdf + 2*lb)) * (c + exp(lpdf - lcdf))
-
-        return (mu, sig2)
+        self._hvar[:] = 1./self._cavs.tau\
+                        - exp(lpdf - (lcdf + 2*lb)) * (c + exp(lpdf - lcdf))
 
     # \hat z
     def _compute_hz(self):

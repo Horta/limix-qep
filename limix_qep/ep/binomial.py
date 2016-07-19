@@ -6,15 +6,22 @@ from numpy import log
 from numpy import sqrt
 from numpy import exp
 from numpy import full
+from numpy import asarray
+from numpy import isscalar
+from numpy import isfinite
+from numpy import all as all_
 from numpy.linalg import lstsq
 
 from limix_math.dist.norm import logcdf
 from limix_math.dist.norm import logpdf
+from limix_math.array import issingleton
 
 from lim.genetics import FastLMM
 from lim.genetics.heritability import bern2lat_correction
 
 from .overdispersion import OverdispersionEP
+
+from limix_qep.special.nbinom_moms import moments_array3, init
 
 # class BernoulliPredictor(object):
 #     def __init__(self, mean, cov):
@@ -30,15 +37,33 @@ from .overdispersion import OverdispersionEP
 
 # K = v (Q S Q.T + \delta I)
 class BinomialEP(OverdispersionEP):
-    def __init__(self, y, M, Q0, Q1, S0, QSQt=None):
-        super(BinomialEP, self).__init__(y, M, Q0, S0, QSQt=QSQt)
-
+    def __init__(self, y, ntrials, M, Q0, Q1, S0, QSQt=None):
+        super(BinomialEP, self).__init__(M, Q0, S0, QSQt=QSQt)
         self._logger = logging.getLogger(__name__)
 
+        y = asarray(y, float)
+
+        if isscalar(ntrials):
+            ntrials = full(len(y), ntrials, dtype=float)
+        else:
+            ntrials = asarray(ntrials, float)
+
+        self._y = y
+        self._ntrials = ntrials
+        self._Q1 = Q1
+
+        if issingleton(y):
+            raise ValueError("The phenotype array has a single unique value" +
+                             " only.")
+
+        if not all_(isfinite(y)):
+            raise ValueError("There are non-finite numbers in phenotype.")
+
+        assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
+        assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
+        assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
+
         init(100)
-        nsamples = len(y)
-        self._mu1 = np.empty(nsamples)
-        self._var2 = np.empty(nsamples)
 
     def _init_hyperparams(self):
         from scipy.stats import norm
@@ -61,28 +86,24 @@ class BinomialEP(OverdispersionEP):
         self._var = h2/(1-h2)
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
-    def predict(self, m, var, covar):
-        (mu, sig2) = self._posterior_normal(m, var, covar)
-        return BernoulliPredictor(mu, sig2)
+    # def predict(self, m, var, covar):
+    #     (mu, sig2) = self._posterior_normal(m, var, covar)
+    #     return BernoulliPredictor(mu, sig2)
 
     def _tilted_params(self):
-        b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-        lb = log(b)
-        c = self._y11 * self._cavs.eta / b
-        lcdf = self._loghz
-        lcdf[:] = logcdf(c)
-        lpdf = logpdf(c)
-        mu = self._cavs.eta / self._cavs.tau + self._y11 * exp(lpdf - (lcdf + lb))
-
-        sig2 = 1./self._cavs.tau - exp(lpdf - (lcdf + 2*lb)) * (c + exp(lpdf - lcdf))
-
-        return (mu, sig2)
+        N = self._ntrials
+        K = self._y
+        ctau = self._cavs.tau
+        ceta = self._cavs.eta
+        lmom0 = self._loghz
+        moments_array3(N, K, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):
-        b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-        c = self._y11 * self._cavs.eta / b
-        self._loghz[:] = logcdf(c)
+        self._tilted_params()
+        # b = sqrt(self._cavs.tau**2 + self._cavs.tau)
+        # c = self._y11 * self._cavs.eta / b
+        # self._loghz[:] = logcdf(c)
 
 
 

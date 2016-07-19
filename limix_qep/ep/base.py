@@ -82,6 +82,8 @@ class EP(Cached):
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
+        self._hmu = empty(nsamples)
+        self._hvar = empty(nsamples)
 
     def _covariate_setup(self, M):
         self._M = M
@@ -100,7 +102,7 @@ class EP(Cached):
         lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
         Q = self._Q
         L = self._L()
-        A = self._A()
+        A = self._A1()
         opt_bnom = self._opt_beta_nom()
         vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
                         A, L, Q, opt_bnom)
@@ -112,7 +114,7 @@ class EP(Cached):
         var = atleast_2d(var)
         covar = atleast_2d(covar)
 
-        A = self._A()
+        A = self._A1()
         L = self._L()
         Q = self._Q
         mu = m + dot(covar, self._AtmuLm())
@@ -232,7 +234,7 @@ class EP(Cached):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         cmu = self._cavs.mu
-        A = self._A()
+        A = self._A1()
 
         varS = var * S
         tctau = ttau + ctau
@@ -297,25 +299,28 @@ class EP(Cached):
         SQt = self._SQt()
         vardotdQSQt = self._vardotdQSQt()
 
+        hmu = self._hmu
+        hvar = self._hvar
+
         i = 0
         while i < MAX_EP_ITER:
             self._psites.tau[:] = ttau
             self._psites.eta[:] = teta
 
             self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
-            (hmu, hsig2) = self._tilted_params()
+            self._tilted_params()
 
-            if not np.all(np.isfinite(hsig2)) or np.any(hsig2 == 0.):
+            if not np.all(np.isfinite(hvar)) or np.any(hvar == 0.):
                 raise Exception('Error: not np.all(np.isfinite(hsig2))' +
                                 ' or np.any(hsig2 == 0.).')
 
-            self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hsig2)
+            self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
             self.clear_cache('_L')
             self.clear_cache('_QtAQ')
             self.clear_cache('_AtmuLm')
 
             self._joint.update(m, var, S, Q, self._L(),
-                                     teta, self._A(),
+                                     teta, self._A1(),
                                      vardotdQSQt, SQt, self._K)
 
             tdiff = np.abs(self._psites.tau - ttau)
@@ -347,7 +352,7 @@ class EP(Cached):
     ############################################################################
     ############################################################################
     def _optimal_tbeta_nom(self):
-        A = self._A()
+        A = self._A1()
         L = self._L()
         Q = self._Q
         teta = self._sites.eta
@@ -356,7 +361,7 @@ class EP(Cached):
         return (teta - A * dot(Q, d)) / self._iAAT()
 
     def _optimal_tbeta_denom(self):
-        A = self._A()
+        A = self._A1()
         tM = self._tM
         Q = self._Q
         L = self._L()
@@ -460,7 +465,10 @@ class EP(Cached):
     ############## Key but Intermediary Matrix Definitions #####################
     ############################################################################
     ############################################################################
-    def _A(self):
+    def _A0(self):
+        return 0.0
+
+    def _A1(self):
         """:math:`\\tilde T`"""
         return self._sites.tau
 
@@ -474,7 +482,7 @@ class EP(Cached):
     def _QtAQ(self):
         """:math:`Q^t A Q`"""
         Q = self._Q
-        A = self._A()
+        A = self._A1()
         return dot(Q.T, ddot(A, Q, left=True))
 
     @cached
@@ -507,7 +515,7 @@ class EP(Cached):
             \\tilde \\eta - \\tilde T Q B^{-1} Q^t \\tilde \\eta
             \\tilde T \\mathrm m   - \\tilde T Q B^{-1} Q^t \\tilde T m
         """
-        A = self._A()
+        A = self._A1()
         m = self.m()
         L = self._L()
         Q = self._Q
