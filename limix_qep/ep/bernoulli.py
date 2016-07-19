@@ -11,7 +11,8 @@ from numpy.linalg import lstsq
 from limix_math.dist.norm import logcdf
 from limix_math.dist.norm import logpdf
 
-import limix_ext as lxt
+from lim.genetics import FastLMM
+from lim.genetics.heritability import bern2lat_correction
 
 from .base import EP
 
@@ -29,25 +30,34 @@ class BernoulliPredictor(object):
 
 # K = \sigma_g^2 Q S Q.T
 class BernoulliEP(EP):
-    def __init__(self, y, M, Q, S, QSQt=None):
-        super(BernoulliEP, self).__init__(y, M, Q, S, QSQt=QSQt)
+    def __init__(self, y, M, Q0, Q1, S0, QSQt=None):
+        super(BernoulliEP, self).__init__(y, M, Q0, S0, QSQt=QSQt)
 
         self._logger = logging.getLogger(__name__)
 
         self._y11 = 2. * self._y - 1.0
+        self._Q1 = Q1
 
-    def _init_var(self):
-        y = self._y
-        tM = self._tM
-        ratio = sum(y) / float(y.shape[0])
-        self._var = max(1e-3, lxt.lmm.h2(y, tM, self._QSQt(), ratio))
-
-    def _init_beta(self):
+    def _init_hyperparams(self):
         from scipy.stats import norm
         y = self._y
-        ratio = sum(y) / float(y.shape[0])
-        f = full(len(y), norm(0, 1).isf(1 - ratio))
-        self._tbeta = lstsq(self._tM, f)[0]
+        ratio = sum(y) / float(len(y))
+        latent_mean = norm(0, 1).isf(1 - ratio)
+        latent = y / y.std()
+        latent = latent - latent.mean() + latent_mean
+
+        Q0 = self._Q
+        Q1 = self._Q1
+        flmm = FastLMM(full(len(y), latent), QS=[[Q0, Q1], [self._S]])
+        flmm.learn()
+        gv = flmm.genetic_variance
+        nv = flmm.noise_variance
+        h2 = gv / (gv + nv)
+        h2 = bern2lat_correction(h2, ratio, ratio)
+
+        offset = flmm.offset
+        self._var = h2/(1-h2)
+        self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
     def predict(self, m, var, covar):
         (mu, sig2) = self._posterior_normal(m, var, covar)

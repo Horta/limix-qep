@@ -2,6 +2,7 @@ from __future__ import absolute_import
 import logging
 import numpy as np
 
+from numpy import inf
 from numpy import dot
 from numpy import sqrt
 from numpy import empty
@@ -10,6 +11,10 @@ from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
 from numpy import var as variance
+
+from scipy.misc import logsumexp
+from scipy.linalg import cho_factor
+from scipy.optimize import minimize_scalar
 
 from limix_math.linalg import ddot
 from limix_math.linalg import sum2diag
@@ -26,12 +31,12 @@ from limix_math.linalg import economic_svd
 from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
+
 from .fixed_ep import FixedEP
-from .config import _MAX_ITER, _EP_EPS
-from .config import _HYPERPARAM_EPS
-from scipy.optimize import minimize_scalar
-from scipy.misc import logsumexp
-import scipy as sp
+
+from .config import MAX_EP_ITER
+from .config import EP_EPS
+from .config import HYPERPARAM_EPS
 
 from .util import make_sure_reasonable_conditioning
 
@@ -39,7 +44,7 @@ from .util import make_sure_reasonable_conditioning
 class EP(Cached):
     """
     .. math::
-        K = \\sigma_g^2 Q S Q.T
+        K = v Q S Q.T
         M = svd_U svd_S svd_V.T
         \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
         \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
@@ -139,10 +144,7 @@ class EP(Cached):
         self._joint.initialize(m, var)
         self._sites.initialize()
 
-    def _init_var(self):
-        raise NotImplementedError
-
-    def _init_beta(self):
+    def _init_hyperparams(self):
         raise NotImplementedError
 
     @cached
@@ -170,6 +172,8 @@ class EP(Cached):
 
     @property
     def _tbeta(self):
+        if self.__tbeta is None:
+            self._init_hyperparams()
         return self.__tbeta
 
     @_tbeta.setter
@@ -186,19 +190,19 @@ class EP(Cached):
     @property
     def beta(self):
         if self.__tbeta is None:
-            self._init_beta()
+            self._init_hyperparams()
         return solve(self._svd_V.T, self._tbeta/self._svd_S12)
 
     @beta.setter
     def beta(self, value):
         if self.__tbeta is None:
-            self._init_beta()
+            self._init_hyperparams()
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
     @property
     def var(self):
         if self._var is None:
-            self._init_var()
+            self._init_hyperparams()
         return self._var
 
     @var.setter
@@ -305,7 +309,7 @@ class EP(Cached):
         vardotdQSQt = self._vardotdQSQt()
 
         i = 0
-        while i < 10:
+        while i < MAX_EP_ITER:
             self._psites.tau[:] = ttau
             self._psites.eta[:] = teta
 
@@ -338,10 +342,10 @@ class EP(Cached):
 
             i += 1
             self._logger.debug('EP step size: %e.', max(aerr, rerr))
-            if aerr < 2*_EP_EPS or rerr < 2*_EP_EPS:
+            if aerr < 2*EP_EPS or rerr < 2*EP_EPS:
                 break
 
-        if i + 1 == _MAX_ITER:
+        if i + 1 == MAX_EP_ITER:
             self._logger.warn('Maximum number of EP iterations has'+
                               ' been attained.')
 
@@ -395,9 +399,9 @@ class EP(Cached):
         self._logger.debug("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
-        step = -1.
+        step = inf
         i = 0
-        while step < _HYPERPARAM_EPS and i < 5:
+        while step > HYPERPARAM_EPS and i < 5:
             ptbeta[:] = self._tbeta
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
@@ -431,27 +435,37 @@ class EP(Cached):
 
     def optimize(self, opt_beta=True, opt_var=True, disp=False):
 
-        self._logger.debug("Start of optimization.")
-        self._logger.debug("Initial parameters: var=%e, beta=%s).",
-                           self.var, bytes(self.beta))
+        from time import time
 
+        start = time()
+
+        self._logger.debug("Start of optimization.")
+        self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
+                           self.h2(), self.var, bytes(self.beta))
+
+        nfev = 0
         if opt_var:
-            opt = dict(xatol=_HYPERPARAM_EPS, disp=disp)
+            opt = dict(xatol=HYPERPARAM_EPS, disp=disp)
 
             r = minimize_scalar(self._nlml, options=opt,
                                 bounds=self._h2_bounds(),
                                 method='Bounded', args=opt_beta)
             self.var = self.h2tovar(r.x)
-            self._logger.debug("%d function evaluations request by the" +
-                               " optimizer.", r.nfev)
             self._logger.debug("Optimizer message: %s.", r.message)
             if r.status != 0:
                 self._logger.warn("Optimizer failed with status %d.", r.status)
 
+            nfev = r.nfev
+
         if opt_beta:
             self._optimize_beta()
 
-        self._logger.debug("End of optimization.")
+        self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
+                           self.h2(), self.var, bytes(self.beta))
+
+        self._logger.debug("End of optimization (%.3f seconds" +
+                           ", %d function calls).", time() - start, nfev)
+
 
     ############################################################################
     ############################################################################
@@ -488,7 +502,7 @@ class EP(Cached):
 
     @cached
     def _vardotdQSQt(self):
-        """:math:`\\sigma_g^2 \\mathrm{Diag}\\{ Q S Q^t \\}`"""
+        """:math:`v \\mathrm{Diag}\\{ Q S Q^t \\}`"""
         return self.var * self._dotdQSQt()
 
     @cached
@@ -521,4 +535,4 @@ class EP(Cached):
     @cached
     def _L(self):
         """:math:`L L^T = \\mathrm{Chol}\\{ Q^t A Q + S^{-1} \\sigma_g^{-2} \\}`"""
-        return sp.linalg.cho_factor(self._B(), lower=True)[0]
+        return cho_factor(self._B(), lower=True)[0]
