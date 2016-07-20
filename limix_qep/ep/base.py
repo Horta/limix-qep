@@ -383,13 +383,21 @@ class EP(Cached):
     ############################################################################
     ############################################################################
     def _optimal_tbeta_nom(self):
-        A = self._A1()
-        L = self._L()
-        Q = self._Q
+        A0 = self._A0()
+        A1 = self._A1()
+        ttau = self._sites.tau
         teta = self._sites.eta
 
-        d = cho_solve(L, dot(Q.T, teta))
-        return (teta - A * dot(Q, d)) / self._iAAT()
+        u = teta - ttau * teta / (A0 + ttau)
+
+
+        # A = self._A1()
+        # L = self._L()
+        # Q = self._Q
+        # teta = self._sites.eta
+        # 
+        # d = cho_solve(L, dot(Q.T, teta))
+        # return (teta - A * dot(Q, d)) / self._iAAT()
 
     def _optimal_tbeta_denom(self):
         A = self._A1()
