@@ -71,7 +71,6 @@ class EP(Cached):
         self._S = S
         self._Q = Q
         self.__QSQt = QSQt
-        self._K = None
 
         self._psites = SiteLik(nsamples)
         self._sites = SiteLik(nsamples)
@@ -128,9 +127,7 @@ class EP(Cached):
     @cached
     def _init_ep_params(self):
         self._logger.debug("EP parameters initialization.")
-        m = self.m()
-        var = self.var
-        self._joint.initialize(m, var)
+        self._joint.initialize(self.m(), self.diagK())
         self._sites.initialize()
 
     def _init_hyperparams(self):
