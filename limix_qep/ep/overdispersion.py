@@ -44,75 +44,16 @@ class OverdispersionEP(EP):
     def _init_hyperparams(self):
         raise NotImplementedError
 
-    # def _LU(self):
-    #     Sd = self.sigg2 * (self._S + self.delta)
-    #     Q = self._Q
-    #     ttau = self._sites.tau
-    #     R = ddot(Sd, Q.T, left=True)
-    #     R = ddot(ttau, dot(Q, R), left=True)
-    #     sum2diag_inplace(R, 1.0)
-    #     return lu_factor(R, overwrite_a=True, check_finite=False)
+    @cached
+    def K(self):
+        """:math:`K = v (Q S Q.T + \\delta I)`"""
+        return sum2diag(self.var * self._QSQt(), self.var * self.delta)
 
-    # def _LUM(self):
-    #     m = self._m
-    #     ttau = self._sites.tau
-    #     teta = self._sites.eta
-    #     LU = self._LU()
-    #     return lu_solve(LU, ttau * m + teta)
-
-    # def predict(self, m, var, covar):
-    #     m = np.atleast_1d(m)
-    #     var = np.atleast_2d(var)
-    #     covar = np.atleast_2d(covar)
-    #
-    #     if isinstance(self._outcome_type, Binomial):
-    #         return self._predict_binom(m, var, covar)
-    #
-    #     # if covar.ndim == 1:
-    #     #     assert isnumber(var) and isnumber(m)
-    #     # elif covar.ndim == 2:
-    #     #     assert len(var) == covar.shape[0]
-    #     # else:
-    #     #     raise ValueError("covar has a wrong layout.")
-    #
-    #     A1 = self._A1()
-    #     L = self._L()
-    #     Q = self._Q
-    #     mu = m + dot(covar, self._AtmuLm())
-    #
-    #     A1cov = ddot(A1, covar.T, left=True)
-    #     part3 = dotd(A1cov.T, dot(Q, cho_solve(L, dot(Q.T, A1cov))))
-    #     sig2 = var.diagonal() - dotd(A1cov.T, covar.T) + part3
-    #
-    #     if isinstance(self._outcome_type, Bernoulli):
-    #         return BernoulliPredictor(mu, sig2)
-    #     else:
-    #         return BinomialPredictor(mu, sig2)
-    #     #
-    #     # if covar.ndim == 1:
-    #     #     p = dict()
-    #     #     p[1] = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
-    #     #     p[0] = 1 - p[1]
-    #     # else:
-    #     #     v = np.exp(logcdf(mu / np.sqrt(1 + sig2)))
-    #     #     p = [dict([(0, 1-vi), (1, vi)]) for vi in v]
-    #     #
-    #     # return p
-
-    # def _predict_binom(self, m, var, covar):
-    #     m = np.atleast_1d(m)
-    #     var = np.atleast_2d(var)
-    #     covar = np.atleast_2d(covar)
-    #
-    #     mu = m + covar.dot(self._LUM())
-    #
-    #     LU = self._LU()
-    #     ttau = self._sites.tau
-    #
-    #     sig2 = var.diagonal() - dotd(covar, lu_solve(LU, ddot(ttau, covar.T, left=True)))
-    #
-    #     return BinomialPredictor(mu, sig2)
-
+    ############################################################################
+    ############################################################################
+    ######################## Getters and setters ###############################
+    ############################################################################
+    ############################################################################
     @property
     def delta(self):
         if self._delta is None:
@@ -126,25 +67,9 @@ class OverdispersionEP(EP):
         self.clear_cache('_vardotdQSQt')
         self.clear_cache('_update')
         self.clear_cache('_AtmuLm')
-
         self.clear_cache('_QtAQ')
-        # self.clear_cache('_B')
-        # self.clear_cache('_update')
-        # self.clear_cache('_AtmuLm')
-
         self._delta = max(value, 1e-4)
 
-
-    @cached
-    def K(self):
-        """:math:`K = v (Q S Q.T + \\delta I)`"""
-        return sum2diag(self.var * self._QSQt(), self.var * self.delta)
-
-    ############################################################################
-    ############################################################################
-    ######################## Getters and setters ###############################
-    ############################################################################
-    ############################################################################
     def h2(self):
         var = self.var
         varc = variance(self.m())

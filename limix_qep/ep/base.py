@@ -10,6 +10,7 @@ from numpy import asarray
 from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
+from numpy import abs as abs_
 from numpy import var as variance
 
 from scipy.misc import logsumexp
@@ -130,7 +131,7 @@ class EP(Cached):
         self._joint.initialize(self.m(), self.diagK())
         self._sites.initialize()
 
-    def _init_hyperparams(self):
+    def initialize_hyperparams(self):
         raise NotImplementedError
 
     @cached
@@ -161,7 +162,7 @@ class EP(Cached):
     @property
     def _tbeta(self):
         if self.__tbeta is None:
-            self._init_hyperparams()
+            self.initialize_hyperparams()
         return self.__tbeta
 
     @_tbeta.setter
@@ -178,19 +179,19 @@ class EP(Cached):
     @property
     def beta(self):
         if self.__tbeta is None:
-            self._init_hyperparams()
+            self.initialize_hyperparams()
         return solve(self._svd_V.T, self._tbeta/self._svd_S12)
 
     @beta.setter
     def beta(self, value):
         if self.__tbeta is None:
-            self._init_hyperparams()
+            self.initialize_hyperparams()
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
     @property
     def var(self):
         if self._var is None:
-            self._init_hyperparams()
+            self.initialize_hyperparams()
         return self._var
 
     @var.setter
@@ -231,43 +232,68 @@ class EP(Cached):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         cmu = self._cavs.mu
-        A = self._A1()
+        A0 = self._A0()
+        A1 = self._A1()
+        A2 = self._A2()
 
         varS = var * S
         tctau = ttau + ctau
-        Am = A*m
+        A1m = A1*m
+        A2m = A2*m
+        QB1Qt = self._QB1Qt()
+        A2teta = A2 * teta
 
         L = self._L()
 
         p1 = - np.sum(np.log(np.diagonal(L)))
         p1 += - 0.5 * np.log(varS).sum()
-        p1 += 0.5 * np.log(A).sum()
+        p1 += 0.5 * np.log(A1).sum()
 
-        p3 = np.sum(teta*teta*self._AAA())
-        A0A0pT_teta = teta / self._iAAT()
-        QtA0A0pT_teta = dot(Q.T, A0A0pT_teta)
-        L = self._L()
-        L_0 = stl(L, QtA0A0pT_teta)
-        p3 += dot(L_0.T, L_0)
-        vv = 2*np.log(np.abs(teta))
-        p3 -= np.exp(logsumexp(vv - np.log(tctau)))
-        p3 *= 0.5
 
-        p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
+        p3 = (teta * A0 * (ttau * A0 + 1) * teta).sum()
+        p3 += (A2teta * QB1Qt.dot(A2teta)).sum()
+        p3 -= ((teta * teta) / tctau).sum()
+        p3 /= 2
 
-        f0 = None
-        L_1 = cho_solve(L, QtA0A0pT_teta)
-        f0 = A * dot(Q, L_1)
-        p5 = dot(m, A0A0pT_teta) - dot(m, f0)
+        p4 = (ceta * (ttau * cmu - 2*teta) / tctau).sum() / 2
 
-        p6 = - 0.5 * np.sum(m * Am) +\
-            0.5 * dot(Am, dot(Q, cho_solve(L, dot(Q.T, Am))))
+        A1mQB1Qt = A1m.dot(QB1Qt)
 
-        p7 = 0.5 * (np.log(ttau + ctau).sum() - np.log(ctau).sum())
+        p5 = A2m.dot(teta) - A1mQB1Qt.dot(A2*teta)
 
-        p7 -= 0.5 * np.log(ttau).sum()
+        p6 = - A1m.dot(m) + A1mQB1Qt.dot(A1m)
+        p6 /= 2
 
-        p8 = self._loghz.sum()
+        p7 = (tctau.log().sum() - ctau.log().sum()) / 2
+        #
+        # p7 -= 0.5 * np.log(ttau).sum()
+
+
+        # p3 = np.sum(teta*teta*self._AAA())
+        # A0A0pT_teta = teta / self._iAAT()
+        # QtA0A0pT_teta = dot(Q.T, A0A0pT_teta)
+        # L = self._L()
+        # L_0 = stl(L, QtA0A0pT_teta)
+        # p3 += dot(L_0.T, L_0)
+        # vv = 2*np.log(np.abs(teta))
+        # p3 -= np.exp(logsumexp(vv - np.log(tctau)))
+        # p3 *= 0.5
+        #
+        # p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
+        #
+        # f0 = None
+        # L_1 = cho_solve(L, QtA0A0pT_teta)
+        # f0 = A * dot(Q, L_1)
+        # p5 = dot(m, A0A0pT_teta) - dot(m, f0)
+        #
+        # p6 = - 0.5 * np.sum(m * Am) +\
+        #     0.5 * dot(Am, dot(Q, cho_solve(L, dot(Q.T, Am))))
+        #
+        # p7 = 0.5 * (np.log(ttau + ctau).sum() - np.log(ctau).sum())
+        #
+        # p7 -= 0.5 * np.log(ttau).sum()
+        #
+        # p8 = self._loghz.sum()
 
         return (p1, p3, p4, p5, p6, p7, p8, f0, A0A0pT_teta)
 
@@ -463,78 +489,76 @@ class EP(Cached):
     ############################################################################
     ############################################################################
     def _A0(self):
+        """:math:`v \\delta \\mathrm I`"""
         return 0.0
 
     def _A1(self):
-        """:math:`\\tilde T`"""
+        """:math:`(v \\delta \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
         return self._sites.tau
 
-    def _iAAT(self):
+    def _A2(self):
+        """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
         return 1.0
-
-    def _AAA(self):
-        return 0.0
-
-    @cached
-    def _QtAQ(self):
-        """:math:`Q^t A Q`"""
-        Q = self._Q
-        A = self._A1()
-        return dot(Q.T, ddot(A, Q, left=True))
 
     @cached
     def _SQt(self):
         """:math:`S Q^t`"""
         return ddot(self._S, self._Q.T, left=True)
 
-    @cached
-    def _dotdQSQt(self):
-        """:math:`\\mathrm{Diag}\\{Q S Q^t\\}`"""
-        return dotd(self._Q, self._SQt())
+    # @cached
+    # def _dotdQSQt(self):
+    #     """:math:`\\mathrm{Diag}\\{Q S Q^t\\}`"""
+    #     return dotd(self._Q, self._SQt())
 
     def _QSQt(self):
-        """ $QSQ^t$ """
+        """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
         if self.__QSQt is None:
             Q = self._Q
             self.__QSQt = dot(Q, self._SQt())
         return self.__QSQt
 
     @cached
-    def _vardotdQSQt(self):
-        """:math:`v \\mathrm{Diag}\\{ Q S Q^t \\}`"""
-        return self.var * self._dotdQSQt()
-
-    @cached
-    def _AtmuLm(self):
-        """:math:`\\mathrm{AL}(\\eta) - \\mathrm{AL}(\\tilde T \\mathrm m)`
-
-        .. math::
-            \\tilde \\eta - \\tilde T Q B^{-1} Q^t \\tilde \\eta
-            \\tilde T \\mathrm m   - \\tilde T Q B^{-1} Q^t \\tilde T m
-        """
-        A = self._A1()
-        m = self.m()
-        L = self._L()
+    def _QB1Qt(self):
         Q = self._Q
-        teta = self._sites.eta
-        Am = A*m
+        return Q.dot(cho_solve(self._L(), Q.T))
 
-        # $\tilde \eta - \tilde T Q B^{-1} Q^t \tilde \eta$
-        AtmuL = teta - A*dot(Q, cho_solve(L, dot(Q.T, teta)))
-
-        # $\tilde T m - \tilde T Q B^{-1} Q^t \tilde T m$
-        AmL = Am - A*dot(Q, cho_solve(L, dot(Q.T, Am)))
-
-        return AtmuL - AmL
+    # @cached
+    # def _vardotdQSQt(self):
+    #     """:math:`v \\mathrm{Diag}\\{ Q S Q^t \\}`"""
+    #     return self.var * self._dotdQSQt()
+    #
+    # @cached
+    # def _AtmuLm(self):
+    #     """:math:`\\mathrm{AL}(\\eta) - \\mathrm{AL}(\\tilde T \\mathrm m)`
+    #
+    #     .. math::
+    #         \\tilde \\eta - \\tilde T Q B^{-1} Q^t \\tilde \\eta
+    #         \\tilde T \\mathrm m   - \\tilde T Q B^{-1} Q^t \\tilde T m
+    #     """
+    #     A = self._A1()
+    #     m = self.m()
+    #     L = self._L()
+    #     Q = self._Q
+    #     teta = self._sites.eta
+    #     Am = A*m
+    #
+    #     # $\tilde \eta - \tilde T Q B^{-1} Q^t \tilde \eta$
+    #     AtmuL = teta - A*dot(Q, cho_solve(L, dot(Q.T, teta)))
+    #
+    #     # $\tilde T m - \tilde T Q B^{-1} Q^t \tilde T m$
+    #     AmL = Am - A*dot(Q, cho_solve(L, dot(Q.T, Am)))
+    #
+    #     return AtmuL - AmL
 
     def _B(self):
-        """:math:`B = Q^t \\tilde T Q + S^{-1} \\sigma_g^{-2}`"""
-        return sum2diag(self._QtAQ(), 1./(self.var * self._S))
+        """:math:`\\mathrm B = \\mathrm Q^t \\mathrm A_1 \\mathrm Q +
+                  \\mathrm S^{-1} v^{-1}`"""
+        Q = self._Q
+        A1 = self._A1()
+        QtA1Q = dot(Q.T, ddot(A1, Q, left=True))
+        return sum2diag(QtA1Q, 1./(self.var * self._S))
 
     @cached
     def _L(self):
-        """
-        .. math::
-            L L^T = \\mathrm{Chol}\\{ Q^t A Q + S^{-1} \\sigma_g^{-2} \\}
-        """
+        """:math:`\\mathrm L \\mathrm L^T = \\mathrm{Chol}\\{ \\mathrm B \\}`"""
         return cho_factor(self._B(), lower=True)[0]

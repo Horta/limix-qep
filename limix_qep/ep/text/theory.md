@@ -168,13 +168,14 @@ __Part 6__:
 __Part 7__:
 \[
   \frac{1}{2} \sum_i \log(\tilde{\sigma}_i^2 + \sigma_{-i}^2) =
-    \frac{1}{2} \big(-\log\mathrm{\tilde T} + \log(\mathrm{\tilde T} +
-      \Sigma_-^{-1}) - \log(\Sigma_-^{-1})\big)
+    \frac{1}{2} \big(-\log|\mathrm{\tilde T}| + \log|\mathrm{\tilde T} +
+      \Sigma_-^{-1}| - \log|\Sigma_-^{-1}|\big)
 \]
 
-> Note that Part 1 and Part 2 have $\frac{1}{2} \log \mathrm A_1$ and
-> $-\frac{1}{2} \log \tilde{\mathrm T}$, respectively.
-> Their sum is given by $\frac{1}{2} \log \mathrm A_2$.
+> Note that from Part 1 and Part 7 have $\frac{1}{2} \log |\mathrm A_1|$ and
+> $-\frac{1}{2} \log |\tilde{\mathrm T}|$, respectively.
+> Their sum is given by $\frac{1}{2} \log |\mathrm A_2|$ and is defined
+> as Part 8.
 
 ## Derivative over variance (it needs a review)
 
