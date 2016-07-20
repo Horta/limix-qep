@@ -140,27 +140,21 @@ __Part 4__:
 
 __Part 5__:
 
-$~~~~$If $\delta > 0$:
 \[
-  \mathbf m^T(\mathrm K + \tilde{\mathrm T}^{-1})^{-1} \tilde{\boldsymbol \mu} =
-    \mathbf m^T \big(\mathrm A_0(\mathrm A_0 + \tilde{\mathrm T})^{-1}
-      \tilde{\boldsymbol\eta} - \mathrm A_1 \mathrm Q \mathrm B^{-1}
-      \mathrm Q^T \mathrm A_0 (\mathrm A_0 + \tilde{\mathrm T})^{-1}
-      \tilde{\boldsymbol \eta}\big)
-\]
-
-$~~~~$If $\delta = 0$:
-\[
-    =\mathbf m^T \tilde{\boldsymbol \eta} - \mathbf m^T
-    \tilde{\mathrm T} \mathrm Q
-    \mathrm B^{-1} \mathrm Q^T \tilde{\boldsymbol \eta}
+    \mathbf m^{\mathrm T}(\mathrm K + \tilde{\mathrm T}^{-1})^{-1}
+        \tilde{\boldsymbol \mu}
+    = \mathbf m^{\mathrm T} \mathrm A_2 \tilde{\boldsymbol\eta} -
+        \mathbf m^{\mathrm T} \mathrm A_1
+                \mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T}
+              \mathrm A_2 \tilde{\boldsymbol\eta}
 \]
 
 __Part 6__:
 \[
-  - \frac{1}{2} \mathbf m^T (\mathrm K + \tilde{\mathrm T}^{-1})^{-1} \mathbf m =
-    - \frac{1}{2} \mathbf m^T \mathrm A_1 \mathbf m
-    + \frac{1}{2} \mathbf m^T \mathrm A_1 \mathrm Q
+  - \frac{1}{2} \mathbf m^{\mathrm T} (\mathrm K + \tilde{\mathrm T}^{-1})^{-1}
+  \mathbf m =
+    - \frac{1}{2} \mathbf m^{\mathrm T} \mathrm A_1 \mathbf m
+    + \frac{1}{2} \mathbf m^{\mathrm T} \mathrm A_1 \mathrm Q
     \mathrm B^{-1} \mathrm Q^T \mathrm A_1 \mathbf m
 \]
 
@@ -171,10 +165,11 @@ __Part 7__:
       \Sigma_-^{-1}) - \log(\Sigma_-^{-1})\big)
 \]
 
-When $\delta = 0$, the terms $\frac{1}{2} \log \mathrm A_1$ from Part 1
-and $-\frac{1}{2} \log \tilde{\mathrm T}$ from Part 7 can be subtracted out.
+> Note that Part 1 and Part 2 have $\frac{1}{2} \log \mathrm A_1$ and
+> $-\frac{1}{2} \log \tilde{\mathrm T}$, respectively.
+> Their sum is given by $\frac{1}{2} \log \mathrm A_2$.
 
-## Derivative over variance
+## Derivative over variance (it needs a review)
 
 \[
   \frac{\partial \text{LML}}{\partial \theta} =
