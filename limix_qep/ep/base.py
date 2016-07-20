@@ -4,16 +4,15 @@ import numpy as np
 
 from numpy import inf
 from numpy import dot
+from numpy import log
 from numpy import sqrt
 from numpy import empty
 from numpy import asarray
 from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
-from numpy import abs as abs_
 from numpy import var as variance
 
-from scipy.misc import logsumexp
 from scipy.linalg import cho_factor
 from scipy.optimize import minimize_scalar
 
@@ -22,7 +21,6 @@ from limix_math.linalg import sum2diag
 from limix_math.linalg import dotd
 from limix_math.linalg import solve
 from limix_math.linalg import cho_solve
-from limix_math.linalg import stl
 
 from hcache import Cached, cached
 
@@ -32,7 +30,7 @@ from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
 
-from .fixed_ep import FixedEP
+# from .fixed_ep import FixedEP
 
 from .config import MAX_EP_ITER
 from .config import EP_EPS
@@ -96,18 +94,18 @@ class EP(Cached):
 
     def fixed_ep(self):
         self._update()
-        (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
-            self._lml_components()
-
-        lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
-        Q = self._Q
-        L = self._L()
-        A = self._A1()
-        opt_bnom = self._opt_beta_nom()
-        vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
-                        A, L, Q, opt_bnom)
-
-        return vv1
+        # (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
+        #     self._lml_components()
+        #
+        # lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
+        # Q = self._Q
+        # L = self._L()
+        # A = self._A1()
+        # opt_bnom = self._opt_beta_nom()
+        # vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
+        #                 A, L, Q, opt_bnom)
+        #
+        # return vv1
 
     def _posterior_normal(self, m, var, covar):
         m = atleast_1d(m)
@@ -140,6 +138,13 @@ class EP(Cached):
         return self.var * self._QSQt()
 
     @cached
+    def diagK(self):
+        return self.var * self._diagQSQt()
+
+    def _diagQSQt(self):
+        return self._QSQt().diagonal()
+
+    @cached
     def m(self):
         """:math:`m = M \\beta`"""
         return dot(self._tM, self._tbeta)
@@ -170,7 +175,6 @@ class EP(Cached):
         self.clear_cache('_lml_components')
         self.clear_cache('m')
         self.clear_cache('_update')
-        self.clear_cache('_AtmuLm')
         if self.__tbeta is None:
             self.__tbeta = asarray(value, float).copy()
         else:
@@ -198,9 +202,10 @@ class EP(Cached):
     def var(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
-        self.clear_cache('_vardotdQSQt')
+        self.clear_cache('_QB1Qt')
         self.clear_cache('_update')
-        self.clear_cache('_AtmuLm')
+        self.clear_cache('K')
+        self.clear_cache('diagK')
         self._var = max(value, 1e-4)
 
     @property
@@ -213,7 +218,6 @@ class EP(Cached):
         self.clear_cache('m')
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
-        self.clear_cache('_AtmuLm')
 
     ############################################################################
     ############################################################################
@@ -223,7 +227,7 @@ class EP(Cached):
     @cached
     def _lml_components(self):
         self._update()
-        Q = self._Q
+        # Q = self._Q
         S = self._S
         m = self.m()
         var = self.var
@@ -245,10 +249,7 @@ class EP(Cached):
 
         L = self._L()
 
-        p1 = - np.sum(np.log(np.diagonal(L)))
-        p1 += - 0.5 * np.log(varS).sum()
-        p1 += 0.5 * np.log(A1).sum()
-
+        p1 = - np.sum(log(np.diagonal(L))) - log(varS).sum() / 2
 
         p3 = (teta * A0 * (ttau * A0 + 1) * teta).sum()
         p3 += (A2teta * QB1Qt.dot(A2teta)).sum()
@@ -264,7 +265,11 @@ class EP(Cached):
         p6 = - A1m.dot(m) + A1mQB1Qt.dot(A1m)
         p6 /= 2
 
-        p7 = (tctau.log().sum() - ctau.log().sum()) / 2
+        p7 = (log(tctau).sum() - log(ctau).sum()) / 2
+
+        p8 = self._loghz.sum()
+
+        p9 = log(A2).sum() / 2
         #
         # p7 -= 0.5 * np.log(ttau).sum()
 
@@ -295,11 +300,13 @@ class EP(Cached):
         #
         # p8 = self._loghz.sum()
 
-        return (p1, p3, p4, p5, p6, p7, p8, f0, A0A0pT_teta)
+        return (p1, p3, p4, p5, p6, p7, p8, p9)
+        # return (p1, p3, p4, p5, p6, p7, p8, p9, f0, A0A0pT_teta)
 
     def lml(self):
-        (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
-        return p1 + p3 + p4 + p5 + p6 + p7 + p8
+        # (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
+        (p1, p3, p4, p5, p6, p7, p8, p9) = self._lml_components()
+        return p1 + p3 + p4 + p5 + p6 + p7 + p8 + p9
 
     ############################################################################
     ############################################################################
@@ -312,15 +319,15 @@ class EP(Cached):
 
         self._logger.debug('EP loop has started.')
         m = self.m()
-        Q = self._Q
-        S = self._S
-        var = self.var
+        # Q = self._Q
+        # S = self._S
+        # var = self.var
 
         ttau = self._sites.tau
         teta = self._sites.eta
 
-        SQt = self._SQt()
-        vardotdQSQt = self._vardotdQSQt()
+        # SQt = self._SQt()
+        # vardotdQSQt = self._vardotdQSQt()
 
         hmu = self._hmu
         hvar = self._hvar
@@ -339,12 +346,13 @@ class EP(Cached):
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
             self.clear_cache('_L')
-            self.clear_cache('_QtAQ')
-            self.clear_cache('_AtmuLm')
+            self.clear_cache('_A1')
+            self.clear_cache('_A2')
+            self.clear_cache('_QB1Qt')
 
-            self._joint.update(m, var, S, Q, self._L(),
-                                     teta, self._A1(),
-                                     vardotdQSQt, SQt, self._K)
+
+            self._joint.update(m, teta, self._A1(), self._A2(), self._QB1Qt(),
+                               self.K())
 
             tdiff = np.abs(self._psites.tau - ttau)
             ediff = np.abs(self._psites.eta - teta)
@@ -453,6 +461,7 @@ class EP(Cached):
     def optimize(self, opt_beta=True, opt_var=True, disp=False):
 
         from time import time
+        import ipdb; ipdb.set_trace()
 
         start = time()
 
@@ -488,14 +497,17 @@ class EP(Cached):
     ############## Key but Intermediary Matrix Definitions #####################
     ############################################################################
     ############################################################################
+    @cached
     def _A0(self):
         """:math:`v \\delta \\mathrm I`"""
         return 0.0
 
+    @cached
     def _A1(self):
         """:math:`(v \\delta \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
         return self._sites.tau
 
+    @cached
     def _A2(self):
         """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
         return 1.0
@@ -504,11 +516,6 @@ class EP(Cached):
     def _SQt(self):
         """:math:`S Q^t`"""
         return ddot(self._S, self._Q.T, left=True)
-
-    # @cached
-    # def _dotdQSQt(self):
-    #     """:math:`\\mathrm{Diag}\\{Q S Q^t\\}`"""
-    #     return dotd(self._Q, self._SQt())
 
     def _QSQt(self):
         """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
@@ -521,34 +528,6 @@ class EP(Cached):
     def _QB1Qt(self):
         Q = self._Q
         return Q.dot(cho_solve(self._L(), Q.T))
-
-    # @cached
-    # def _vardotdQSQt(self):
-    #     """:math:`v \\mathrm{Diag}\\{ Q S Q^t \\}`"""
-    #     return self.var * self._dotdQSQt()
-    #
-    # @cached
-    # def _AtmuLm(self):
-    #     """:math:`\\mathrm{AL}(\\eta) - \\mathrm{AL}(\\tilde T \\mathrm m)`
-    #
-    #     .. math::
-    #         \\tilde \\eta - \\tilde T Q B^{-1} Q^t \\tilde \\eta
-    #         \\tilde T \\mathrm m   - \\tilde T Q B^{-1} Q^t \\tilde T m
-    #     """
-    #     A = self._A1()
-    #     m = self.m()
-    #     L = self._L()
-    #     Q = self._Q
-    #     teta = self._sites.eta
-    #     Am = A*m
-    #
-    #     # $\tilde \eta - \tilde T Q B^{-1} Q^t \tilde \eta$
-    #     AtmuL = teta - A*dot(Q, cho_solve(L, dot(Q.T, teta)))
-    #
-    #     # $\tilde T m - \tilde T Q B^{-1} Q^t \tilde T m$
-    #     AmL = Am - A*dot(Q, cho_solve(L, dot(Q.T, Am)))
-    #
-    #     return AtmuL - AmL
 
     def _B(self):
         """:math:`\\mathrm B = \\mathrm Q^t \\mathrm A_1 \\mathrm Q +

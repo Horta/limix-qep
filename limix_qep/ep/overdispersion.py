@@ -7,7 +7,7 @@ from limix_math.linalg import sum2diag
 from limix_math.dist.beta import isf as bisf
 
 from hcache import cached
-from .dists import OverdispersionJoint
+from .dists import Joint
 
 
 from limix_qep.special.nbinom_moms import moments_array3, init
@@ -38,7 +38,7 @@ class OverdispersionEP(EP):
         super(OverdispersionEP, self).__init__(M, Q, S, QSQt=QSQt)
         self._logger = logging.getLogger(__name__)
 
-        self._joint = OverdispersionJoint(Q, S)
+        self._joint = Joint(Q, S)
         self._delta = None
 
     def _init_hyperparams(self):

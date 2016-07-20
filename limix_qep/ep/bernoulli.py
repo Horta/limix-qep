@@ -55,7 +55,7 @@ class BernoulliEP(EP):
         self._y11 = 2. * self._y - 1.0
         self._Q1 = Q1
 
-    def _init_hyperparams(self):
+    def initialize_hyperparams(self):
         from scipy.stats import norm
         y = self._y
         ratio = sum(y) / float(len(y))
