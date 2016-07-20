@@ -384,12 +384,11 @@ class EP(Cached):
     ############################################################################
     ############################################################################
     def _optimal_tbeta_nom(self):
-        A0 = self._A0()
         A1 = self._A1()
-        ttau = self._sites.tau
+        A2 = self._A2()
+        QB1Qt = self._QB1Qt()
         teta = self._sites.eta
-        u = teta - ttau * teta / (A0 + ttau)
-        return u - A1 * self._QB1Qt().dot(u)
+        return A2 * teta - A1 * QB1Qt.dot(A2 * teta)
 
     def _optimal_tbeta_denom(self):
         QB1Qt = self._QB1Qt()
@@ -402,7 +401,6 @@ class EP(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._tbeta)
 
-        import ipdb; ipdb.set_trace()
         u = dot(self._tM.T, self._optimal_tbeta_nom())
         Z = self._optimal_tbeta_denom()
 
