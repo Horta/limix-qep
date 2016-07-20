@@ -193,19 +193,16 @@ taking the gradient of LML and setting it to zero.
 \[
 \begin{align}
   \boldsymbol \beta^* &= (\mathrm M^{\mathrm T} \mathrm A_1 \mathrm M -
-    \mathrm M^{\mathrm T} \mathrm A_1 \mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T}
-      \mathrm A_1 \mathrm M)^{-1}
+    \mathrm M^{\mathrm T} \mathrm A_1 \mathrm Q \mathrm B^{-1} \mathrm
+    Q^{\mathrm T} \mathrm A_1 \mathrm M)^{-1}
       (\mathrm M^{\mathrm T} \mathrm A_1 - \mathrm M^{\mathrm T}\mathrm A_1
         \mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1)
         \tilde{\boldsymbol \mu}\\
         &= (\mathrm M^{\mathrm T} \mathrm A_1 \mathrm M - \mathrm M^{\mathrm T}
         \mathrm A_1 \mathrm Q \mathrm B_1^{-1} \mathrm Q^{\mathrm T}\mathrm A_1
         \mathrm M)^{-1} \mathrm M^{\mathrm T}
-        (\tilde {\boldsymbol\eta} - \tilde{\mathrm T}
-          (\mathrm A_0 + \tilde{\mathrm T})^{-1} \tilde{\boldsymbol\eta} -
-          \mathrm A_1 \mathrm Q \mathrm B_1^{-1} \mathrm Q^{\mathrm T}
-          (\tilde{\boldsymbol\eta} - \tilde{\mathrm T} (\mathrm A_0 +
-            \tilde{\mathrm T})^{-1} \tilde{\boldsymbol\eta}))
+        (\mathrm A_2 - \mathrm A_1 \mathrm Q \mathrm B_1^{-1}
+            \mathrm Q^{\mathrm T}\mathrm A_2) \tilde {\boldsymbol\eta}
 \end{align}
 \]
 

@@ -12,6 +12,7 @@ from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
 from numpy import var as variance
+from numpy.linalg import multi_dot
 
 from scipy.linalg import cho_factor
 from scipy.optimize import minimize_scalar
@@ -387,26 +388,13 @@ class EP(Cached):
         A1 = self._A1()
         ttau = self._sites.tau
         teta = self._sites.eta
-
         u = teta - ttau * teta / (A0 + ttau)
-
-
-        # A = self._A1()
-        # L = self._L()
-        # Q = self._Q
-        # teta = self._sites.eta
-        # 
-        # d = cho_solve(L, dot(Q.T, teta))
-        # return (teta - A * dot(Q, d)) / self._iAAT()
+        return u - A1 * self._QB1Qt().dot(u)
 
     def _optimal_tbeta_denom(self):
-        A = self._A1()
-        tM = self._tM
-        Q = self._Q
-        L = self._L()
-        AM = ddot(A, tM, left=True)
-        QtAM = dot(Q.T, AM)
-        return dot(tM.T, AM) - dot(AM.T, dot(Q, cho_solve(L, QtAM)))
+        QB1Qt = self._QB1Qt()
+        A1M = ddot(self._A1(), self._tM, left=True)
+        return dot(self._tM.T, A1M) - multi_dot([A1M.T, QB1Qt, A1M])
 
     def _optimal_tbeta(self):
         self._update()
@@ -414,6 +402,7 @@ class EP(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._tbeta)
 
+        import ipdb; ipdb.set_trace()
         u = dot(self._tM.T, self._optimal_tbeta_nom())
         Z = self._optimal_tbeta_denom()
 
@@ -469,7 +458,6 @@ class EP(Cached):
     def optimize(self, opt_beta=True, opt_var=True, disp=False):
 
         from time import time
-        import ipdb; ipdb.set_trace()
 
         start = time()
 

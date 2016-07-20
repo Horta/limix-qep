@@ -37,6 +37,7 @@ def test_bernoulli_optimize():
 
     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
     ep.optimize()
+    print(ep.beta)
     # assert_almost_equal(ep.var, 1.6795435940073431, decimal=5)
 #
 # def test_bernoulli_prediction():
