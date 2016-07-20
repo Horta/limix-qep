@@ -175,7 +175,7 @@ __Part 7__:
 > Note that from Part 1 and Part 7 have $\frac{1}{2} \log |\mathrm A_1|$ and
 > $-\frac{1}{2} \log |\tilde{\mathrm T}|$, respectively.
 > Their sum is given by $\frac{1}{2} \log |\mathrm A_2|$ and is defined
-> as Part 8.
+> as Part 9.
 
 ## Derivative over variance (it needs a review)
 
