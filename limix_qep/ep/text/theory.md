@@ -42,6 +42,11 @@
       \mathrm A_1 \mathrm Q\mathrm B^{-1} \mathrm Q^T \mathrm A_1
 \]
 
+# Tips
+
+Pre-compute $\mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T}$ and $\mathrm K$
+when there is no rank deficiency in $\mathrm K$.
+
 # Posterior implementation
 
 \[
@@ -50,6 +55,8 @@
     \tilde{\mathrm T}^{-1} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \mathrm K
     = \tilde{\mathrm T}^{-1} (\mathrm A_1 -
       \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^T \mathrm A_1)\mathrm K\\
+    &= \mathrm A_2 \mathrm K - \mathrm A_2 \mathrm Q
+            \mathrm B^{-1}\mathrm Q^T \mathrm A_1 \mathrm K\\
   \boldsymbol \mu &= \tilde{\mathrm T}^{-1} (\tilde{\mathrm
                      T}^{-1} + \mathrm K)^{-1} \mathbf m
                      + \tilde{\mathrm T}^{-1} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \mathrm K \tilde{\boldsymbol \eta}\\
