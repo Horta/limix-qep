@@ -27,7 +27,8 @@
                         \mathrm I)^{-1}\\
     \mathrm A_2 &= \tilde{\mathrm T}^{-1} \mathrm A_1
                 = (v \delta \tilde{\mathrm T} + \mathrm I)^{-1}\\
-    \mathrm B &= \mathrm Q^{\mathrm T} \mathrm A_1 \mathrm Q + (v \mathrm S)^{-1}
+    \mathrm B &= \mathrm Q^{\mathrm T} \mathrm A_1 \mathrm Q +
+    (v \mathrm S)^{-1}
 \end{align}
 \]
 
@@ -54,20 +55,26 @@ when there is no rank deficiency in $\mathrm K$.
   \Sigma &=
     \tilde{\mathrm T}^{-1} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \mathrm K
     = \tilde{\mathrm T}^{-1} (\mathrm A_1 -
-      \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1)\mathrm K\\
+      \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1)
+        \mathrm K\\
     &= \mathrm A_2 \mathrm K - \mathrm A_2 \mathrm Q
             \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1 \mathrm K\\
   \boldsymbol \mu &= \tilde{\mathrm T}^{-1} (\tilde{\mathrm
                      T}^{-1} + \mathrm K)^{-1} \mathbf m
-                     + \tilde{\mathrm T}^{-1} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \mathrm K \tilde{\boldsymbol \eta}\\
+                     + \tilde{\mathrm T}^{-1} (\tilde{\mathrm T}^{-1} +
+                            \mathrm K)^{-1} \mathrm K \tilde{\boldsymbol
+                                \eta}\\
          &= \tilde{\mathrm T}^{-1} (\mathrm A_1 -
-           \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1)
+           \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T}
+           \mathrm A_1)
             \mathbf m
         + \tilde{\mathrm T}^{-1} (\mathrm A_1 -
-          \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1)
+          \mathrm A_1 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T}
+          \mathrm A_1)
           \mathrm K \tilde{\boldsymbol \eta}\\
           &= \mathrm A_2 \mathbf m -
-            \mathrm A_2 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T} \mathrm A_1 \mathbf m
+            \mathrm A_2 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T}
+            \mathrm A_1 \mathbf m
 
          + \mathrm A_2 \mathrm K \tilde{\boldsymbol \eta} -
            \mathrm A_2 \mathrm Q \mathrm B^{-1}\mathrm Q^{\mathrm T}
@@ -79,10 +86,11 @@ when there is no rank deficiency in $\mathrm K$.
 
 \[
 \begin{align}
-    \boldsymbol\mu_* &= m_* + \mathrm k_{*}^{\mathrm T}
+    \mu_* &= m_* + \mathrm k_{*}^{\mathrm T}
             (\mathrm A_1 - \mathrm A_1 \mathrm Q
                 \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1)
-                (\tilde{\mathrm T}\mathrm m + \tilde{\boldsymbol\eta}) \\
+                (\tilde{\mathrm T}\boldsymbol{\mathrm m} +
+                    \tilde{\boldsymbol\eta}) \\
     \sigma^2_* &= \mathrm k_{*,*} - \mathrm k_{*}^{\mathrm T}
             (\mathrm A_1 - \mathrm A_1 \mathrm Q
                 \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1)
@@ -127,7 +135,8 @@ __Part 2__:
 __Part 3__:
 \[
 \begin{align}
-  - \frac{\tilde{\boldsymbol\mu}^{\mathrm T} (\mathrm K + \tilde{\mathrm T}^{-1})^{-1}
+  - \frac{\tilde{\boldsymbol\mu}^{\mathrm T} (\mathrm K +
+        \tilde{\mathrm T}^{-1})^{-1}
     \tilde{\boldsymbol\mu}}{2} + \frac{\tilde{\boldsymbol\mu}^{T}
         (\tilde{\mathrm T}^{-1} +
         \Sigma_-)^{-1} \tilde{\boldsymbol  \mu}}{2}
@@ -155,7 +164,8 @@ __Part 4__:
 \[
 \frac{1}{2}\boldsymbol\mu_-^{\mathrm T} (\tilde{\mathrm T}^{-1} +
     \Sigma_-)^{-1} (\boldsymbol\mu_- - 2 \tilde{\boldsymbol{\mu}}) =
-    \frac{1}{2} \boldsymbol\eta_-^{\mathrm T} (\tilde{\mathrm T} + \Sigma_-^{-1})^{-1}
+    \frac{1}{2} \boldsymbol\eta_-^{\mathrm T} (\tilde{\mathrm T} +
+        \Sigma_-^{-1})^{-1}
         (\tilde{\mathrm T} \boldsymbol\mu_- - 2 \tilde{\boldsymbol\eta})
 \]
 
@@ -193,12 +203,13 @@ __Part 7__:
 
 # Optimal beta
 
-Let $\mathbf m = \mathrm M \boldsymbol\beta$ be the mean and $K$ be the covariance.
-The optimal $\boldsymbol\beta^*$ is given by
+Let $\mathbf m = \mathrm M \boldsymbol\beta$ be the mean and $K$ be the
+covariance. The optimal $\boldsymbol\beta^*$ is given by
 taking the gradient of LML and setting it to zero.
 
 \[
-  \boldsymbol\beta^* = (\mathrm M^{\mathrm T} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \mathrm M)^{-1}
+  \boldsymbol\beta^* = (\mathrm M^{\mathrm T} (\tilde{\mathrm T}^{-1} +
+      \mathrm K)^{-1} \mathrm M)^{-1}
     \mathrm M^{\mathrm T} (\tilde{\mathrm T}^{-1} + \mathrm K)^{-1} \tilde{\boldsymbol\mu}.
 \]
 
@@ -228,7 +239,8 @@ taking the gradient of LML and setting it to zero.
     \frac{1}{2} (\mathbf m - \tilde{\boldsymbol{\mu}})^{\mathrm T}
     (\mathrm K + \tilde \Sigma)^{-1} \frac{\partial \mathrm K}{\partial \theta}
     (\mathrm K + \tilde \Sigma)^{-1} (\mathbf m - \tilde{\boldsymbol{\mu}})\\
-    - (\mathbf m - \tilde{\boldsymbol{\mu}})^{\mathrm T} (\mathrm K + \tilde{\mathrm T}^{-1})^{-1}
+    - (\mathbf m - \tilde{\boldsymbol{\mu}})^{\mathrm T} (\mathrm K +
+        \tilde{\mathrm T}^{-1})^{-1}
     \frac{\partial \mathbf m}{\partial \theta} - \frac{1}{2} \text{tr}\Big(
       (\mathrm K + \tilde{\mathrm T}^{-1})^{-1}
       \frac{\partial \mathrm K}{\partial \theta}\Big)
@@ -258,6 +270,7 @@ Part 3
 \[
   \text{tr}[(\mathrm K + \tilde{\mathrm T}^{-1})^{-1}] = \text{tr}[\mathrm A_1
     \frac{\partial \mathrm K}{\partial \theta}] -
-    \text{tr}[\mathrm A_1 \mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1
+    \text{tr}[\mathrm A_1 \mathrm Q \mathrm B^{-1} \mathrm Q^{\mathrm T}
+    \mathrm A_1
     \frac{\partial \mathrm K}{\partial \theta}]
 \]
