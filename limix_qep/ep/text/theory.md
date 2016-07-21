@@ -75,6 +75,20 @@ when there is no rank deficiency in $\mathrm K$.
 \end{align}
 \]
 
+# Prediction
+
+\[
+\begin{align}
+    \boldsymbol\mu_* &= m_* + \mathrm k_{*}^{\mathrm T}
+            (\mathrm A_1 - \mathrm A_1 \mathrm Q
+                \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1)
+                (\tilde{\mathrm T}\mathrm m + \tilde{\boldsymbol\eta}) \\
+    \sigma^2_* &= \mathrm k_{*,*} - \mathrm k_{*}^{\mathrm T}
+            (\mathrm A_1 - \mathrm A_1 \mathrm Q
+                \mathrm B^{-1} \mathrm Q^{\mathrm T} \mathrm A_1)
+            \tilde{\mathrm T} \mathrm k_{*}
+\end{align}
+\]
 
 ## Log marginal likelihood
 
