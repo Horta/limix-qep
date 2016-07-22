@@ -77,7 +77,6 @@ class BernoulliEP(EP):
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
     def predict(self, m, var, covar):
-        import ipdb; ipdb.set_trace()
         (mu, sig2) = self._posterior_normal(m, var, covar)
         return BernoulliPredictor(mu, sig2)
 

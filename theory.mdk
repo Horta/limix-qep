@@ -101,7 +101,7 @@ Pre-compute $\Q \BE\i \Q\t$ and $\K$ when there is no rank deficiency in $\K$.
 
 ~ Equation
 \begin{aligned}
-\mu_*      &= m_* - \bk_{*}\t \K\i \bmu \\
+\mu_*      &= m_* - \bk_{*}\t (\A{1} - \A{1} \Q \BE\i \Q\t \A{1})(\mm + \K\teta) + \bk_{*}\t\teta \\
 \sig^2_*   &= \k_{*,*} - \bk_{*}\t (\A{1} - \A{1} \Q \BE\i \Q\t \A{1}) \bk_{*}
 \end{aligned}
 ~

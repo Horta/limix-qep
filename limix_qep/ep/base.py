@@ -113,27 +113,21 @@ class EP(Cached):
         var = atleast_2d(var)
         covar = atleast_2d(covar)
 
-        ttau = self._sites.tau
         teta = self._sites.eta
-
         A1 = self._A1()
-        A2 = self._A2()
-        A1m = A1 * m
-        A2teta = A2 * teta
         QB1Qt = self._QB1Qt()
+        K = self.K()
 
-        mu = m + covar.T.dot(A2teta) + covar.T.dot(A1m) - covar.T
+        u = self.m() + K.dot(teta)
+        A1u = A1 * u
 
-        # mu = m + covar.dot(QB1Q1.dot(ttau * m + teta))
+        mu = m - covar.dot(A1u - A1*QB1Qt.dot(A1u)) + covar.dot(teta)
 
-        # A1cov = ddot(A1, covar.T, left=True)
-        # sig2 = var.diagonal() - dotd(A1cov.T, covar.T)
-        #
-        # Acov = ddot(A, covar.T, left=True)
-        # part3 = dotd(Acov.T, dot(Q, cho_solve(L, dot(Q.T, Acov))))
-        # sig2 = var.diagonal() - dotd(Acov.T, covar.T) + part3
-        #
-        # return (mu, sig2)
+        A1covar = ddot(A1, covar.T, left=True)
+        sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
+               + dotd(A1covar.T, QB1Qt.dot(A1covar))
+
+        return (mu, sig2)
 
     @cached
     def _init_ep_params(self):
