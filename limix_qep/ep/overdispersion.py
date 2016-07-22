@@ -43,7 +43,7 @@ class OverdispersionEP(EP):
         self._joint = Joint(Q, S)
         self._delta = None
 
-    def _init_hyperparams(self):
+    def initialize_hyperparams(self):
         raise NotImplementedError
 
     @cached
@@ -59,7 +59,7 @@ class OverdispersionEP(EP):
     @property
     def delta(self):
         if self._delta is None:
-            self._init_hyperparams()
+            self.initialize_hyperparams()
         return self._delta
 
     @delta.setter

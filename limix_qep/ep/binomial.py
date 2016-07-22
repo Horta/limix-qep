@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from __future__ import division
 
 import logging
 
@@ -65,7 +66,7 @@ class BinomialEP(OverdispersionEP):
 
         init(100)
 
-    def _init_hyperparams(self):
+    def initialize_hyperparams(self):
         from scipy.stats import norm
         y = self._y
         ratio = sum(y) / float(len(y))
@@ -84,7 +85,11 @@ class BinomialEP(OverdispersionEP):
 
         offset = flmm.offset
         self._var = h2/(1-h2)
+        self._delta = 1 / self._var
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
+
+        # return h2 * (1 + varc) / (1 - h2 - delta*h2)
+        # self._delta =
 
     # def predict(self, m, var, covar):
     #     (mu, sig2) = self._posterior_normal(m, var, covar)
