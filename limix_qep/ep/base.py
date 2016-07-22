@@ -113,15 +113,10 @@ class EP(Cached):
         var = atleast_2d(var)
         covar = atleast_2d(covar)
 
-        teta = self._sites.eta
         A1 = self._A1()
         QB1Qt = self._QB1Qt()
-        K = self.K()
 
-        u = self.m() + K.dot(teta)
-        A1u = A1 * u
-
-        mu = m - covar.dot(A1u - A1*QB1Qt.dot(A1u)) + covar.dot(teta)
+        mu = m - covar.dot(self._r())
 
         A1covar = ddot(A1, covar.T, left=True)
         sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
@@ -178,6 +173,7 @@ class EP(Cached):
 
     @_tbeta.setter
     def _tbeta(self, value):
+        self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('m')
         self.clear_cache('_update')
@@ -206,6 +202,7 @@ class EP(Cached):
 
     @var.setter
     def var(self, value):
+        self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_QB1Qt')
@@ -221,6 +218,7 @@ class EP(Cached):
     @M.setter
     def M(self, value):
         self._covariate_setup(value)
+        self.clear_cache('_r')
         self.clear_cache('m')
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
@@ -351,6 +349,7 @@ class EP(Cached):
                                 ' or np.any(hsig2 == 0.).')
 
             self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
+            self.clear_cache('_r')
             self.clear_cache('_L')
             self.clear_cache('_A1')
             self.clear_cache('_A2')
@@ -540,3 +539,14 @@ class EP(Cached):
     def _L(self):
         """:math:`\\mathrm L \\mathrm L^T = \\mathrm{Chol}\\{ \\mathrm B \\}`"""
         return cho_factor(self._B(), lower=True)[0]
+
+    @cached
+    def _r(self):
+        teta = self._sites.eta
+        A1 = self._A1()
+        QB1Qt = self._QB1Qt()
+        K = self.K()
+
+        u = self.m() + K.dot(teta)
+        A1u = A1 * u
+        return A1u - A1*QB1Qt.dot(A1u) - teta
