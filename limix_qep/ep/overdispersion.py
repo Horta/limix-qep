@@ -66,11 +66,8 @@ class OverdispersionEP(EP):
     def delta(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
-        self.clear_cache('_vardotdQSQt')
         self.clear_cache('_update')
-        self.clear_cache('_AtmuLm')
-        self.clear_cache('_QtAQ')
-        self._delta = max(value, 1e-4)
+        self._delta = max(value, 1e-7)
 
     def h2(self):
         var = self.var
@@ -82,9 +79,6 @@ class OverdispersionEP(EP):
         varc = variance(self.m())
         delta = self.delta
         return h2 * (1 + varc) / (1 - h2 - delta*h2)
-
-
-
 
     def _best_alpha0(self, alpha1, opt_beta):
         min_cost = np.inf
@@ -132,26 +126,6 @@ class OverdispersionEP(EP):
         """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
         ttau = self._sites.tau
         return 1 / (self.var * self.delta * ttau + 1)
-
-
-    # @cached
-    # def _AtmuLm(self):
-    #     return self._A1tmuL() - self._A1mL()
-
-    # def _A1tmuL(self):
-    #     A1 = self._A1()
-    #     L = self._L()
-    #     Q = self._Q
-    #     A1tmu = A1*self._sites.tau
-    #     return A1tmu - A1*dot(Q, cho_solve(L, dot(Q.T, A1tmu)))
-    #
-    # def _A1mL(self):
-    #     m = self._m
-    #     A1 = self._A1()
-    #     A1m = A1*m
-    #     L = self._L()
-    #     Q = self._Q
-    #     return A1m - A1*dot(Q, cho_solve(L, dot(Q.T, A1m)))
 
 
 def _alphas2hyperparams(alpha0, alpha1):

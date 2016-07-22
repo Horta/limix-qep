@@ -323,15 +323,9 @@ class EP(Cached):
 
         self._logger.debug('EP loop has started.')
         m = self.m()
-        # Q = self._Q
-        # S = self._S
-        # var = self.var
 
         ttau = self._sites.tau
         teta = self._sites.eta
-
-        # SQt = self._SQt()
-        # vardotdQSQt = self._vardotdQSQt()
 
         hmu = self._hmu
         hvar = self._hvar
