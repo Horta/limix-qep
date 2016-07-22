@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import division
+
 import logging
 
 import numpy as np
@@ -114,18 +116,22 @@ class OverdispersionEP(EP):
     ############## Key but Intermediary Matrix Definitions #####################
     ############################################################################
     ############################################################################
-    def _iA0T(self):
-        return 1./(self.var * self.delta) + self._sites.tau
+    @cached
+    def _A0(self):
+        """:math:`v \\delta \\mathrm I`"""
+        return self.var * self.delta
 
-    def _AAA(self):
-        vd = self.var * self.delta
-        return vd / (1 + vd * self._sites.tau)
+    @cached
+    def _A1(self):
+        """:math:`(v \\delta \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
+        ttau = self._sites.tau
+        return ttau / (self.var * self.delta * ttau + 1)
 
-    def _iAAT(self):
-        return 1. + self._sites.tau * self.var * self.delta
-
-    def _A(self):
-        return self._sites.tau / self._iAAT()
+    @cached
+    def _A2(self):
+        """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
+        ttau = self._sites.tau
+        return 1 / (self.var * self.delta * ttau + 1)
 
 
     # @cached
