@@ -156,10 +156,32 @@ class EP(Cached):
     ######################## Getters and setters ###############################
     ############################################################################
     ############################################################################
-    def h2(self):
-        var = self.var
-        varc = variance(self.m())
-        return var / (var + varc + 1.)
+    @property
+    def total_variance(self):
+        return (self.covariates_variance + self.genetic_variance +
+                self.environmental_variance + self.instrumental_variance)
+
+    @property
+    def covariates_variance(self):
+        return variance(self.m())
+
+    @property
+    def genetic_variance(self):
+        return self.var
+
+    @property
+    def environmental_variance(self):
+        return 1.
+
+    @property
+    def instrumental_variance(self):
+        return 0.
+
+    @property
+    def heritability(self):
+        return self.genetic_variance / (self.genetic_variance +
+                                        self.environmental_variance +
+                                        self.covariates_variance)
 
     def h2tovar(self, h2):
         varc = variance(self.m())
@@ -209,7 +231,7 @@ class EP(Cached):
         self.clear_cache('_update')
         self.clear_cache('K')
         self.clear_cache('diagK')
-        self._var = max(value, 1e-4)
+        self._var = max(value, 1e-7)
 
     @property
     def M(self):
@@ -373,7 +395,8 @@ class EP(Cached):
             self._logger.warn('Maximum number of EP iterations has'+
                               ' been attained.')
 
-        self._logger.debug('EP loop has performed %d iterations.', i+1)
+        # self._logger.debug('EP loop has performed %d iterations.', i)
+        print('EP loop has performed %d iterations.' % (i,))
 
 
     ############################################################################
@@ -415,6 +438,7 @@ class EP(Cached):
 
     def _optimize_beta(self):
         self._logger.debug("Beta optimization.")
+        print("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
         step = inf
@@ -424,8 +448,10 @@ class EP(Cached):
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
             self._logger.debug("Beta step: %e.", step)
+            print("Beta step: %.5f." % step)
             i += 1
 
+        print("Beta optimization took %d steps." % i)
         self._logger.debug("Beta optimization performed %d steps " +
                            "to find %s.", i, bytes(self._tbeta))
 
@@ -442,7 +468,7 @@ class EP(Cached):
         gs = 0.5 * (3.0 - np.sqrt(5.0))
         var_left = 1e-4
         h2_left = var_left / (var_left + 1)
-        curr_h2 = self.h2()
+        curr_h2 = self.heritability
         h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
         h2_right = min(h2_right, 0.967)
         h2_bounds = (h2_left, h2_right)
@@ -459,7 +485,7 @@ class EP(Cached):
 
         self._logger.debug("Start of optimization.")
         self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
-                           self.h2(), self.var, bytes(self.beta))
+                           self.heritability, self.var, bytes(self.beta))
 
         nfev = 0
         if opt_var:
@@ -479,7 +505,7 @@ class EP(Cached):
             self._optimize_beta()
 
         self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-                           self.h2(), self.var, bytes(self.beta))
+                           self.heritability, self.var, bytes(self.beta))
 
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)

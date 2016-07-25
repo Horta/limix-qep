@@ -45,7 +45,7 @@ Doc class     : [10pt]article
 
 ~ Equation
 \begin{aligned}
-    \K &= v \Q \S \Q\t + v \delta \I       \\
+    \K &= v \Q \S \Q\t + e \I       \\
     \mm &= \MM \bbeta
 \end{aligned}
 ~
@@ -66,9 +66,9 @@ Doc class     : [10pt]article
 
 ~ Equation
 \begin{aligned}
-  \A{0} &= v \delta \I                                         \\
-  \A{1} &= (v \delta \I + \tT\i)\i = \tT (v \delta \tT + \I)\i \\
-  \A{2} &= \tT\i \A{1} = (v \delta \tT + \I)\i                 \\
+  \A{0} &= e \I                                         \\
+  \A{1} &= (e \I + \tT\i)\i = \tT (e \tT + \I)\i \\
+  \A{2} &= \tT\i \A{1} = (e \tT + \I)\i                 \\
   \BE    &= \Q\t \A{1} \Q + (v \S)\i
 \end{aligned}
 ~
@@ -107,7 +107,7 @@ Pre-compute $\Q \BE\i \Q\t$ and $\K$ when there is no rank deficiency in $\K$.
 ~
 
 ~ Note
-Use $\K\i = v\i\Q (\S + \delta \I)\i \Q\t$ decomposition to compute $\K\i\bmu$.
+Use $\K\i = \Q (v\S + \delta \I)\i \Q\t$ decomposition to compute $\K\i\bmu$.
 ~
 
 

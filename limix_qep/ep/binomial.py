@@ -81,11 +81,12 @@ class BinomialEP(OverdispersionEP):
         gv = flmm.genetic_variance
         nv = flmm.noise_variance
         h2 = gv / (gv + nv)
-        h2 = bern2lat_correction(h2, ratio, ratio)
+        # h2 = bern2lat_correction(h2, ratio, ratio)
+        h2 = max(h2, 0.01)
 
         offset = flmm.offset
-        self._var = h2/(1-h2)
-        self._delta = 1 / self._var
+        self._var = 2*h2/(1-h2)
+        self._e = 1.
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
         # return h2 * (1 + varc) / (1 - h2 - delta*h2)
@@ -209,7 +210,7 @@ class BinomialEP(OverdispersionEP):
     #         gs = 0.5 * (3.0 - np.sqrt(5.0))
     #         sigg2_left = 1e-4
     #         h2_left = sigg2_left / (sigg2_left + 1)
-    #         curr_h2 = self.h2()
+    #         curr_h2 = self.heritability
     #         h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
     #         h2_right = min(h2_right, 0.967)
     #

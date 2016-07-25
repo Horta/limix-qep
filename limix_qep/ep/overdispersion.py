@@ -11,10 +11,16 @@ from limix_math.dist.beta import isf as bisf
 from hcache import cached
 from .dists import Joint
 
+from .config import HYPERPARAM_EPS
+from .config import R_EPS
+
+from scipy.optimize import minimize_scalar
 
 from limix_qep.special.nbinom_moms import moments_array3, init
 
 from numpy import var as variance
+from numpy import exp
+from numpy import log
 
 from .base import EP
 
@@ -25,7 +31,7 @@ _NALPHAS1 = 30
 _ALPHAS1_EPS = 1e-3
 
 
-# K = \sigma_g^2 Q (S + \delta I) Q.T
+# K = Q (v S + e I) Q.T
 class OverdispersionEP(EP):
     """
     .. math::
@@ -41,15 +47,15 @@ class OverdispersionEP(EP):
         self._logger = logging.getLogger(__name__)
 
         self._joint = Joint(Q, S)
-        self._delta = None
+        self._e = None
 
     def initialize_hyperparams(self):
         raise NotImplementedError
 
     @cached
     def K(self):
-        """:math:`K = v (Q S Q.T + \\delta I)`"""
-        return sum2diag(self.var * self._QSQt(), self.var * self.delta)
+        """:math:`K = (v Q S Q.T + e I)`"""
+        return sum2diag(self.var * self._QSQt(), self.e)
 
     ############################################################################
     ############################################################################
@@ -57,53 +63,114 @@ class OverdispersionEP(EP):
     ############################################################################
     ############################################################################
     @property
-    def delta(self):
-        if self._delta is None:
+    def e(self):
+        if self._e is None:
             self.initialize_hyperparams()
-        return self._delta
+        return self._e
 
-    @delta.setter
-    def delta(self, value):
+    @e.setter
+    def e(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_update')
-        self._delta = max(value, 1e-7)
+        self._e = max(value, 1e-7)
 
-    def h2(self):
-        var = self.var
-        varc = variance(self.m())
-        delta = self.delta
-        return var / (var + var*delta + varc + 1.)
+    @property
+    def environmental_variance(self):
+        return self.e
 
-    def h2tovar(self, h2):
-        varc = variance(self.m())
-        delta = self.delta
-        return h2 * (1 + varc) / (1 - h2 - delta*h2)
+    @property
+    def instrumental_variance(self):
+        return 1.
 
-    def _best_alpha0(self, alpha1, opt_beta):
-        min_cost = np.inf
-        alpha0_min = None
-        for i in range(_NALPHAS0):
-            (var, delta) = _alphas2hyperparams(_ALPHAS0[i], alpha1)
+    def _r_bounds(self):
+        # golden ratio
+        gs = 0.5 * (3.0 - np.sqrt(5.0))
+        r_left = 1e-3
+        curr_r = self.e / (1 + self.e)
+        r_right = (curr_r + r_left * gs - r_left) / gs
+        r_right = min(r_right, 0.999)
+        if r_right <= r_left:
+            r_right = min(r_left + 1e-2, 0.999)
 
-            self.var = var
-            self.delta = delta
-            self._update()
-            if opt_beta:
-                self._optimize_beta()
+        r_bounds = (r_left, r_right)
 
-            cost = -self.lml()
-            if cost < min_cost:
-                min_cost = cost
-                alpha0_min = _ALPHAS0[i]
+        self._logger.debug("r bound: (%.5f, %.5f)", r_left, r_right)
 
-        return (alpha0_min, min_cost)
+        return r_bounds
 
-    def _create_fun_cost_both(self, opt_beta):
-        def fun_cost(alpha1):
-            (_, min_cost) = self._best_alpha0(alpha1, opt_beta)
-            return min_cost
-        return fun_cost
+    def _nlml(self, r, h2):
+        # self._logger.debug("Evaluating for r:%e, h2:%e", r, h2)
+        print("Evaluating for r:%.5f, h2:%.5f" %(r, h2))
+        self.e = r / (1 - r)
+        self.var = h2 * self.e / (1 - h2)
+        self._optimize_beta()
+        return -self.lml()
+
+    def _optimize_h2(self, h2):
+        # self._logger.debug("Evaluating for h2:%.5f", h2)
+        print("Evaluating for h2:%.5f" % h2)
+
+        opt = dict(xatol=R_EPS)
+        minimize_scalar(self._nlml, bounds=self._r_bounds(),
+                        options=opt, method='Bounded', args=(h2,))
+        print('----------------------------------------------------------------')
+        return -self.lml()
+
+    def optimize(self):
+
+        from time import time
+
+        start = time()
+
+        self._logger.debug("Start of optimization.")
+        # self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, e=%.5f," +
+        #                    " beta=%s.", self.heritability, self.var, self.e,
+        #                    bytes(self.beta))
+        print("Initial parameters: h2=%.5f, var=%.5f, e=%.5f, beta=%s." % (self.heritability, self.var, self.e, str(self.beta)))
+
+        opt = dict(xatol=HYPERPARAM_EPS)
+
+        self._h2_bounds()
+        r = minimize_scalar(self._optimize_h2, options=opt,
+                            bounds=self._h2_bounds(),
+                            method='Bounded')
+        nfev = r.nfev
+
+        # fun_cost = self._create_fun_cost_both(opt_beta)
+        # opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
+        # res = optimize.minimize_scalar(fun_cost, options=opt,
+        #                                 bounds=(_ALPHAS1_EPS,
+        #                                           1-_ALPHAS1_EPS),
+        #                                   method='Bounded')
+        # alpha1 = res.x
+        # alpha0 = self._best_alpha0(alpha1, opt_beta)[0]
+        #
+        # (self.sigg2, self.delta) = _alphas2hyperparams(alpha0, alpha1)
+        #
+        # nfev = 0
+        # if opt_var:
+        #     opt = dict(xatol=HYPERPARAM_EPS, disp=disp)
+        #
+        #     r = minimize_scalar(self._nlml, options=opt,
+        #                         bounds=self._h2_bounds(),
+        #                         method='Bounded', args=opt_beta)
+        #     self.var = self.h2tovar(r.x)
+        #     self._logger.debug("Optimizer message: %s.", r.message)
+        #     if r.status != 0:
+        #         self._logger.warn("Optimizer failed with status %d.", r.status)
+        #
+        #     nfev = r.nfev
+        #
+        # if opt_beta:
+        #     self._optimize_beta()
+        #
+        # self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
+        #                    self.heritability, self.var, bytes(self.beta))
+        #
+        self._logger.debug("End of optimization (%.3f seconds" +
+                           ", %d function calls).", time() - start, nfev)
+
 
     ############################################################################
     ############################################################################
@@ -112,25 +179,17 @@ class OverdispersionEP(EP):
     ############################################################################
     @cached
     def _A0(self):
-        """:math:`v \\delta \\mathrm I`"""
-        return self.var * self.delta
+        """:math:`e \\mathrm I`"""
+        return self._e
 
     @cached
     def _A1(self):
-        """:math:`(v \\delta \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
+        """:math:`(e \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
         ttau = self._sites.tau
-        return ttau / (self.var * self.delta * ttau + 1)
+        return ttau / (self.e * ttau + 1)
 
     @cached
     def _A2(self):
         """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
         ttau = self._sites.tau
-        return 1 / (self.var * self.delta * ttau + 1)
-
-
-def _alphas2hyperparams(alpha0, alpha1):
-    a0 = 1-alpha0
-    a1 = 1-alpha1
-    var = alpha0 / (a0*a1)
-    delta = (a0 * alpha1)/alpha0
-    return (var, delta)
+        return 1 / (self.e * ttau + 1)

@@ -24,7 +24,7 @@ def test_binomial_lml():
     ep1 = BinomialEP(y, 1, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
     ep1.beta = array([1.])
     ep1.var = 1.
-    ep1.delta = 1e-7
+    ep1.e = 1e-7
     lml1 = ep1.lml()
 
     ep2 = BernoulliEP(y, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
@@ -49,4 +49,12 @@ def test_binomial_optimize():
     (Q, S) = qs_decomposition(G)
 
     ep = BinomialEP(y, 1, M, Q[0], Q[1], S[0])
-    # ep.optimize()
+    print("")
+    print("Previous lml: %.5f" % ep.lml())
+    ep.optimize()
+    print("Genetic variance: %.5f" % ep.genetic_variance)
+    print("Environmental variance: %.5f" % ep.environmental_variance)
+    print("Instrumental variance: %.5f" % ep.instrumental_variance)
+    print("Covariates variance: %.5f" % ep.covariates_variance)
+    print(ep.lml())
+    print("After lml: %.5f" % ep.lml())
