@@ -142,7 +142,7 @@ Use $\K\i = \Q (v\S + \delta \I)\i \Q\t$ decomposition to compute $\K\i\bmu$.
 ~ Equation
 \begin{aligned}
         &~~~- \frac{\tbmu\t (\K + \tT\i)\i \tbmu}{2} + \frac{\tbmu^{T} (\tT\i + \Sig_-)\i \tbmu}{2} =                           \\
-        &= \half \teta\t \Big( -\tT\i\A{1}\tT\i + \tT\i \A{1} \Q\BE\i \Q\t \A{1}\tT\i + \tT\i - (\tT + \Sig_-\i)\i \\Big) \teta\\
+        &= \half \teta\t \Big( -\tT\i\A{1}\tT\i + \tT\i \A{1} \Q\BE\i \Q\t \A{1}\tT\i + \tT\i - (\tT + \Sig_-\i)\i \Big) \teta\\
         &= \half \teta (\A{0} (\tT \A{0} + \mathrm I)\i + \A{2} \Q\BE\i\Q\t \A{2} - (\tT + \Sig_-\i)\i ) \teta
 \end{aligned}
 ~

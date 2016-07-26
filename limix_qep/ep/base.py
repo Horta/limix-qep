@@ -285,7 +285,7 @@ class EP(Cached):
 
         p1 = - np.sum(log(np.diagonal(L))) - log(varS).sum() / 2
 
-        p3 = (teta * A0 * (ttau * A0 + 1) * teta).sum()
+        p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
         p3 += (A2teta * QB1Qt.dot(A2teta)).sum()
         p3 -= ((teta * teta) / tctau).sum()
         p3 /= 2

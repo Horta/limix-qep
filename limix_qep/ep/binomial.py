@@ -70,7 +70,7 @@ class BinomialEP(OverdispersionEP):
     def initialize_hyperparams(self):
         from scipy.stats import norm
         y = self._y
-        ratio = sum(y) / float(len(y))
+        ratio = sum(y) / sum(self._ntrials)
         latent_mean = norm(0, 1).isf(1 - ratio)
         latent = y / y.std()
         latent = latent - latent.mean() + latent_mean

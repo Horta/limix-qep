@@ -68,6 +68,7 @@ class OverdispersionEP(EP):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_update')
+        self.clear_cache('_A0')
         self.clear_cache('diagK')
         self.clear_cache('K')
         self._e = max(value, 1e-7)
