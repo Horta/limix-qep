@@ -25,6 +25,8 @@ from .overdispersion import OverdispersionEP
 
 from limix_qep.special.nbinom_moms import moments_array3, init
 
+from .util import ratio_posterior
+
 # class BernoulliPredictor(object):
 #     def __init__(self, mean, cov):
 #         self._mean = mean
@@ -70,14 +72,14 @@ class BinomialEP(OverdispersionEP):
     def initialize_hyperparams(self):
         from scipy.stats import norm
         y = self._y
-        ratio = sum(y) / sum(self._ntrials)
-        latent_mean = norm(0, 1).isf(1 - ratio)
-        latent = y / y.std()
-        latent = latent - latent.mean() + latent_mean
+        ntrials = self._ntrials
+
+        ratios = ratio_posterior(y, ntrials)
+        latent = norm(0, 1).isf(1 - ratios)
 
         Q0 = self._Q
         Q1 = self._Q1
-        flmm = FastLMM(full(len(y), latent), QS=[[Q0, Q1], [self._S]])
+        flmm = FastLMM(latent, QS=[[Q0, Q1], [self._S]])
         flmm.learn()
         gv = flmm.genetic_variance
         nv = flmm.noise_variance
@@ -88,6 +90,10 @@ class BinomialEP(OverdispersionEP):
         self._var = 2*h2/(1-h2)
         self._e = 1.
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
+
+        print("INITIAL STUFF")
+        print("H2 %.5f" % h2)
+        print("Offset %s" % str(self.beta))
 
         # return h2 * (1 + varc) / (1 - h2 - delta*h2)
         # self._delta =

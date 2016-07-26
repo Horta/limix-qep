@@ -1,4 +1,6 @@
 from __future__ import absolute_import
+from __future__ import division
+
 import logging
 import numpy as np
 
@@ -38,6 +40,7 @@ from .config import EP_EPS
 from .config import HYPERPARAM_EPS
 
 from .util import make_sure_reasonable_conditioning
+from .util import golden_bracket
 
 
 class EP(Cached):
@@ -84,6 +87,10 @@ class EP(Cached):
         self._loghz = empty(nsamples)
         self._hmu = empty(nsamples)
         self._hvar = empty(nsamples)
+
+        # useful for optimization only
+        # that is a hacky
+        self._flip_heritability = False
 
     def _covariate_setup(self, M):
         self._M = M
@@ -340,7 +347,7 @@ class EP(Cached):
     def lml(self):
         # (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
         (p1, p3, p4, p5, p6, p7, p8, p9) = self._lml_components()
-        print(p1, p3, p4, p5, p6, p7, p8, p9)
+        # print(p1, p3, p4, p5, p6, p7, p8, p9)
         return p1 + p3 + p4 + p5 + p6 + p7 + p8 + p9
 
     ############################################################################
@@ -406,7 +413,7 @@ class EP(Cached):
                               ' been attained.')
 
         # self._logger.debug('EP loop has performed %d iterations.', i)
-        print('EP loop has performed %d iterations.' % (i,))
+        # print('EP loop has performed %d iterations.' % (i,))
 
 
     ############################################################################
@@ -448,7 +455,7 @@ class EP(Cached):
 
     def _optimize_beta(self):
         self._logger.debug("Beta optimization.")
-        print("Beta optimization.")
+        # print("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
         step = inf
@@ -458,36 +465,23 @@ class EP(Cached):
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
             self._logger.debug("Beta step: %e.", step)
-            print("Beta step: %.5f." % step)
+            # print("Beta step: %.5f." % step)
             i += 1
 
-        print("Beta optimization took %d steps." % i)
+        # print("Beta optimization took %d steps." % i)
         self._logger.debug("Beta optimization performed %d steps " +
                            "to find %s.", i, bytes(self._tbeta))
 
-    def _nlml(self, h2, opt_beta):
+    def _h2_cost(self, h2, flip):
+        if flip:
+            h2 = 1 - h2
+        self._logger.debug("Evaluating for h2: %e.", h2)
         var = self.h2tovar(h2)
-        self._logger.debug("Evaluating for h2:%e, var:%e", h2, var)
         self.var = var
-        if opt_beta:
-            self._optimize_beta()
+        self._optimize_beta()
         return -self.lml()
 
-    def _h2_bounds(self):
-        # golden ratio
-        gs = 0.5 * (3.0 - np.sqrt(5.0))
-        var_left = 1e-4
-        h2_left = var_left / (var_left + 1)
-        curr_h2 = self.heritability
-        h2_right = (curr_h2 + h2_left * gs - h2_left) / gs
-        h2_right = min(h2_right, 0.967)
-        h2_bounds = (h2_left, h2_right)
-
-        self._logger.debug("H2 bound: (%.5f, %.5f)", h2_left, h2_right)
-
-        return h2_bounds
-
-    def optimize(self, opt_beta=True, opt_var=True, disp=False):
+    def optimize(self):
 
         from time import time
 
@@ -498,21 +492,27 @@ class EP(Cached):
                            self.heritability, self.var, bytes(self.beta))
 
         nfev = 0
-        if opt_var:
-            opt = dict(xatol=HYPERPARAM_EPS, disp=disp)
+        opt = dict(xatol=HYPERPARAM_EPS)
 
-            r = minimize_scalar(self._nlml, options=opt,
-                                bounds=self._h2_bounds(),
-                                method='Bounded', args=opt_beta)
-            self.var = self.h2tovar(r.x)
-            self._logger.debug("Optimizer message: %s.", r.message)
-            if r.status != 0:
-                self._logger.warn("Optimizer failed with status %d.", r.status)
+        h2 = self.heritability
+        flip = h2 > 0.5
+        r = minimize_scalar(self._h2_cost, options=opt,
+                            bounds=golden_bracket(0.5 - abs(0.5 - h2)),
+                            method='Bounded',
+                            args=flip)
 
-            nfev = r.nfev
+        if flip:
+            r.x = 1 - r.x
 
-        if opt_beta:
-            self._optimize_beta()
+        self.var = self.h2tovar(r.x)
+
+        self._logger.debug("Optimizer message: %s.", r.message)
+        if r.status != 0:
+            self._logger.warn("Optimizer failed with status %d.", r.status)
+
+        nfev = r.nfev
+
+        self._optimize_beta()
 
         self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
                            self.heritability, self.var, bytes(self.beta))

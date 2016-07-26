@@ -22,6 +22,8 @@ from numpy import var as variance
 from numpy import exp
 from numpy import log
 
+from .util import golden_bracket
+
 from .base import EP
 
 _NALPHAS0 = 100
@@ -48,6 +50,10 @@ class OverdispersionEP(EP):
 
         self._joint = Joint(Q, S)
         self._e = None
+
+        # useful for optimization only
+        # that is a hacky
+        self.__flip_noise_ratio = False
 
     def initialize_hyperparams(self):
         raise NotImplementedError
@@ -86,93 +92,38 @@ class OverdispersionEP(EP):
         return 1.
 
     def _r_bounds(self):
-        # golden ratio
-        gs = 0.5 * (3.0 - np.sqrt(5.0))
-        r_left = 1e-2
-        curr_r = self.e / (1 + self.e)
-        r_right = (curr_r + r_left * gs - r_left) / gs
-        r_right = min(r_right, 0.99)
-        if r_right <= r_left:
-            r_right = min(r_left + 1e-3, 0.99)
+        r = self.e / (1 + self.e)
+        if self.__flip_noise_ratio:
+            r = 1 - r
+        bounds = golden_bracket(r)
+        return bounds
 
-        r_bounds = (r_left, r_right)
-
-        self._logger.debug("r bound: (%.5f, %.5f)", r_left, r_right)
-
-        return r_bounds
-
-    def _nlml(self, r, h2):
-        # self._logger.debug("Evaluating for r:%e, h2:%e", r, h2)
-        print("Evaluating for r:%.5f, h2:%.5f" %(r, h2))
+    def _noise_ratio_cost(self, r, flip):
+        if flip:
+            r = 1 - r
+        print("  - Evaluating for ratio: %.5f." % r)
         self.e = r / (1 - r)
+        h2 = self.heritability
         self.var = h2 * self.e / (1 - h2)
         self._optimize_beta()
         return -self.lml()
 
-    def _optimize_h2(self, h2):
-        # self._logger.debug("Evaluating for h2:%.5f", h2)
-        print("Evaluating for h2:%.5f" % h2)
+    def _h2_cost(self, h2, flip):
+        if flip:
+            h2 = 1 - h2
+        # self._logger.debug("Evaluating for h2: %e.", h2)
+        print("- Evaluating for h2: %.5f." % h2)
+        var = self.h2tovar(h2)
+        self.var = var
 
         opt = dict(xatol=R_EPS)
-        minimize_scalar(self._nlml, bounds=self._r_bounds(),
-                        options=opt, method='Bounded', args=(h2,))
-        print('----------------------------------------------------------------')
+        r = self.e / (self.e + 1)
+
+        minimize_scalar(self._noise_ratio_cost,
+                        bounds=golden_bracket(0.5 - abs(0.5 - r)),
+                        options=opt, method='Bounded', args=r > 0.5)
+
         return -self.lml()
-
-    def optimize(self):
-
-        from time import time
-
-        start = time()
-
-        self._logger.debug("Start of optimization.")
-        # self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, e=%.5f," +
-        #                    " beta=%s.", self.heritability, self.var, self.e,
-        #                    bytes(self.beta))
-        print("Initial parameters: h2=%.5f, var=%.5f, e=%.5f, beta=%s." % (self.heritability, self.var, self.e, str(self.beta)))
-
-        opt = dict(xatol=HYPERPARAM_EPS)
-
-        self._h2_bounds()
-        r = minimize_scalar(self._optimize_h2, options=opt,
-                            bounds=self._h2_bounds(),
-                            method='Bounded')
-        nfev = r.nfev
-
-        # fun_cost = self._create_fun_cost_both(opt_beta)
-        # opt = dict(xatol=_ALPHAS1_EPS, maxiter=_NALPHAS1, disp=disp)
-        # res = optimize.minimize_scalar(fun_cost, options=opt,
-        #                                 bounds=(_ALPHAS1_EPS,
-        #                                           1-_ALPHAS1_EPS),
-        #                                   method='Bounded')
-        # alpha1 = res.x
-        # alpha0 = self._best_alpha0(alpha1, opt_beta)[0]
-        #
-        # (self.sigg2, self.delta) = _alphas2hyperparams(alpha0, alpha1)
-        #
-        # nfev = 0
-        # if opt_var:
-        #     opt = dict(xatol=HYPERPARAM_EPS, disp=disp)
-        #
-        #     r = minimize_scalar(self._nlml, options=opt,
-        #                         bounds=self._h2_bounds(),
-        #                         method='Bounded', args=opt_beta)
-        #     self.var = self.h2tovar(r.x)
-        #     self._logger.debug("Optimizer message: %s.", r.message)
-        #     if r.status != 0:
-        #         self._logger.warn("Optimizer failed with status %d.", r.status)
-        #
-        #     nfev = r.nfev
-        #
-        # if opt_beta:
-        #     self._optimize_beta()
-        #
-        # self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-        #                    self.heritability, self.var, bytes(self.beta))
-        #
-        self._logger.debug("End of optimization (%.3f seconds" +
-                           ", %d function calls).", time() - start, nfev)
-
 
     ############################################################################
     ############################################################################

@@ -34,7 +34,33 @@ from .util import create_binomial
 #
 #     assert_almost_equal(lml1 - lml2, 0., decimal=5)
 
-# def test_binomial_optimize():
+def test_binomial_optimize():
+
+    seed = 10
+    nsamples = 400
+    nfeatures = 600
+    # ntrials = 2
+    ntrials = 300
+
+    M = ones((nsamples, 1))
+
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
+                             delta=0.1, sige2=0.1, seed=seed)
+
+    (Q, S) = qs_decomposition(G)
+
+    ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
+    print("Previous lml: %.5f" % ep.lml())
+    ep.optimize()
+    print("Genetic variance: %.5f" % ep.genetic_variance)
+    print("Environmental variance: %.5f" % ep.environmental_variance)
+    print("Instrumental variance: %.5f" % ep.instrumental_variance)
+    print("Covariates variance: %.5f" % ep.covariates_variance)
+    print("Heritability: %.5f" % ep.heritability)
+    print("Beta: %s" % str(ep.beta))
+    print("After lml: %.10f" % ep.lml())
+
+# def test_binomial_optimize2():
 #
 #     seed = 10
 #     nsamples = 200
@@ -50,41 +76,17 @@ from .util import create_binomial
 #
 #     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
 #     print("Previous lml: %.5f" % ep.lml())
-#     ep.optimize()
+#     ep.genetic_variance = 1.15389
+#     ep.environmental_variance = 0.03939
+#     # ep.covariates_variance
+#     ep.beta = array([0.0158122])
+#     print("After lml: %.10f" % ep.lml())
+#
 #     print("Genetic variance: %.5f" % ep.genetic_variance)
 #     print("Environmental variance: %.5f" % ep.environmental_variance)
 #     print("Instrumental variance: %.5f" % ep.instrumental_variance)
 #     print("Covariates variance: %.5f" % ep.covariates_variance)
 #     print("Beta: %s" % str(ep.beta))
-#     print("After lml: %.10f" % ep.lml())
-
-def test_binomial_optimize2():
-
-    seed = 10
-    nsamples = 200
-    nfeatures = 600
-    ntrials = 2
-
-    M = ones((nsamples, 1))
-
-    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
-                             delta=0.1, sige2=0.1, seed=seed)
-
-    (Q, S) = qs_decomposition(G)
-
-    ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
-    print("Previous lml: %.5f" % ep.lml())
-    ep.genetic_variance = 1.15389
-    ep.environmental_variance = 0.03939
-    # ep.covariates_variance
-    ep.beta = array([0.0158122])
-    print("After lml: %.10f" % ep.lml())
-
-    print("Genetic variance: %.5f" % ep.genetic_variance)
-    print("Environmental variance: %.5f" % ep.environmental_variance)
-    print("Instrumental variance: %.5f" % ep.instrumental_variance)
-    print("Covariates variance: %.5f" % ep.covariates_variance)
-    print("Beta: %s" % str(ep.beta))
 
 # def test_binomial_optimize():
 #
