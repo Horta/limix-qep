@@ -3,8 +3,7 @@ from __future__ import division
 import logging
 
 from numpy import sqrt
-
-# from ncephes.cprob import incbet
+from numpy import clip
 
 def make_sure_reasonable_conditioning(S):
     max_cond = 1e6
@@ -34,6 +33,20 @@ def golden_bracket(x):
     right = min(right, 1 - 1e-3)
 
     return (left, right)
+
+def normal_bracket(x, ratio=1/2):
+    assert x >= 0 and x <= 1
+
+    tleft = x - ratio/2
+    tright = x + ratio/2
+
+    right = tright - min(tleft, 0)
+    left  = tleft - max(tright-1, 0)
+
+    ac = tuple(clip([left, right], 1e-3, 1-1e-3))
+    if x > ac[0] and x < ac[1]:
+        return (ac[0], x, ac[1])
+    return (ac[0], ac[0] + (ac[1] - ac[0])/2, ac[1])
 
 def ratio_posterior(nsuccesses, ndraws):
     """ :math:`\\frac{\\int_0^1 r \\binom{n}{s} r^s (1 - r)^{n-s} dr}{\\int_0^1

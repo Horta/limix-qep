@@ -22,7 +22,7 @@ from numpy import var as variance
 from numpy import exp
 from numpy import log
 
-from .util import golden_bracket
+from .util import normal_bracket
 
 from .base import EP
 
@@ -51,10 +51,6 @@ class OverdispersionEP(EP):
         self._joint = Joint(Q, S)
         self._e = None
 
-        # useful for optimization only
-        # that is a hacky
-        self.__flip_noise_ratio = False
-
     def initialize_hyperparams(self):
         raise NotImplementedError
 
@@ -64,66 +60,76 @@ class OverdispersionEP(EP):
     ############################################################################
     ############################################################################
     @property
-    def e(self):
+    def noise_ratio(self):
+        e = self.environmental_variance
+        return e / (e + 1)
+
+    @noise_ratio.setter
+    def noise_ratio(self, value):
+        value = min(value, 1-1e-7)
+        self.environmental_variance = value / (1 - value)
+
+    @property
+    def environmental_variance(self):
         if self._e is None:
             self.initialize_hyperparams()
         return self._e
 
-    @e.setter
-    def e(self, value):
+    @environmental_variance.setter
+    def environmental_variance(self, v):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_update')
         self.clear_cache('_A0')
         self.clear_cache('diagK')
         self.clear_cache('K')
-        self._e = max(value, 1e-7)
-
-    @property
-    def environmental_variance(self):
-        return self.e
-
-    @environmental_variance.setter
-    def environmental_variance(self, v):
-        self.e = v
+        self._e = max(v, 1e-7)
 
     @property
     def instrumental_variance(self):
         return 1.
 
-    def _r_bounds(self):
-        r = self.e / (1 + self.e)
-        if self.__flip_noise_ratio:
-            r = 1 - r
-        bounds = golden_bracket(r)
-        return bounds
-
-    def _noise_ratio_cost(self, r, flip):
-        if flip:
-            r = 1 - r
+    def _noise_ratio_cost(self, r):
         print("  - Evaluating for ratio: %.5f." % r)
         self.e = r / (1 - r)
         h2 = self.heritability
         self.var = h2 * self.e / (1 - h2)
         self._optimize_beta()
-        return -self.lml()
+        c = -self.lml()
+        print("  - Cost: %.5f" % c)
+        return c
 
-    def _h2_cost(self, h2, flip):
-        if flip:
-            h2 = 1 - h2
+    def _h2_cost(self, h2):
         # self._logger.debug("Evaluating for h2: %e.", h2)
         print("- Evaluating for h2: %.5f." % h2)
         var = self.h2tovar(h2)
         self.var = var
 
-        opt = dict(xatol=R_EPS)
         r = self.e / (self.e + 1)
+        p = min(abs(self._previous_h2 - h2)*100, 1)
+        bracket = normal_bracket(r, p)
+        print("    Ratio bracket: %s." % str(bracket))
+        try:
+            res = minimize_scalar(self._noise_ratio_cost,
+                                bracket=bracket,
+                                tol=R_EPS, method='Brent')
+        except ValueError:
+            fa = self._noise_ratio_cost(bracket[0])
+            fc = self._noise_ratio_cost(bracket[2])
+            if fa < fc:
+                r = bracket[0]
+            else:
+                r = bracket[2]
+        else:
+            r = res.x
 
-        minimize_scalar(self._noise_ratio_cost,
-                        bounds=golden_bracket(0.5 - abs(0.5 - r)),
-                        options=opt, method='Bounded', args=r > 0.5)
-
+        self._previous_h2 = h2
+        self.e = r / (1 - r)
         return -self.lml()
+
+    def optimize(self):
+        self._previous_h2 = self.heritability
+        super(OverdispersionEP, self).optimize()
 
     ############################################################################
     ############################################################################

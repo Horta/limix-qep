@@ -75,7 +75,7 @@ class BernoulliEP(EP):
         h2 = clip(h2, 0.01, 0.9)
 
         offset = flmm.offset
-        self._var = h2/(1-h2)
+        self._v = h2/(1-h2)
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
     def predict(self, m, var, covar):

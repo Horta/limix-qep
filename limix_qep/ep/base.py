@@ -7,6 +7,7 @@ import numpy as np
 from numpy import inf
 from numpy import dot
 from numpy import log
+from numpy import clip
 from numpy import sqrt
 from numpy import empty
 from numpy import asarray
@@ -33,14 +34,12 @@ from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
 
-# from .fixed_ep import FixedEP
-
 from .config import MAX_EP_ITER
 from .config import EP_EPS
 from .config import HYPERPARAM_EPS
 
 from .util import make_sure_reasonable_conditioning
-from .util import golden_bracket
+from .util import normal_bracket
 
 
 class EP(Cached):
@@ -81,16 +80,12 @@ class EP(Cached):
         self._cavs = Cavity(nsamples)
         self._joint = Joint(Q, S)
 
-        self._var = None
+        self._v = None
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
         self._hmu = empty(nsamples)
         self._hvar = empty(nsamples)
-
-        # useful for optimization only
-        # that is a hacky
-        self._flip_heritability = False
 
     def _covariate_setup(self, M):
         self._M = M
@@ -100,21 +95,6 @@ class EP(Cached):
         self._svd_V = SVD[2]
         self._tM = ddot(self._svd_U, self._svd_S12, left=False)
         self.__tbeta = None
-
-    def fixed_ep(self):
-        self._update()
-        # (p1, p3, p4, _, _, p7, p8, f0, A0A0pT_teta) =\
-        #     self._lml_components()
-        #
-        # lml_nonbeta_part = p1 + p3 + p4 + p7 + p8
-        # Q = self._Q
-        # L = self._L()
-        # A = self._A1()
-        # opt_bnom = self._opt_beta_nom()
-        # vv1 = FixedEP(lml_nonbeta_part, A0A0pT_teta, f0,\
-        #                 A, L, Q, opt_bnom)
-        #
-        # return vv1
 
     def _posterior_normal(self, m, var, covar):
         m = atleast_1d(m)
@@ -145,11 +125,11 @@ class EP(Cached):
     @cached
     def K(self):
         """:math:`K = v Q S Q.T`"""
-        return self.var * self._QSQt()
+        return self.genetic_variance * self._QSQt()
 
     @cached
     def diagK(self):
-        return self.var * self._diagQSQt()
+        return self.genetic_variance * self._diagQSQt()
 
     def _diagQSQt(self):
         return self._QSQt().diagonal()
@@ -158,7 +138,6 @@ class EP(Cached):
     def m(self):
         """:math:`m = M \\beta`"""
         return dot(self._tM, self._tbeta)
-
 
     ############################################################################
     ############################################################################
@@ -173,14 +152,6 @@ class EP(Cached):
     @property
     def covariates_variance(self):
         return variance(self.m())
-
-    @property
-    def genetic_variance(self):
-        return self.var
-
-    @genetic_variance.setter
-    def genetic_variance(self, v):
-        self.var = v
 
     @property
     def environmental_variance(self):
@@ -201,7 +172,7 @@ class EP(Cached):
                                         self.covariates_variance)
 
     def h2tovar(self, h2):
-        varc = variance(self.m())
+        varc = self.covariates_variance
         return h2 * (1 + varc) / (1 - h2)
 
     @property
@@ -232,13 +203,13 @@ class EP(Cached):
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
     @property
-    def var(self):
-        if self._var is None:
+    def genetic_variance(self):
+        if self._v is None:
             self.initialize_hyperparams()
-        return self._var
+        return self._v
 
-    @var.setter
-    def var(self, value):
+    @genetic_variance.setter
+    def genetic_variance(self, value):
         self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
@@ -246,7 +217,7 @@ class EP(Cached):
         self.clear_cache('_update')
         self.clear_cache('K')
         self.clear_cache('diagK')
-        self._var = max(value, 1e-7)
+        self._v = max(value, 1e-7)
 
     @property
     def M(self):
@@ -268,10 +239,8 @@ class EP(Cached):
     @cached
     def _lml_components(self):
         self._update()
-        # Q = self._Q
         S = self._S
         m = self.m()
-        var = self.var
         ttau = self._sites.tau
         teta = self._sites.eta
         ctau = self._cavs.tau
@@ -281,7 +250,7 @@ class EP(Cached):
         A1 = self._A1()
         A2 = self._A2()
 
-        varS = var * S
+        vS = self.genetic_variance * S
         tctau = ttau + ctau
         A1m = A1*m
         A2m = A2*m
@@ -290,7 +259,7 @@ class EP(Cached):
 
         L = self._L()
 
-        p1 = - np.sum(log(np.diagonal(L))) - log(varS).sum() / 2
+        p1 = - np.sum(log(np.diagonal(L))) - log(vS).sum() / 2
 
         p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
         p3 += (A2teta * QB1Qt.dot(A2teta)).sum()
@@ -311,44 +280,11 @@ class EP(Cached):
         p8 = self._loghz.sum()
 
         p9 = log(A2).sum() / 2
-        #
-        # p7 -= 0.5 * np.log(ttau).sum()
-
-
-        # p3 = np.sum(teta*teta*self._AAA())
-        # A0A0pT_teta = teta / self._iAAT()
-        # QtA0A0pT_teta = dot(Q.T, A0A0pT_teta)
-        # L = self._L()
-        # L_0 = stl(L, QtA0A0pT_teta)
-        # p3 += dot(L_0.T, L_0)
-        # vv = 2*np.log(np.abs(teta))
-        # p3 -= np.exp(logsumexp(vv - np.log(tctau)))
-        # p3 *= 0.5
-        #
-        # p4 = 0.5 * np.sum(ceta * (ttau * cmu - 2*teta) / tctau)
-        #
-        # f0 = None
-        # L_1 = cho_solve(L, QtA0A0pT_teta)
-        # f0 = A * dot(Q, L_1)
-        # p5 = dot(m, A0A0pT_teta) - dot(m, f0)
-        #
-        # p6 = - 0.5 * np.sum(m * Am) +\
-        #     0.5 * dot(Am, dot(Q, cho_solve(L, dot(Q.T, Am))))
-        #
-        # p7 = 0.5 * (np.log(ttau + ctau).sum() - np.log(ctau).sum())
-        #
-        # p7 -= 0.5 * np.log(ttau).sum()
-        #
-        # p8 = self._loghz.sum()
 
         return (p1, p3, p4, p5, p6, p7, p8, p9)
-        # return (p1, p3, p4, p5, p6, p7, p8, p9, f0, A0A0pT_teta)
 
     def lml(self):
-        # (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
-        (p1, p3, p4, p5, p6, p7, p8, p9) = self._lml_components()
-        # print(p1, p3, p4, p5, p6, p7, p8, p9)
-        return p1 + p3 + p4 + p5 + p6 + p7 + p8 + p9
+        return sum(self._lml_components())
 
     ############################################################################
     ############################################################################
@@ -388,7 +324,6 @@ class EP(Cached):
             self.clear_cache('_A2')
             self.clear_cache('_QB1Qt')
 
-
             self._joint.update(m, teta, self._A1(), self._A2(), self._QB1Qt(),
                                self.K())
 
@@ -414,7 +349,6 @@ class EP(Cached):
 
         # self._logger.debug('EP loop has performed %d iterations.', i)
         # print('EP loop has performed %d iterations.' % (i,))
-
 
     ############################################################################
     ############################################################################
@@ -472,12 +406,12 @@ class EP(Cached):
         self._logger.debug("Beta optimization performed %d steps " +
                            "to find %s.", i, bytes(self._tbeta))
 
-    def _h2_cost(self, h2, flip):
-        if flip:
-            h2 = 1 - h2
+    def _h2_cost(self, h2):
+        h2 = clip(h2, 1e-3, 1-1e-3)
         self._logger.debug("Evaluating for h2: %e.", h2)
+        print("Evaluating for h2: %.5f." % h2)
         var = self.h2tovar(h2)
-        self.var = var
+        self.genetic_variance = var
         self._optimize_beta()
         return -self.lml()
 
@@ -489,33 +423,29 @@ class EP(Cached):
 
         self._logger.debug("Start of optimization.")
         self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
-                           self.heritability, self.var, bytes(self.beta))
+                           self.heritability, self.genetic_variance, bytes(self.beta))
 
         nfev = 0
-        opt = dict(xatol=HYPERPARAM_EPS)
 
         h2 = self.heritability
-        flip = h2 > 0.5
-        r = minimize_scalar(self._h2_cost, options=opt,
-                            bounds=golden_bracket(0.5 - abs(0.5 - h2)),
-                            method='Bounded',
-                            args=flip)
+        print("Bracket: %s." % str(normal_bracket(h2)))
+        r = minimize_scalar(self._h2_cost,
+                            bracket=normal_bracket(h2),
+                            method='Brent', tol=HYPERPARAM_EPS)
 
-        if flip:
-            r.x = 1 - r.x
+        self.genetic_variance = self.h2tovar(r.x)
 
-        self.var = self.h2tovar(r.x)
+        self._logger.debug("Optimizer info: %s.", str(r))
 
-        self._logger.debug("Optimizer message: %s.", r.message)
-        if r.status != 0:
-            self._logger.warn("Optimizer failed with status %d.", r.status)
+        if not r.success:
+            self._logger.warn("Optimizer has failed: %s.", str(r))
 
         nfev = r.nfev
 
         self._optimize_beta()
 
         self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-                           self.heritability, self.var, bytes(self.beta))
+                           self.heritability, self.genetic_variance, bytes(self.beta))
 
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
@@ -563,7 +493,7 @@ class EP(Cached):
         Q = self._Q
         A1 = self._A1()
         QtA1Q = dot(Q.T, ddot(A1, Q, left=True))
-        return sum2diag(QtA1Q, 1./(self.var * self._S))
+        return sum2diag(QtA1Q, 1./(self.genetic_variance * self._S))
 
     @cached
     def _L(self):
