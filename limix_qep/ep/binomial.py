@@ -6,6 +6,7 @@ import logging
 from numpy import log
 from numpy import sqrt
 from numpy import exp
+from numpy import clip
 from numpy import full
 from numpy import asarray
 from numpy import isscalar
@@ -81,8 +82,7 @@ class BinomialEP(OverdispersionEP):
         gv = flmm.genetic_variance
         nv = flmm.noise_variance
         h2 = gv / (gv + nv)
-        # h2 = bern2lat_correction(h2, ratio, ratio)
-        h2 = max(h2, 0.01)
+        h2 = clip(h2, 0.01, 0.9)
 
         offset = flmm.offset
         self._var = 2*h2/(1-h2)

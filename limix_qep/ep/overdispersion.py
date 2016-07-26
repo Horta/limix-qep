@@ -52,11 +52,6 @@ class OverdispersionEP(EP):
     def initialize_hyperparams(self):
         raise NotImplementedError
 
-    @cached
-    def K(self):
-        """:math:`K = (v Q S Q.T + e I)`"""
-        return sum2diag(self.var * self._QSQt(), self.e)
-
     ############################################################################
     ############################################################################
     ######################## Getters and setters ###############################
@@ -73,11 +68,17 @@ class OverdispersionEP(EP):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_update')
+        self.clear_cache('diagK')
+        self.clear_cache('K')
         self._e = max(value, 1e-7)
 
     @property
     def environmental_variance(self):
         return self.e
+
+    @environmental_variance.setter
+    def environmental_variance(self, v):
+        self.e = v
 
     @property
     def instrumental_variance(self):
@@ -86,12 +87,12 @@ class OverdispersionEP(EP):
     def _r_bounds(self):
         # golden ratio
         gs = 0.5 * (3.0 - np.sqrt(5.0))
-        r_left = 1e-3
+        r_left = 1e-2
         curr_r = self.e / (1 + self.e)
         r_right = (curr_r + r_left * gs - r_left) / gs
-        r_right = min(r_right, 0.999)
+        r_right = min(r_right, 0.99)
         if r_right <= r_left:
-            r_right = min(r_left + 1e-2, 0.999)
+            r_right = min(r_left + 1e-3, 0.99)
 
         r_bounds = (r_left, r_right)
 
@@ -193,3 +194,12 @@ class OverdispersionEP(EP):
         """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
         ttau = self._sites.tau
         return 1 / (self.e * ttau + 1)
+
+    @cached
+    def K(self):
+        """:math:`K = (v Q S Q.T + e I)`"""
+        return sum2diag(self.var * self._QSQt(), self.e)
+
+    @cached
+    def diagK(self):
+        return self.var * self._diagQSQt() + self.e

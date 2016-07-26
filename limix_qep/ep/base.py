@@ -53,6 +53,7 @@ class EP(Cached):
     def __init__(self, M, Q, S, QSQt=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
+        self._ep_params_initialized = False
 
         nsamples = M.shape[0]
 
@@ -124,11 +125,12 @@ class EP(Cached):
 
         return (mu, sig2)
 
-    @cached
     def _init_ep_params(self):
+        assert self._ep_params_initialized is False
         self._logger.debug("EP parameters initialization.")
         self._joint.initialize(self.m(), self.diagK())
         self._sites.initialize()
+        self._ep_params_initialized = True
 
     def initialize_hyperparams(self):
         raise NotImplementedError
@@ -169,9 +171,17 @@ class EP(Cached):
     def genetic_variance(self):
         return self.var
 
+    @genetic_variance.setter
+    def genetic_variance(self, v):
+        self.var = v
+
     @property
     def environmental_variance(self):
         return 1.
+
+    @environmental_variance.setter
+    def environmental_variance(self, v):
+        raise NotImplementedError
 
     @property
     def instrumental_variance(self):
@@ -212,8 +222,6 @@ class EP(Cached):
 
     @beta.setter
     def beta(self, value):
-        if self.__tbeta is None:
-            self.initialize_hyperparams()
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
     @property
@@ -332,6 +340,7 @@ class EP(Cached):
     def lml(self):
         # (p1, p3, p4, p5, p6, p7, p8, _, _) = self._lml_components()
         (p1, p3, p4, p5, p6, p7, p8, p9) = self._lml_components()
+        print(p1, p3, p4, p5, p6, p7, p8, p9)
         return p1 + p3 + p4 + p5 + p6 + p7 + p8 + p9
 
     ############################################################################
@@ -341,7 +350,8 @@ class EP(Cached):
     ############################################################################
     @cached
     def _update(self):
-        self._init_ep_params()
+        if not self._ep_params_initialized:
+            self._init_ep_params()
 
         self._logger.debug('EP loop has started.')
         m = self.m()
