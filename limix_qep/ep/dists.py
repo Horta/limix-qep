@@ -35,10 +35,7 @@ class SiteLik(object):
         return that
 
 class Joint(object):
-    def __init__(self, Q, S):
-        self._Q = Q
-        self._S = S
-        nsamples = Q.shape[0]
+    def __init__(self, nsamples):
         self.tau = empty(nsamples)
         self.eta = empty(nsamples)
 

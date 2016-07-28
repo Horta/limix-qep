@@ -67,4 +67,5 @@ def test_bernoulli_prediction():
     prob_yi = [0.48705911290518589, 0.40605290158743768,
                0.84365032664655915, 0.83794141874476269]
 
+    print(ep)
     assert_almost_equal(prob_y[:4], prob_yi, decimal=6)

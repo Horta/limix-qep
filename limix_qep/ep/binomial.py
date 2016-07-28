@@ -41,8 +41,8 @@ from .util import ratio_posterior
 
 # K = v (Q S Q.T + \delta I)
 class BinomialEP(OverdispersionEP):
-    def __init__(self, y, ntrials, M, Q0, Q1, S0, QSQt=None):
-        super(BinomialEP, self).__init__(M, Q0, S0, QSQt=QSQt)
+    def __init__(self, y, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
+        super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         y = asarray(y, float)
@@ -54,7 +54,6 @@ class BinomialEP(OverdispersionEP):
 
         self._y = y
         self._ntrials = ntrials
-        self._Q1 = Q1
 
         if issingleton(y):
             raise ValueError("The phenotype array has a single unique value" +
@@ -77,9 +76,9 @@ class BinomialEP(OverdispersionEP):
         ratios = ratio_posterior(y, ntrials)
         latent = norm(0, 1).isf(1 - ratios)
 
-        Q0 = self._Q
+        Q0 = self._Q0
         Q1 = self._Q1
-        flmm = FastLMM(latent, QS=[[Q0, Q1], [self._S]])
+        flmm = FastLMM(latent, QS=[[Q0, Q1], [self._S0]])
         flmm.learn()
         gv = flmm.genetic_variance
         nv = flmm.noise_variance
@@ -87,8 +86,9 @@ class BinomialEP(OverdispersionEP):
         h2 = clip(h2, 0.01, 0.9)
 
         offset = flmm.offset
-        self._var = 2*h2/(1-h2)
-        self._e = 1.
+        self.environmental_variance = self.instrumental_variance
+        import ipdb; ipdb.set_trace()
+        self.pseudo_heritability = h2
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
         print("INITIAL STUFF")

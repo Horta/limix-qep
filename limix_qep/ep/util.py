@@ -57,3 +57,9 @@ def ratio_posterior(nsuccesses, ndraws):
     a = sp.special.beta(nsuccesses+1+1, ndraws - nsuccesses + 1)
     b = sp.special.beta(nsuccesses+1, ndraws - nsuccesses + 1)
     return a/b
+
+def greek_letter(name):
+    names = ['alpha', 'beta']
+    for i in range(len(names)):
+        if name == names[i]:
+            return unichr(0x3b1 + i).encode('utf-8')

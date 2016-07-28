@@ -19,18 +19,20 @@ from .base import EP
 class OverdispersionEP(EP):
     """
     .. math::
-        K = v Q S Q.T
+        K = Q (v S + e I) Q.T
         M = svd_U svd_S svd_V.T
         \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
         \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
         m = M \\beta
         m = \\tilde M \\tilde \\beta
     """
-    def __init__(self, M, Q, S, QSQt=None):
-        super(OverdispersionEP, self).__init__(M, Q, S, QSQt=QSQt)
+    def __init__(self, M, Q0, Q1, S0, Q0S0Q0t=None):
+        super(OverdispersionEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        self._joint = Joint(Q, S)
+        nsamples = M.shape[0]
+        self._joint = Joint(nsamples)
+        self._Q1 = Q1
         self._e = None
 
     def initialize_hyperparams(self):
@@ -60,19 +62,24 @@ class OverdispersionEP(EP):
         return self._e
 
     @environmental_variance.setter
-    def environmental_variance(self, v):
+    def environmental_variance(self, value):
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
         self.clear_cache('_update')
         self.clear_cache('_A0')
         self.clear_cache('diagK')
         self.clear_cache('K')
-        self._e = max(v, 1e-7)
+        self._e = max(value, 1e-7)
 
     @property
     def instrumental_variance(self):
         return 1.
 
+    ############################################################################
+    ############################################################################
+    #################### Optimization related methods ##########################
+    ############################################################################
+    ############################################################################
     def _noise_ratio_cost(self, r):
         print("  - Evaluating for ratio: %.5f." % r)
         self.environmental_variance = r / (1 - r)
@@ -137,8 +144,15 @@ class OverdispersionEP(EP):
     @cached
     def K(self):
         """:math:`K = (v Q S Q.T + e I)`"""
-        return sum2diag(self.genetic_variance * self._QSQt(), self.environmental_variance)
+        return sum2diag(self.genetic_variance * self._Q0S0Q0t(), self.environmental_variance)
 
     @cached
     def diagK(self):
-        return self.genetic_variance * self._diagQSQt() + self.environmental_variance
+        return self.genetic_variance * self._diagQ0S0Q0t() + self.environmental_variance
+
+    # def __str__(self):
+    #     v = self.genetic_variance
+    #     e = self.environmental_variance
+    #     i = self.instrumental_variance
+    #
+    #     "prior covariance: v * Kinship + e * I"

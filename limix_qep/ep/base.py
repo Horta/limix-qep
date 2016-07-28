@@ -15,6 +15,8 @@ from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
 from numpy import var as variance
+from numpy import get_printoptions
+from numpy import set_printoptions
 from numpy.linalg import multi_dot
 
 from scipy.linalg import cho_factor
@@ -45,40 +47,40 @@ from .util import normal_bracket
 class EP(Cached):
     """
     .. math::
-        K = v Q S Q.T
+        K = v Q S Q0.T
         M = svd_U svd_S svd_V.T
         \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
         \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
         m = M \\beta
         m = \\tilde M \\tilde \\beta
     """
-    def __init__(self, M, Q, S, QSQt=None):
+    def __init__(self, M, Q0, S0, Q0S0Q0t=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
         self._ep_params_initialized = False
 
         nsamples = M.shape[0]
 
-        if not np.all(np.isfinite(Q)) or not np.all(np.isfinite(S)):
+        if not np.all(np.isfinite(Q0)) or not np.all(np.isfinite(S0)):
             raise ValueError("There are non-finite numbers in the provided" +
                              " eigen decomposition.")
 
-        if S.min() <= 0:
+        if S0.min() <= 0:
             raise ValueError("The provided covariance matrix is not" +
                             " positive-definite because the minimum eigvalue" +
-                            " is %f." % S.min())
+                            " is %f." % S0.min())
 
-        make_sure_reasonable_conditioning(S)
+        make_sure_reasonable_conditioning(S0)
 
         self._covariate_setup(M)
-        self._S = S
-        self._Q = Q
-        self.__QSQt = QSQt
+        self._S0 = S0
+        self._Q0 = Q0
+        self.__Q0S0Q0t = Q0S0Q0t
 
         self._psites = SiteLik(nsamples)
         self._sites = SiteLik(nsamples)
         self._cavs = Cavity(nsamples)
-        self._joint = Joint(Q, S)
+        self._joint = Joint(nsamples)
 
         self._v = None
         self.__tbeta = None
@@ -102,13 +104,13 @@ class EP(Cached):
         covar = atleast_2d(covar)
 
         A1 = self._A1()
-        QB1Qt = self._QB1Qt()
+        Q0B1Q0t = self._Q0B1Q0t()
 
         mu = m - covar.dot(self._r())
 
         A1covar = ddot(A1, covar.T, left=True)
         sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
-               + dotd(A1covar.T, QB1Qt.dot(A1covar))
+               + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
 
         return (mu, sig2)
 
@@ -124,15 +126,15 @@ class EP(Cached):
 
     @cached
     def K(self):
-        """:math:`K = v Q S Q.T`"""
-        return self.genetic_variance * self._QSQt()
+        """:math:`K = v Q S Q0.T`"""
+        return self.genetic_variance * self._Q0S0Q0t()
 
     @cached
     def diagK(self):
-        return self.genetic_variance * self._diagQSQt()
+        return self.genetic_variance * self._diagQ0S0Q0t()
 
-    def _diagQSQt(self):
-        return self._QSQt().diagonal()
+    def _diagQ0S0Q0t(self):
+        return self._Q0S0Q0t().diagonal()
 
     @cached
     def m(self):
@@ -170,6 +172,24 @@ class EP(Cached):
         return self.genetic_variance / (self.genetic_variance +
                                         self.environmental_variance +
                                         self.covariates_variance)
+
+    @heritability.setter
+    def heritability(self, value):
+        t = (self.environmental_variance + self.covariates_variance)
+        self.genetic_variance  = t * value / (1-value)
+
+    @property
+    def pseudo_heritability(self):
+        return self.genetic_variance / (self.genetic_variance +
+                                        self.environmental_variance +
+                                        self.instrumental_variance +
+                                        self.covariates_variance)
+
+    @pseudo_heritability.setter
+    def pseudo_heritability(self, value):
+        t = (self.environmental_variance + self.covariates_variance +
+             self.instrumental_variance)
+        self.genetic_variance = t * value / (1-value)
 
     def h2tovar(self, h2):
         varc = self.covariates_variance
@@ -213,7 +233,7 @@ class EP(Cached):
         self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
-        self.clear_cache('_QB1Qt')
+        self.clear_cache('_Q0B1Q0t')
         self.clear_cache('_update')
         self.clear_cache('K')
         self.clear_cache('diagK')
@@ -239,7 +259,7 @@ class EP(Cached):
     @cached
     def _lml_components(self):
         self._update()
-        S = self._S
+        S0 = self._S0
         m = self.m()
         ttau = self._sites.tau
         teta = self._sites.eta
@@ -250,29 +270,29 @@ class EP(Cached):
         A1 = self._A1()
         A2 = self._A2()
 
-        vS = self.genetic_variance * S
+        vS0 = self.genetic_variance * S0
         tctau = ttau + ctau
         A1m = A1*m
         A2m = A2*m
-        QB1Qt = self._QB1Qt()
+        Q0B1Q0t = self._Q0B1Q0t()
         A2teta = A2 * teta
 
         L = self._L()
 
-        p1 = - np.sum(log(np.diagonal(L))) - log(vS).sum() / 2
+        p1 = - np.sum(log(np.diagonal(L))) - log(vS0).sum() / 2
 
         p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
-        p3 += (A2teta * QB1Qt.dot(A2teta)).sum()
+        p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
         p3 -= ((teta * teta) / tctau).sum()
         p3 /= 2
 
         p4 = (ceta * (ttau * cmu - 2*teta) / tctau).sum() / 2
 
-        A1mQB1Qt = A1m.dot(QB1Qt)
+        A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
 
-        p5 = A2m.dot(teta) - A1mQB1Qt.dot(A2*teta)
+        p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2*teta)
 
-        p6 = - A1m.dot(m) + A1mQB1Qt.dot(A1m)
+        p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
         p6 /= 2
 
         p7 = (log(tctau).sum() - log(ctau).sum()) / 2
@@ -322,9 +342,9 @@ class EP(Cached):
             self.clear_cache('_L')
             self.clear_cache('_A1')
             self.clear_cache('_A2')
-            self.clear_cache('_QB1Qt')
+            self.clear_cache('_Q0B1Q0t')
 
-            self._joint.update(m, teta, self._A1(), self._A2(), self._QB1Qt(),
+            self._joint.update(m, teta, self._A1(), self._A2(), self._Q0B1Q0t(),
                                self.K())
 
             tdiff = np.abs(self._psites.tau - ttau)
@@ -348,7 +368,6 @@ class EP(Cached):
                               ' been attained.')
 
         # self._logger.debug('EP loop has performed %d iterations.', i)
-        # print('EP loop has performed %d iterations.' % (i,))
 
     ############################################################################
     ############################################################################
@@ -358,14 +377,14 @@ class EP(Cached):
     def _optimal_tbeta_nom(self):
         A1 = self._A1()
         A2 = self._A2()
-        QB1Qt = self._QB1Qt()
+        Q0B1Q0t = self._Q0B1Q0t()
         teta = self._sites.eta
-        return A2 * teta - A1 * QB1Qt.dot(A2 * teta)
+        return A2 * teta - A1 * Q0B1Q0t.dot(A2 * teta)
 
     def _optimal_tbeta_denom(self):
-        QB1Qt = self._QB1Qt()
+        Q0B1Q0t = self._Q0B1Q0t()
         A1M = ddot(self._A1(), self._tM, left=True)
-        return dot(self._tM.T, A1M) - multi_dot([A1M.T, QB1Qt, A1M])
+        return dot(self._tM.T, A1M) - multi_dot([A1M.T, Q0B1Q0t, A1M])
 
     def _optimal_tbeta(self):
         self._update()
@@ -389,7 +408,6 @@ class EP(Cached):
 
     def _optimize_beta(self):
         self._logger.debug("Beta optimization.")
-        # print("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
         step = inf
@@ -399,17 +417,14 @@ class EP(Cached):
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
             self._logger.debug("Beta step: %e.", step)
-            # print("Beta step: %.5f." % step)
             i += 1
 
-        # print("Beta optimization took %d steps." % i)
         self._logger.debug("Beta optimization performed %d steps " +
                            "to find %s.", i, bytes(self._tbeta))
 
     def _h2_cost(self, h2):
         h2 = clip(h2, 1e-3, 1-1e-3)
         self._logger.debug("Evaluating for h2: %e.", h2)
-        print("Evaluating for h2: %.5f." % h2)
         var = self.h2tovar(h2)
         self.genetic_variance = var
         self._optimize_beta()
@@ -428,7 +443,6 @@ class EP(Cached):
         nfev = 0
 
         h2 = self.heritability
-        print("Bracket: %s." % str(normal_bracket(h2)))
         r = minimize_scalar(self._h2_cost,
                             bracket=normal_bracket(h2),
                             method='Brent', tol=HYPERPARAM_EPS)
@@ -471,29 +485,29 @@ class EP(Cached):
         return 1.0
 
     @cached
-    def _SQt(self):
+    def _S0Q0t(self):
         """:math:`S Q^t`"""
-        return ddot(self._S, self._Q.T, left=True)
+        return ddot(self._S0, self._Q0.T, left=True)
 
-    def _QSQt(self):
+    def _Q0S0Q0t(self):
         """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
-        if self.__QSQt is None:
-            Q = self._Q
-            self.__QSQt = dot(Q, self._SQt())
-        return self.__QSQt
+        if self.__Q0S0Q0t is None:
+            Q0 = self._Q0
+            self.__Q0S0Q0t = dot(Q0, self._S0Q0t())
+        return self.__Q0S0Q0t
 
     @cached
-    def _QB1Qt(self):
-        Q = self._Q
-        return Q.dot(cho_solve(self._L(), Q.T))
+    def _Q0B1Q0t(self):
+        Q0 = self._Q0
+        return Q0.dot(cho_solve(self._L(), Q0.T))
 
     def _B(self):
         """:math:`\\mathrm B = \\mathrm Q^t \\mathrm A_1 \\mathrm Q +
                   \\mathrm S^{-1} v^{-1}`"""
-        Q = self._Q
+        Q0 = self._Q0
         A1 = self._A1()
-        QtA1Q = dot(Q.T, ddot(A1, Q, left=True))
-        return sum2diag(QtA1Q, 1./(self.genetic_variance * self._S))
+        Q0tA1Q0 = dot(Q0.T, ddot(A1, Q0, left=True))
+        return sum2diag(Q0tA1Q0, 1./(self.genetic_variance * self._S0))
 
     @cached
     def _L(self):
@@ -504,9 +518,56 @@ class EP(Cached):
     def _r(self):
         teta = self._sites.eta
         A1 = self._A1()
-        QB1Qt = self._QB1Qt()
+        Q0B1Q0t = self._Q0B1Q0t()
         K = self.K()
 
         u = self.m() + K.dot(teta)
         A1u = A1 * u
-        return A1u - A1*QB1Qt.dot(A1u) - teta
+        return A1u - A1*Q0B1Q0t.dot(A1u) - teta
+
+    def __str__(self):
+        v = self.genetic_variance
+        e = self.environmental_variance
+        beta = self.beta
+        M = self.M
+        Q0 = self._Q0
+        Q1 = self._Q1
+        S0 = self._S0
+        tvar = self.total_variance
+        printopts = get_printoptions()
+        set_printoptions(precision=3, threshold=10)
+        def indent(s):
+            final = []
+            for si in s.split('\n'):
+                final.append('      ' + si)
+            return '\n'.join(final)
+        cvar = self.covariates_variance
+        h2 = self.heritability
+        s = """
+Prior:
+  Normal(M {b}.T, {v} * Kinship + {e} * I)
+
+Definitions:
+  Kinship = Q0 S0 Q0.T
+  M       = covariates effect
+
+Input data:
+  M:
+{M}
+  Q0:
+{Q0}
+  Q1:
+{Q1}
+  S0:
+{S0}
+
+Statistics (latent space):
+  Total variance:      {tvar}
+  Covariates variance: {cvar}
+  Heritability:        {h2}""".format(v="%.4f" % v, e="%.4f" % e, b=beta,
+                          Q0=indent(bytes(Q0)), Q1=indent(bytes(Q1)),
+                          S0=indent(bytes(S0)), M=indent(bytes(M)),
+                          tvar="%.4f" % tvar, cvar="%.4f" % cvar,
+                          h2="%.4f" % h2)
+        set_printoptions(printopts)
+        return s

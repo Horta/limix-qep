@@ -35,8 +35,8 @@ class BernoulliPredictor(object):
 
 # K = \sigma_g^2 Q S Q.T
 class BernoulliEP(EP):
-    def __init__(self, y, M, Q0, Q1, S0, QSQt=None):
-        super(BernoulliEP, self).__init__(M, Q0, S0, QSQt=QSQt)
+    def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
+        super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         y = asarray(y, float)
@@ -64,9 +64,9 @@ class BernoulliEP(EP):
         latent = y / y.std()
         latent = latent - latent.mean() + latent_mean
 
-        Q0 = self._Q
+        Q0 = self._Q0
         Q1 = self._Q1
-        flmm = FastLMM(full(len(y), latent), QS=[[Q0, Q1], [self._S]])
+        flmm = FastLMM(full(len(y), latent), QS=[[Q0, Q1], [self._S0]])
         flmm.learn()
         gv = flmm.genetic_variance
         nv = flmm.noise_variance
