@@ -15,7 +15,6 @@ from numpy import empty_like
 from numpy import atleast_1d
 from numpy import atleast_2d
 from numpy import var as variance
-from numpy import get_printoptions
 from numpy import set_printoptions
 from numpy.linalg import multi_dot
 
@@ -534,7 +533,6 @@ class EP(Cached):
         Q1 = self._Q1
         S0 = self._S0
         tvar = self.total_variance
-        printopts = get_printoptions()
         set_printoptions(precision=3, threshold=10)
         def indent(s):
             final = []
@@ -570,5 +568,7 @@ Statistics (latent space):
                           S0=indent(bytes(S0)), M=indent(bytes(M)),
                           tvar="%.4f" % tvar, cvar="%.4f" % cvar,
                           h2="%.4f" % h2)
-        set_printoptions(printopts)
+        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+                         precision=8, suppress=False, threshold=1000,
+                         formatter=None)
         return s

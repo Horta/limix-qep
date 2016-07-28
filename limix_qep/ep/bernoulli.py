@@ -10,7 +10,6 @@ from numpy import full
 from numpy import asarray
 from numpy import isfinite
 from numpy import set_printoptions
-from numpy import get_printoptions
 from numpy import all as all_
 from numpy.linalg import lstsq
 
@@ -105,7 +104,6 @@ class BernoulliEP(EP):
 
 
     def __str__(self):
-        printopts = get_printoptions()
         set_printoptions(precision=3, threshold=10)
         s = """
 Phenotype definition:
@@ -114,6 +112,7 @@ Phenotype definition:
 
 Input data:
   y: {y}""".format(y=bytes(self._y))
-        set_printoptions(printopts)
-
+        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+                         precision=8, suppress=False, threshold=1000,
+                         formatter=None)
         return s + "\n" + super(BernoulliEP, self).__str__()

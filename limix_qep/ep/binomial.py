@@ -10,7 +10,6 @@ from numpy import isscalar
 from numpy import isfinite
 from numpy import all as all_
 from numpy import set_printoptions
-from numpy import get_printoptions
 
 from numpy.linalg import lstsq
 
@@ -85,16 +84,9 @@ class BinomialEP(OverdispersionEP):
         h2 = clip(h2, 0.01, 0.9)
 
         offset = flmm.offset
+        self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
         self.environmental_variance = self.instrumental_variance
         self.pseudo_heritability = h2
-        self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
-
-        print("INITIAL STUFF")
-        print("H2 %.5f" % h2)
-        print("Offset %s" % str(self.beta))
-
-        # return h2 * (1 + varc) / (1 - h2 - delta*h2)
-        # self._delta =
 
     # def predict(self, m, var, covar):
     #     (mu, sig2) = self._posterior_normal(m, var, covar)
@@ -262,22 +254,23 @@ class BinomialEP(OverdispersionEP):
     #     self._logger.debug("End of optimization.")
 
     def __str__(self):
-        printopts = get_printoptions()
         set_printoptions(precision=3, threshold=10)
         s = """
 Phenotype definition:
-  y_l = {sum}_{{j=1}}^{{n}} Indicator(f_l + {epsilon}_{{l,j}} > 0), where f_l is
-        the latent phenotype of the l-th individual and {epsilon}_{{l,j}} is
-        distributed according to Normal(0, i).
+  y_i = {sum}_{{j=1}}^{{n}} Indicator(f_i + {epsilon}_{{i,j}} > 0), where f_i is
+        the latent phenotype of the i-th individual and {epsilon}_{{i,j}} is
+        distributed according to Normal(0, 1).
 
 Definitions:
-  i: instrumental variance
+  {epsilon}_{{i,j}}: instrumental signal (noise)
 
 Input data:
   y: {y}
   d: {ntrials}""".format(y=bytes(self._y), ntrials=bytes(self._ntrials),
                          epsilon=greek_letter('epsilon'),
                          sum=summation_symbol())
-        set_printoptions(printopts)
 
+        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+                         precision=8, suppress=False, threshold=1000,
+                         formatter=None)
         return s + "\n" + super(BinomialEP, self).__str__()

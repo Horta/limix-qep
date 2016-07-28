@@ -14,7 +14,6 @@ from .dists import Joint
 from .util import normal_bracket
 from .base import EP
 
-from numpy import get_printoptions
 from numpy import set_printoptions
 
 
@@ -162,7 +161,6 @@ class OverdispersionEP(EP):
         Q1 = self._Q1
         S0 = self._S0
         tvar = self.total_variance
-        printopts = get_printoptions()
         set_printoptions(precision=3, threshold=10)
         def indent(s):
             final = []
@@ -199,5 +197,7 @@ Statistics (latent space):
                           S0=bytes(S0), M=indent(bytes(M)),
                           tvar="%.4f" % tvar, cvar="%.4f" % cvar,
                           h2="%.4f" % h2, ivar="%.4f" % ivar)
-        set_printoptions(printopts)
+        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+                         precision=8, suppress=False, threshold=1000,
+                         formatter=None)
         return s
