@@ -9,6 +9,8 @@ from numpy import exp
 from numpy import full
 from numpy import asarray
 from numpy import isfinite
+from numpy import set_printoptions
+from numpy import get_printoptions
 from numpy import all as all_
 from numpy.linalg import lstsq
 
@@ -100,3 +102,18 @@ class BernoulliEP(EP):
         b = sqrt(self._cavs.tau**2 + self._cavs.tau)
         c = self._y11 * self._cavs.eta / b
         self._loghz[:] = logcdf(c)
+
+
+    def __str__(self):
+        printopts = get_printoptions()
+        set_printoptions(precision=3, threshold=10)
+        s = """
+Phenotype definition:
+  y_l = Indicator(f_l > 0), where f_l is the latent phenotype of the l-th
+        individual.
+
+Input data:
+  y: {y}""".format(y=bytes(self._y))
+        set_printoptions(printopts)
+
+        return s + "\n" + super(BernoulliEP, self).__str__()

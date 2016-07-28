@@ -59,7 +59,10 @@ def ratio_posterior(nsuccesses, ndraws):
     return a/b
 
 def greek_letter(name):
-    names = ['alpha', 'beta']
+    names = ['alpha', 'beta', 'bla1', 'bla2', 'epsilon']
     for i in range(len(names)):
         if name == names[i]:
             return unichr(0x3b1 + i).encode('utf-8')
+
+def summation_symbol():
+    return unichr(0x2211).encode('utf-8')

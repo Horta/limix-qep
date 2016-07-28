@@ -14,6 +14,9 @@ from .dists import Joint
 from .util import normal_bracket
 from .base import EP
 
+from numpy import get_printoptions
+from numpy import set_printoptions
+
 
 # K = Q (v S + e I) Q.T
 class OverdispersionEP(EP):
@@ -150,9 +153,51 @@ class OverdispersionEP(EP):
     def diagK(self):
         return self.genetic_variance * self._diagQ0S0Q0t() + self.environmental_variance
 
-    # def __str__(self):
-    #     v = self.genetic_variance
-    #     e = self.environmental_variance
-    #     i = self.instrumental_variance
-    #
-    #     "prior covariance: v * Kinship + e * I"
+    def __str__(self):
+        v = self.genetic_variance
+        e = self.environmental_variance
+        beta = self.beta
+        M = self.M
+        Q0 = self._Q0
+        Q1 = self._Q1
+        S0 = self._S0
+        tvar = self.total_variance
+        printopts = get_printoptions()
+        set_printoptions(precision=3, threshold=10)
+        def indent(s):
+            final = []
+            for si in s.split('\n'):
+                final.append('      ' + si)
+            return '\n'.join(final)
+        cvar = self.covariates_variance
+        ivar = self.instrumental_variance
+        h2 = self.heritability
+        s = """
+Prior:
+  Normal(M {b}.T, {v} * Kinship + {e} * I)
+
+Definitions:
+  Kinship = Q0 S0 Q0.T
+  I       = environment
+  M       = covariates effect
+
+Input data:
+  M:
+{M}
+  Q0:
+{Q0}
+  Q1:
+{Q1}
+  S0: {S0}
+
+Statistics (latent space):
+  Total variance:        {tvar}
+  Instrumental variance: {ivar}
+  Covariates variance:   {cvar}
+  Heritability:          {h2}""".format(v="%.4f" % v, e="%.4f" % e, b=beta,
+                          Q0=indent(bytes(Q0)), Q1=indent(bytes(Q1)),
+                          S0=bytes(S0), M=indent(bytes(M)),
+                          tvar="%.4f" % tvar, cvar="%.4f" % cvar,
+                          h2="%.4f" % h2, ivar="%.4f" % ivar)
+        set_printoptions(printopts)
+        return s

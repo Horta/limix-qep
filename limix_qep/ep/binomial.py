@@ -3,29 +3,28 @@ from __future__ import division
 
 import logging
 
-from numpy import log
-from numpy import sqrt
-from numpy import exp
 from numpy import clip
 from numpy import full
 from numpy import asarray
 from numpy import isscalar
 from numpy import isfinite
 from numpy import all as all_
+from numpy import set_printoptions
+from numpy import get_printoptions
+
 from numpy.linalg import lstsq
 
-from limix_math.dist.norm import logcdf
-from limix_math.dist.norm import logpdf
 from limix_math.array import issingleton
 
 from lim.genetics import FastLMM
-from lim.genetics.heritability import bern2lat_correction
 
 from .overdispersion import OverdispersionEP
 
 from limix_qep.special.nbinom_moms import moments_array3, init
 
 from .util import ratio_posterior
+from .util import greek_letter
+from .util import summation_symbol
 
 # class BernoulliPredictor(object):
 #     def __init__(self, mean, cov):
@@ -87,7 +86,6 @@ class BinomialEP(OverdispersionEP):
 
         offset = flmm.offset
         self.environmental_variance = self.instrumental_variance
-        import ipdb; ipdb.set_trace()
         self.pseudo_heritability = h2
         self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
 
@@ -262,3 +260,24 @@ class BinomialEP(OverdispersionEP):
     #     self._logger.debug("Parameters: sigg2=%e, delta=%e).",
     #                        self.sigg2, self.delta)
     #     self._logger.debug("End of optimization.")
+
+    def __str__(self):
+        printopts = get_printoptions()
+        set_printoptions(precision=3, threshold=10)
+        s = """
+Phenotype definition:
+  y_l = {sum}_{{j=1}}^{{n}} Indicator(f_l + {epsilon}_{{l,j}} > 0), where f_l is
+        the latent phenotype of the l-th individual and {epsilon}_{{l,j}} is
+        distributed according to Normal(0, i).
+
+Definitions:
+  i: instrumental variance
+
+Input data:
+  y: {y}
+  d: {ntrials}""".format(y=bytes(self._y), ntrials=bytes(self._ntrials),
+                         epsilon=greek_letter('epsilon'),
+                         sum=summation_symbol())
+        set_printoptions(printopts)
+
+        return s + "\n" + super(BinomialEP, self).__str__()

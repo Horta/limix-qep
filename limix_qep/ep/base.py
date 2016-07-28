@@ -549,6 +549,7 @@ Prior:
 
 Definitions:
   Kinship = Q0 S0 Q0.T
+  I       = environment
   M       = covariates effect
 
 Input data:
