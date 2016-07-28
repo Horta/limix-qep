@@ -50,9 +50,8 @@ def test_binomial_optimize():
     (Q, S) = qs_decomposition(G)
 
     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
-    print(ep)
     ep.optimize()
-    print(ep)
+    assert_almost_equal(ep.lml(), -1602.7098976758323, decimal=5)
 
 # def test_binomial_optimize():
 #

@@ -77,30 +77,51 @@ class OverdispersionEP(EP):
     def instrumental_variance(self):
         return 1.
 
+    @property
+    def real_variance(self):
+        return self.genetic_variance + self.environmental_variance
+
+    @real_variance.setter
+    def real_variance(self, value):
+        c = value / (self.genetic_variance + self.environmental_variance)
+        self.genetic_variance *= c
+        self.environmental_variance *= c
+
+    @property
+    def environmental_genetic_ratio(self):
+        e = self.environmental_variance
+        v = self.genetic_variance
+        return e / (e + v)
+
+    @environmental_genetic_ratio.setter
+    def environmental_genetic_ratio(self, value):
+        t = self.real_variance
+        self.genetic_variance = t * (1 - value)
+        self.environmental_variance = t * value
+
     ############################################################################
     ############################################################################
     #################### Optimization related methods ##########################
     ############################################################################
     ############################################################################
     def _noise_ratio_cost(self, r):
-        print("  - Evaluating for ratio: %.5f." % r)
+        self._logger.debug("_noise_ratio_cost:ratio: %.5f.", r)
         self.environmental_variance = r / (1 - r)
         h2 = self.heritability
         self.genetic_variance = h2 * self.environmental_variance / (1 - h2)
         self._optimize_beta()
         c = -self.lml()
-        print("  - Cost: %.5f" % c)
+        self._logger.debug("_noise_ratio_cost:cost: %.5f", c)
         return c
 
     def _h2_cost(self, h2):
-        # self._logger.debug("Evaluating for h2: %e.", h2)
-        print("- Evaluating for h2: %.5f." % h2)
+        self._logger.debug("_h2_cost:h2: %.5f.", h2)
         var = self.h2tovar(h2)
         self.genetic_variance = var
 
         r = self.environmental_variance / (self.environmental_variance + 1)
         bracket = normal_bracket(r, 1.)
-        print("    Ratio bracket: %s." % str(bracket))
+        self._logger.debug("_h2_cost:ratio_bracket: %s.", str(bracket))
         try:
             res = minimize_scalar(self._noise_ratio_cost,
                                 bracket=bracket,

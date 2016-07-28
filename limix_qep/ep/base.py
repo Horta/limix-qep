@@ -436,8 +436,9 @@ class EP(Cached):
         start = time()
 
         self._logger.debug("Start of optimization.")
-        self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
-                           self.heritability, self.genetic_variance, bytes(self.beta))
+        self._logger.debug(self.__str__())
+        # self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
+        #                    self.heritability, self.genetic_variance, bytes(self.beta))
 
         nfev = 0
 
@@ -457,9 +458,10 @@ class EP(Cached):
 
         self._optimize_beta()
 
-        self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-                           self.heritability, self.genetic_variance, bytes(self.beta))
+        # self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
+        #                    self.heritability, self.genetic_variance, bytes(self.beta))
 
+        self._logger.debug(self.__str__())
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
 

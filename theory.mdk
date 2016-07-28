@@ -21,8 +21,8 @@ Doc class     : [10pt]article
 \renewcommand{\t}{^{\intercal}}
 \renewcommand{\i}{^{-1}}
 \newcommand{\K}{\mathrm{K}}
-\newcommand{\Q}{\mathrm{Q}}
-\renewcommand{\S}{\mathrm{S}}
+\newcommand{\Q}{\mathrm{Q}_0}
+\renewcommand{\S}{\mathrm{S}_0}
 \newcommand{\BE}{\mathrm{B}}
 \newcommand{\I}{\mathrm{I}}
 \newcommand{\mm}{\boldsymbol{\mathrm m}}
