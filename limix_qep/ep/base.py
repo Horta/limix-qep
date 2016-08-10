@@ -465,7 +465,7 @@ class EP(Cached):
         #                    self.heritability, self.genetic_variance,
         #                    bytes(self.beta))
 
-        # self._logger.debug(self.__str__())
+        self._logger.debug(self.__str__())
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
 
