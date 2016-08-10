@@ -9,7 +9,8 @@ _sqrt_epsilon = sqrt(finfo(float).eps)
 _golden = 0.5 * (3.0 - sqrt(5.0))
 
 
-def find_minimum(f, a, b, rtol=_sqrt_epsilon, atol=_sqrt_epsilon, maxiter=500):
+def find_minimum(f, a, b, fa=None, fb=None, x0=None, f0=None,
+                 rtol=_sqrt_epsilon, atol=_sqrt_epsilon, maxiter=500):
     """Seeks a local minimum of a function f in a closed interval [a, b] via
     Brent's method.
 
@@ -61,15 +62,19 @@ def find_minimum(f, a, b, rtol=_sqrt_epsilon, atol=_sqrt_epsilon, maxiter=500):
     # http://people.sc.fsu.edu/~jburkardt/c_src/brent/brent.c
 
     assert a <= b
-    x0 = a + _golden * (b - a)
+    if x0 is None:
+        x0 = a + _golden * (b - a)
+        f0 = f(x0)
+    else:
+        assert a <= x0 <= b
+
     x1 = x0
     x2 = x1
     niters = -1
     d = 0.0
     e = 0.0
-    fx0 = f(x0)
-    fx1 = fx0
-    fx2 = fx1
+    f1 = f0
+    f2 = f1
 
     for niters in range(maxiter):
 
@@ -93,9 +98,9 @@ def find_minimum(f, a, b, rtol=_sqrt_epsilon, atol=_sqrt_epsilon, maxiter=500):
 
         if tol < abs(e):
             # Compute the polynomial of the least degree (Lagrange polynomial)
-            # that goes through (x0, fx0), (x1, fx1), (x2, fx2).
-            r = (x0 - x1) * (fx0 - fx2)
-            q = (x0 - x2) * (fx0 - fx1)
+            # that goes through (x0, f0), (x1, f1), (x2, f2).
+            r = (x0 - x1) * (f0 - f2)
+            q = (x0 - x2) * (f0 - f1)
             p = (x0 - x2) * q - (x0 - x1) * r
             q = 2.0 * (q - r)
             if 0.0 < q:
@@ -140,42 +145,50 @@ def find_minimum(f, a, b, rtol=_sqrt_epsilon, atol=_sqrt_epsilon, maxiter=500):
 
         # Is the most recently evaluated point better (or equal) than the
         # best so far?
-        if fu <= fx0:
+        if fu <= f0:
 
             # Decrease interval size.
             if u < x0:
-                b = x0
+                if b != x0:
+                    b = x0
+                    fb = f0
             else:
-                a = x0
+                if a != x0:
+                    a = x0
+                    fa = f0
 
             # Shift: drop the previous third best point out and
             # include the newest point (found to be the best so far).
             x2 = x1
-            fx2 = fx1
+            f2 = f1
             x1 = x0
-            fx1 = fx0
+            f1 = f0
             x0 = u
-            fx0 = fu
+            f0 = fu
 
         else:
             # Decrease interval size.
             if u < x0:
-                a = u
+                if a != u:
+                    a = u
+                    fa = fu
             else:
-                b = u
+                if b != u:
+                    b = u
+                    fb = fu
 
             # Is the most recently evaluated point at better (or equal)
             # than the second best one?
-            if fu <= fx1 or x1 == x0:
+            if fu <= f1 or x1 == x0:
                 # Insert u between (rank-wise) x0 and x1 in the triple
                 # (x0, x1, x2).
                 x2 = x1
-                fx2 = fx1
+                f2 = f1
                 x1 = u
-                fx1 = fu
-            elif fu <= fx2 or x2 == x0 or x2 == x1:
+                f1 = fu
+            elif fu <= f2 or x2 == x0 or x2 == x1:
                 # Insert u in the last position of the triple (x0, x1, x2).
                 x2 = u
-                fx2 = fu
+                f2 = fu
 
-    return x0, fx0, niters+1
+    return x0, f0, niters+1

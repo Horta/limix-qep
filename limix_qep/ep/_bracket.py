@@ -17,19 +17,30 @@ def find_bracket(f, x0=None, x1=None, a=-inf, b=+inf, gfactor=2, glimit=2**8,
 
     if len(x) == 0:
         x0 = min(max(0, a), b)
-        if x0 - a > b - x0:
-            x1 = x0 - (abs(x0) * rtol + atol)
-        else:
-            x1 = x0 + (abs(x0) * rtol + atol)
     elif len(x) == 1:
         x0 = x[0]
     elif len(x) == 2:
         x0, x1 = x[0], x[1]
 
+    if x1 is None:
+        if x0 - a > b - x0:
+            x1 = x0 - gfactor * (abs(x0) * rtol + atol)
+            x1 = max(x1, a)
+        else:
+            x1 = x0 + gfactor * (abs(x0) * rtol + atol)
+            x1 = min(x1, b)
+
     f0 = f(x0)
     f1 = f(x1)
-    return _downhill(f, x0, x1, f0, f1, a, b, gfactor, glimit, rtol, atol,
-                     maxiter)
+    r = _downhill(f, x0, x1, f0, f1, a, b, gfactor, glimit, rtol, atol,
+                  maxiter)
+
+    ((x0, x1, x2), (f0, f1, f2), nit) = r
+    if x0 > x2:
+        x2, x1, x0 = x0, x1, x2
+        f2, f1, f0 = f0, f1, f2
+
+    return ((x0, x1, x2), (f0, f1, f2), nit)
 
 
 def _downhill3(f, x0, x1, x2, f0, f1, l, gfactor, glimit, rtol, atol, maxiter):

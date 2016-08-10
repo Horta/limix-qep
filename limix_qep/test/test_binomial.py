@@ -12,6 +12,7 @@ from limix_qep.ep import BernoulliEP
 
 from .util import create_binomial
 
+
 def test_binomial_lml():
 
     random.seed(6)
@@ -21,13 +22,13 @@ def test_binomial_lml():
 
     (Q, S) = qs_decomposition(G)
     y = array([1., 0., 1.])
-    ep1 = BinomialEP(y, 1, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
+    ep1 = BinomialEP(y, 1, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
     ep1.beta = array([1.])
     ep1.genetic_variance = 1.
     ep1.environmental_variance = 1e-7
     lml1 = ep1.lml()
 
-    ep2 = BernoulliEP(y, M, hstack(Q), empty((n,0)), hstack(S) + 1.0)
+    ep2 = BernoulliEP(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
     ep2.beta = array([1.])
     ep2.genetic_variance = 1.
     lml2 = ep2.lml()
@@ -55,23 +56,23 @@ def test_binomial_lml():
 #     print("_calls_real_variance_cost: %d" % ep._calls_real_variance_cost)
 #     # assert_almost_equal(ep.lml(), -1602.7098976758323, decimal=5)
 
-def test_bernoulli_optimize():
-
-    seed = 15
-    nsamples = 500
-    nfeatures = 600
-    ntrials = 1
-
-    M = ones((nsamples, 1))
-
-    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
-                             delta=1e-6, seed=seed)
-
-    (Q, S) = qs_decomposition(G)
-
-    ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
-    ep.optimize()
-    assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
+# def test_bernoulli_optimize():
+#
+#     seed = 15
+#     nsamples = 500
+#     nfeatures = 600
+#     ntrials = 1
+#
+#     M = ones((nsamples, 1))
+#
+#     (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
+#                              delta=1e-6, seed=seed)
+#
+#     (Q, S) = qs_decomposition(G)
+#
+#     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
+#     ep.optimize()
+#     assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
 
 # def test_binomial_optimize():
 #

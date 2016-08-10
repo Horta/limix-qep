@@ -19,7 +19,6 @@ from numpy import set_printoptions
 from numpy.linalg import multi_dot
 
 from scipy.linalg import cho_factor
-from scipy.optimize import minimize_scalar
 
 from limix_math.linalg import ddot
 from limix_math.linalg import sum2diag
@@ -31,6 +30,8 @@ from hcache import Cached, cached
 
 from limix_math.linalg import economic_svd
 
+from ._minimize_scalar import find_minimum
+
 from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
@@ -40,7 +41,6 @@ from .config import EP_EPS
 from .config import HYPERPARAM_EPS
 
 from .util import make_sure_reasonable_conditioning
-from .util import normal_bracket
 
 
 class EP(Cached):
@@ -438,30 +438,34 @@ class EP(Cached):
         self._logger.debug("Start of optimization.")
         self._logger.debug(self.__str__())
         # self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
-        #                    self.heritability, self.genetic_variance, bytes(self.beta))
+        #                    self.heritability, self.genetic_variance,
+        #                    bytes(self.beta))
 
         nfev = 0
 
         h2 = self.heritability
-        r = minimize_scalar(self._h2_cost,
-                            bracket=normal_bracket(h2),
-                            method='Brent', tol=HYPERPARAM_EPS)
+        atol = 1e-6
+        eps = 1e-4
+        h2, nfev = find_minimum(self._h2_cost, h2, a=eps, b=1-eps, rtol=0,
+                                atol=atol)
+        # r = minimize_scalar(self._h2_cost,
+        #                     bracket=normal_bracket(h2),
+        #                     method='Brent', tol=HYPERPARAM_EPS)
 
-        self.genetic_variance = self.h2tovar(r.x)
+        self.genetic_variance = self.h2tovar(h2)
 
-        self._logger.debug("Optimizer info: %s.", str(r))
+        # if not r.success:
+        #     self._logger.warn("Optimizer has failed: %s.", str(r))
 
-        if not r.success:
-            self._logger.warn("Optimizer has failed: %s.", str(r))
-
-        nfev = r.nfev
+        # nfev = r.nfev
 
         self._optimize_beta()
 
         # self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-        #                    self.heritability, self.genetic_variance, bytes(self.beta))
+        #                    self.heritability, self.genetic_variance,
+        #                    bytes(self.beta))
 
-        self._logger.debug(self.__str__())
+        # self._logger.debug(self.__str__())
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
 
