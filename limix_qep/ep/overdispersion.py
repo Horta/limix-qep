@@ -11,10 +11,17 @@ from limix_math.linalg import sum2diag
 
 from .config import HYPERPARAM_EPS
 from .dists import Joint
-from .util import normal_bracket
 from .base import EP
+from .bracket import bracket
 
 from numpy import set_printoptions
+from numpy import exp
+from numpy import clip
+from numpy import argmin
+from numpy import zeros
+from numpy import array
+from numpy import log
+from numpy import sign
 
 
 # K = Q (v S + e I) Q.T
@@ -36,6 +43,16 @@ class OverdispersionEP(EP):
         self._joint = Joint(nsamples)
         self._Q1 = Q1
         self._e = None
+        self._calls_environmental_genetic_delta_cost = 0
+        self._calls_real_variance_cost = 0
+
+        self._environmental_genetic_ratios = []
+        self._real_variances = []
+        self._delta_zero_cost = None
+        self._delta_one_cost = None
+        self._bracket_delta_x = (None, None, None)
+        self._bracket_delta_f = (None, None, None)
+        self._delta_bounds = (1e-9, 1 - 1e-9)
 
     def initialize_hyperparams(self):
         raise NotImplementedError
@@ -104,43 +121,186 @@ class OverdispersionEP(EP):
     #################### Optimization related methods ##########################
     ############################################################################
     ############################################################################
-    def _noise_ratio_cost(self, r):
-        self._logger.debug("_noise_ratio_cost:ratio: %.5f.", r)
-        self.environmental_variance = r / (1 - r)
-        h2 = self.heritability
-        self.genetic_variance = h2 * self.environmental_variance / (1 - h2)
+    def _get_optimal_delta(self, real_variance):
+        rvs = array(self._real_variances)
+        i = argmin(abs(rvs - real_variance))
+        return self._environmental_genetic_ratios[i]
+
+    def _delta_direction(self, real_variance):
+        if (len(self._real_variances) <= 1 or
+                len(self._environmental_genetic_ratios) <= 1):
+            return +1
+
+        preal = self._real_variances[-2]
+        pdelta = self._environmental_genetic_ratios[-2]
+
+        real = self._real_variances[-1]
+        delta = self._environmental_genetic_ratios[-1]
+
+        direction = sign(delta - pdelta) * sign(real - preal)
+        return sign(real_variance - real) * direction
+
+    def _delta_step(self, real_variance):
+        if (len(self._real_variances) <= 1
+                or len(self._environmental_genetic_ratios) <= 1):
+            return 0.01
+
+        preal = self._real_variances[-2]
+        pdelta = self._environmental_genetic_ratios[-2]
+
+        real = self._real_variances[-1]
+        delta = self._environmental_genetic_ratios[-1]
+
+        if abs(real - preal) < 1e-7:
+            return 1e-4
+
+        c = abs(delta - pdelta) / abs(real - preal)
+        return max(1e-4, abs(real_variance - real) * c)
+
+    # def _environmental_genetic_delta_cost(self, logit_delta):
+    #     delta = 1/(1 + exp(-logit_delta))
+    #     self._logger.debug("_environmental_genetic_cost:logit: %.15f.", logit_delta)
+    #     self._logger.debug("_environmental_genetic_cost:delta: %.15f.", delta)
+    #     self.environmental_genetic_ratio = delta
+    #     self._optimize_beta()
+    #     c = -self.lml()
+    #     self._logger.debug("_environmental_genetic_cost:cost: %.15f", c)
+    #     self._calls_environmental_genetic_delta_cost += 1
+    #     return c
+
+    def _eg_delta_cost(self, delta):
+        self.environmental_genetic_ratio = delta
         self._optimize_beta()
         c = -self.lml()
-        self._logger.debug("_noise_ratio_cost:cost: %.5f", c)
+        self._logger.debug("_environmental_genetic_cost:cost: %.15f", c)
+        self._calls_environmental_genetic_delta_cost += 1
         return c
 
-    def _h2_cost(self, h2):
-        self._logger.debug("_h2_cost:h2: %.5f.", h2)
-        var = self.h2tovar(h2)
-        self.genetic_variance = var
+    def _environmental_genetic_delta_cost(self, delta):
+        self._environmental_genetic_ratios_tmp.append(delta)
+        self._logger.debug("_environmental_genetic_cost:delta: %.15f.", delta)
 
-        r = self.environmental_variance / (self.environmental_variance + 1)
-        bracket = normal_bracket(r, 1.)
-        self._logger.debug("_h2_cost:ratio_bracket: %s.", str(bracket))
-        try:
-            res = minimize_scalar(self._noise_ratio_cost,
-                                bracket=bracket,
-                                tol=HYPERPARAM_EPS, method='Brent')
-        except ValueError:
-            fa = self._noise_ratio_cost(bracket[0])
-            fc = self._noise_ratio_cost(bracket[2])
-            if fa < fc:
-                r = bracket[0]
+        if len(self._environmental_genetic_ratios_tmp) > 8 and abs(self._environmental_genetic_ratios_tmp[-1]-self._environmental_genetic_ratios_tmp[-2]) < 1e-6 and abs(self._environmental_genetic_ratios_tmp[-2]-self._environmental_genetic_ratios_tmp[-3]) < 1e-6:
+            import ipdb; ipdb.set_trace()
+        # if abs(delta-0.002190636952218) < 1e-10:
+            # import ipdb; ipdb.set_trace()
+
+        if self._bracket_delta_x[0] == delta:
+            return self._bracket_delta_f[0]
+        if self._bracket_delta_x[1] == delta:
+            return self._bracket_delta_f[1]
+        if self._bracket_delta_x[2] == delta:
+            return self._bracket_delta_f[2]
+
+        delta_bounds = self._delta_bounds
+
+        if delta <= delta_bounds[0]:
+            if self._delta_zero_cost is None:
+                self._delta_zero_cost = self._eg_delta_cost(delta_bounds[0])
+            return self._delta_zero_cost + delta_bounds[0] - delta
+
+        elif delta >= delta_bounds[1]:
+            if self._delta_one_cost is not None:
+                self._delta_one_cost = self._eg_delta_cost(delta_bounds[1])
+            return self._delta_one_cost - delta_bounds[1] + delta
+
+        return self._eg_delta_cost(delta)
+
+    def _real_variance_cost(self, lnrv):
+        rv = exp(lnrv)
+        self._logger.debug("_real_variance_cost:rv: %.5f.", rv)
+
+        dd = self._delta_direction(rv)
+        ds = self._delta_step(rv)
+
+        self.real_variance = rv
+        self._environmental_genetic_ratios_tmp = []
+
+        delta_bounds = self._delta_bounds
+
+        delta0 = self.environmental_genetic_ratio
+        step = dd * ds
+
+        delta1 = clip(delta0+step, delta_bounds[0], delta_bounds[1])
+
+        self._delta_zero_cost = None
+        self._delta_one_cost = None
+
+        self._logger.debug("BRACKET BEGIN")
+        xa, xb, xc, fa, fb, fc, _ =\
+            bracket(self._environmental_genetic_delta_cost, delta0, delta1,
+                    bounds=delta_bounds)
+        self._logger.debug("BRACKET END")
+
+        # swap so xa < xc can be assumed
+        if (xa > xc):
+            xc, xa = xa, xc
+            fc, fa = fa, fc
+
+        if not ((xa < xb) and (xb < xc)):
+            self._logger.debug("bracket only.")
+            if fa <= fc:
+                self.environmental_genetic_ratio = xa
+                cost = fa
+            elif fb <= fc:
+                self.environmental_genetic_ratio = xb
+                cost = fb
             else:
-                r = bracket[2]
-        else:
-            r = res.x
+                self.environmental_genetic_ratio = xc
+                cost = fc
 
-        self.environmental_variance = r / (1 - r)
-        return -self.lml()
+        else:
+            self._bracket_delta_x = (xa, xb, xc)
+            self._bracket_delta_f = (fa, fb, fc)
+
+            r = minimize_scalar(self._environmental_genetic_delta_cost,
+                                bracket=[xa, xb, xc],
+                                method='Brent',
+                                tol=HYPERPARAM_EPS*10)
+
+            self.environmental_genetic_ratio = r.x
+            cost = -self.lml()
+
+        self._real_variances.append(self.real_variance)
+        self._environmental_genetic_ratios.append(self.environmental_genetic_ratio)
+
+        self._calls_real_variance_cost += 1
+        return cost
 
     def optimize(self):
-        super(OverdispersionEP, self).optimize()
+        from time import time
+
+        start = time()
+
+        self._logger.debug("Start of optimization.")
+        self._logger.debug(self.__str__())
+
+        self._real_variances = []
+        self._environmental_genetic_ratios = []
+
+        rv = self.real_variance
+
+        r = minimize_scalar(self._real_variance_cost,
+                            bracket=[log(rv), log(rv+1.0)],
+                            method='Brent',
+                            tol=HYPERPARAM_EPS)
+
+        rv = exp(r.x)
+        self.real_variance = rv
+        self.environmental_genetic_ratio = self._get_optimal_delta(rv)
+
+        self._logger.debug("Optimizer info: %s.", str(r))
+
+        if not r.success:
+            self._logger.warn("Optimizer has failed: %s.", str(r))
+
+        nfev = r.nfev
+
+        self._optimize_beta()
+
+        self._logger.debug(self.__str__())
+        self._logger.debug("End of optimization (%.3f seconds" +
+                           ", %d function calls).", time() - start, nfev)
 
     ############################################################################
     ############################################################################
@@ -172,6 +332,13 @@ class OverdispersionEP(EP):
     @cached
     def diagK(self):
         return self.genetic_variance * self._diagQ0S0Q0t() + self.environmental_variance
+
+    @cached
+    def _Q0B1Q0t(self):
+        if self.genetic_variance < 1e-6:
+            nsamples = self._Q0.shape[0]
+            return zeros((nsamples, nsamples))
+        return super(OverdispersionEP, self)._Q0B1Q0t()
 
     def __str__(self):
         v = self.genetic_variance

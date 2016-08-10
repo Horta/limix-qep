@@ -3,7 +3,6 @@ from numpy import array
 from numpy import empty
 from numpy import hstack
 from numpy import random
-from numpy import linspace
 from numpy.testing import assert_almost_equal
 
 from limix_math.linalg import qs_decomposition
@@ -35,23 +34,44 @@ def test_binomial_lml():
 
     assert_almost_equal(lml1 - lml2, 0., decimal=5)
 
-def test_binomial_optimize():
+# def test_binomial_optimize():
+#
+#     seed = 10
+#     nsamples = 1000
+#     nfeatures = 1200
+#     ntrials = 500
+#
+#     M = ones((nsamples, 1))
+#
+#     (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
+#                              delta=0.1, sige2=0.1, seed=seed)
+#
+#     (Q, S) = qs_decomposition(G)
+#
+#     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
+#     ep.optimize()
+#
+#     print("_calls_environmental_genetic_delta_cost: %d" % ep._calls_environmental_genetic_delta_cost)
+#     print("_calls_real_variance_cost: %d" % ep._calls_real_variance_cost)
+#     # assert_almost_equal(ep.lml(), -1602.7098976758323, decimal=5)
 
-    seed = 10
-    nsamples = 400
+def test_bernoulli_optimize():
+
+    seed = 15
+    nsamples = 500
     nfeatures = 600
-    ntrials = 300
+    ntrials = 1
 
     M = ones((nsamples, 1))
 
     (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
-                             delta=0.1, sige2=0.1, seed=seed)
+                             delta=1e-6, seed=seed)
 
     (Q, S) = qs_decomposition(G)
 
     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
     ep.optimize()
-    assert_almost_equal(ep.lml(), -1602.7098976758323, decimal=5)
+    assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
 
 # def test_binomial_optimize():
 #

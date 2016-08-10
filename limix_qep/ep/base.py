@@ -315,7 +315,7 @@ class EP(Cached):
         if not self._ep_params_initialized:
             self._init_ep_params()
 
-        self._logger.debug('EP loop has started.')
+        # self._logger.debug('EP loop has started.')
         m = self.m()
 
         ttau = self._sites.tau
@@ -358,7 +358,7 @@ class EP(Cached):
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
-            self._logger.debug('EP step size: %e.', max(aerr, rerr))
+            # self._logger.debug('EP step size: %e.', max(aerr, rerr))
             if aerr < 2*EP_EPS or rerr < 2*EP_EPS:
                 break
 
@@ -406,7 +406,7 @@ class EP(Cached):
         return self.__tbeta
 
     def _optimize_beta(self):
-        self._logger.debug("Beta optimization.")
+        # self._logger.debug("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
         step = inf
@@ -415,11 +415,11 @@ class EP(Cached):
             ptbeta[:] = self._tbeta
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
-            self._logger.debug("Beta step: %e.", step)
+            # self._logger.debug("Beta step: %e.", step)
             i += 1
 
-        self._logger.debug("Beta optimization performed %d steps " +
-                           "to find %s.", i, bytes(self._tbeta))
+        # self._logger.debug("Beta optimization performed %d steps " +
+        #                    "to find %s.", i, bytes(self._tbeta))
 
     def _h2_cost(self, h2):
         h2 = clip(h2, 1e-3, 1-1e-3)
