@@ -97,14 +97,14 @@ cdef double shrink_intervals(double* left,
         # printf("%e ", w[i])
     # printf("\n")
 
-    if (w[0] > 1e-1 or w[w.shape[0]-1] > 1e-1):
-        printf("(%d, %d)  (%.5f %.5f) (%f %f) ", <int>N, <int>K, left[0], left[0] + step*nint, mu, var);
-        for i in range(0, 2):
-            printf("%e ", w[i])
-        printf(".. ")
-        for i in range(nint-2, nint):
-            printf("%e ", w[i])
-        printf("\n")
+    # if (w[0] > 1e-1 or w[w.shape[0]-1] > 1e-1):
+    #     printf("(%d, %d)  (%.5f %.5f) (%f %f) ", <int>N, <int>K, left[0], left[0] + step*nint, mu, var);
+    #     for i in range(0, 2):
+    #         printf("%e ", w[i])
+    #     printf(".. ")
+    #     for i in range(nint-2, nint):
+    #         printf("%e ", w[i])
+    #     printf("\n")
 
     i = nint
     while w[i-1] <= 1e-256:
