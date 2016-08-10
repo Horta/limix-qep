@@ -10,7 +10,7 @@ from limix_math.linalg import qs_decomposition
 from limix_qep.ep import BinomialEP
 from limix_qep.ep import BernoulliEP
 
-from .util import create_binomial
+from limix_qep.tool.util import create_binomial
 
 
 def test_binomial_lml():

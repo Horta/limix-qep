@@ -11,7 +11,7 @@ from limix_qep.ep import BernoulliEP
 
 from limix_math.linalg import qs_decomposition
 
-from .util import create_binomial
+from limix_qep.tool.util import create_binomial
 
 
 def test_bernoulli_lml():
