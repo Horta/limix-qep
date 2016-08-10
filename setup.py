@@ -109,7 +109,8 @@ def setup_package():
     write_version()
 
     install_requires = ['hcache', 'limix_math', 'limix_tool', 'limix_util']
-    setup_requires = []
+    setup_requires = ['pytest-runner']
+    tests_require = ['pytest']
 
     metadata = dict(
         name=PKG_NAME,
@@ -122,9 +123,10 @@ def setup_package():
         url='http://pmbio.github.io/limix/',
         install_requires=install_requires,
         setup_requires=setup_requires,
+        tests_require=tests_require,
         zip_safe=False,
         ext_modules=cythonize([special_extension()]),
-        cmdclass=dict(build_ext=build_ext)
+        cmdclass=dict(build_ext=build_ext),
     )
 
     if conda_present:
