@@ -1,6 +1,5 @@
 cimport cython
 from libc.math cimport log, exp, sqrt, fabs, INFINITY
-from libc.stdio cimport printf, fflush, stdout
 
 cdef extern from "nbinom_moms_base.h":
     double log_ulike_prior(double x, double N, double K,
