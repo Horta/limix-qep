@@ -6,3 +6,4 @@ cythonize.dat
 .eggs/
 .cache/
 out/
+dist/

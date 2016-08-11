@@ -52,4 +52,4 @@ def test_binomial_optimize():
 
     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
     ep.optimize()
-    assert_almost_equal(ep.lml(), -874.00729729513591, decimal=5)
+    assert_almost_equal(ep.lml(), -874.00729729513591, decimal=3)
