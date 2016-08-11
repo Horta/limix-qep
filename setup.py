@@ -8,7 +8,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 PKG_NAME = 'limix_qep'
-VERSION = '0.1.10'
+VERSION = '0.1.11'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
@@ -101,8 +101,8 @@ def setup_package():
     os.chdir(src_path)
     sys.path.insert(0, src_path)
 
-    install_requires = ['hcache', 'limix_math>=0.1.9', 'limix_tool',
-                        'limix_util', 'lim']
+    install_requires = ['hcache', 'limix_math>=0.1.10', 'limix_tool',
+                        'limix_util', 'lim>=0.0.4']
     setup_requires = ['pytest-runner']
     tests_require = ['pytest']
 
