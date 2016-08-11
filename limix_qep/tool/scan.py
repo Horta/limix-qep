@@ -9,7 +9,6 @@ from limix_math.linalg import qs_decomposition
 from limix_math.linalg import _QS_from_K_split
 from .util import gower_kinship_normalization
 import scipy.stats as st
-from time import time
 from limix_qep.ep import BernoulliEP
 from limix_qep.ep import BinomialEP
 
@@ -82,19 +81,13 @@ class LRT(object):
     def _compute_statistics(self):
         self._logger.info('Statistics computation has started.')
 
-        before = time()
         self._compute_null_model()
-        total = time() - before
-        print("Null model: %.5f" % total)
         if self._null_model_only:
             return
-        before = time()
         if self._full:
             self._compute_alt_models_full()
         else:
             self._compute_alt_models()
-        total = time() - before
-        print("Alt model: %.5f" % total)
 
     def _compute_alt_models(self):
         if self._alt_model_ready:
@@ -135,8 +128,6 @@ class LRT(object):
         covariate = self._covariate
         outcome_type = self._outcome_type
 
-        import ipdb
-        ipdb.set_trace()
         if isinstance(outcome_type, Binomial):
             ep = BinomialEP(y, outcome_type.ntrials, covariate, Q0, Q1, S0)
         elif isinstance(outcome_type, Bernoulli):
@@ -289,7 +280,6 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
                           additional information, respectively.
     """
 
-    before_all = time()
     if outcome_type is None:
         outcome_type = Bernoulli()
 
@@ -301,30 +291,22 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
 
     if K is not None:
         logger.info('Covariace matrix normalization.')
-        before = time()
         K = gower_kinship_normalization(K)
-        total = time() - before
-        print("Gower normalization: %.5f" % total)
         info['K'] = K
 
     if G is not None:
         logger.info('Genetic markers normalization.')
-        before = time()
         G = G - np.mean(G, 0)
         s = np.std(G, 0)
         ok = s > 0.
         G[:, ok] /= s[ok]
         G /= np.sqrt(G.shape[1])
         info['G'] = G
-        total = time() - before
-        print("markers normalization: %.5f" % total)
 
     outcome_type.assert_outcome(y)
     if G is None and K is None and QS is None:
         raise Exception('G, K, and QS cannot be all None.')
 
-    import ipdb
-    ipdb.set_trace()
     if QS is None:
         logger.info('Computing the economic eigen decomposition.')
         if K is None:
@@ -350,14 +332,9 @@ def scan(y, X, G=None, K=None, QS=None, covariate=None,
     lrt = _create_LRT(y, Q0, Q1, S0, covariate, outcome_type,
                       null_model_only=null_model_only)
     lrt.candidate_markers = X
-    before = time()
     info['lrs'] = lrt.lrs()
-    total = time() - before
-    print("lrt.lrs() : %.5f" % total)
     info['effsizes'] = lrt.effsizes
     return_ = (lrt.pvals(), info)
-
-    print("Total time spend:            !!__%.5f__!!" % (time() - before_all))
 
     return return_
 
@@ -403,23 +380,17 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
 
     if K is not None:
         logger.info('Covariace matrix normalization.')
-        before = time()
         K = gower_kinship_normalization(K)
-        total = time() - before
-        print("Gower normalization: %.5f" % total)
         info['K'] = K
 
     if G is not None:
         logger.info('Genetic markers normalization.')
-        before = time()
         G = G - np.mean(G, 0)
         s = np.std(G, 0)
         ok = s > 0.
         G[:, ok] /= s[ok]
         G /= np.sqrt(G.shape[1])
         info['G'] = G
-        total = time() - before
-        print("markers normalization: %.5f" % total)
 
     if G is None and K is None:
         raise Exception('G, K, and QS cannot be all None.')
@@ -444,10 +415,7 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     lrt = _create_LRT(nsuccesses, Q0, Q1, S0, covariate, Binomial(ntrials),
                       null_model_only=False)
     lrt.candidate_markers = X
-    before = time()
     info['lrs'] = lrt.lrs()
-    total = time() - before
-    print("lrt.lrs() : %.5f" % total)
     info['effsizes'] = lrt.effsizes
     return_ = (lrt.pvals(), info)
     return return_

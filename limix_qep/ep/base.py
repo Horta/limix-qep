@@ -42,6 +42,8 @@ from .config import HYPERPARAM_EPS
 
 from .util import make_sure_reasonable_conditioning
 
+from ._fixed_ep import FixedBaseEP
+
 
 class EP(Cached):
     """
@@ -53,6 +55,7 @@ class EP(Cached):
         m = M \\beta
         m = \\tilde M \\tilde \\beta
     """
+
     def __init__(self, M, Q0, S0, Q0S0Q0t=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
@@ -66,8 +69,8 @@ class EP(Cached):
 
         if S0.min() <= 0:
             raise ValueError("The provided covariance matrix is not" +
-                            " positive-definite because the minimum eigvalue" +
-                            " is %f." % S0.min())
+                             " positive-definite because the minimum eigvalue" +
+                             " is %f." % S0.min())
 
         make_sure_reasonable_conditioning(S0)
 
@@ -87,6 +90,19 @@ class EP(Cached):
         self._loghz = empty(nsamples)
         self._hmu = empty(nsamples)
         self._hvar = empty(nsamples)
+
+    def fixed_ep(self):
+
+        (p1, p3, p4, _, _, p7, p8, p9) = self._lml_components()
+
+        lml_const = p1 + p3 + p4 + p7 + p8 + p9
+
+        A1 = self._A1()
+        A2teta = self._A2() * self._sites.eta
+        Q0B1Q0t = self._Q0B1Q0t()
+        beta_nom = self._optimal_beta_nom()
+
+        return FixedBaseEP(lml_const, A1, A2teta, Q0B1Q0t, beta_nom)
 
     def _covariate_setup(self, M):
         self._M = M
@@ -109,7 +125,7 @@ class EP(Cached):
 
         A1covar = ddot(A1, covar.T, left=True)
         sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
-               + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
+            + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
 
         return (mu, sig2)
 
@@ -175,7 +191,7 @@ class EP(Cached):
     @heritability.setter
     def heritability(self, value):
         t = (self.environmental_variance + self.covariates_variance)
-        self.genetic_variance  = t * value / (1-value)
+        self.genetic_variance = t * value / (1 - value)
 
     @property
     def pseudo_heritability(self):
@@ -188,7 +204,7 @@ class EP(Cached):
     def pseudo_heritability(self, value):
         t = (self.environmental_variance + self.covariates_variance +
              self.instrumental_variance)
-        self.genetic_variance = t * value / (1-value)
+        self.genetic_variance = t * value / (1 - value)
 
     def h2tovar(self, h2):
         varc = self.covariates_variance
@@ -215,7 +231,7 @@ class EP(Cached):
     def beta(self):
         if self.__tbeta is None:
             self.initialize_hyperparams()
-        return solve(self._svd_V.T, self._tbeta/self._svd_S12)
+        return solve(self._svd_V.T, self._tbeta / self._svd_S12)
 
     @beta.setter
     def beta(self, value):
@@ -271,8 +287,8 @@ class EP(Cached):
 
         vS0 = self.genetic_variance * S0
         tctau = ttau + ctau
-        A1m = A1*m
-        A2m = A2*m
+        A1m = A1 * m
+        A2m = A2 * m
         Q0B1Q0t = self._Q0B1Q0t()
         A2teta = A2 * teta
 
@@ -285,11 +301,11 @@ class EP(Cached):
         p3 -= ((teta * teta) / tctau).sum()
         p3 /= 2
 
-        p4 = (ceta * (ttau * cmu - 2*teta) / tctau).sum() / 2
+        p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
 
         A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
 
-        p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2*teta)
+        p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
 
         p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
         p6 /= 2
@@ -353,17 +369,17 @@ class EP(Cached):
             if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
                 rerr = np.inf
             else:
-                rtdiff = tdiff/np.abs(self._psites.tau)
-                rediff = ediff/np.abs(self._psites.eta)
+                rtdiff = tdiff / np.abs(self._psites.tau)
+                rediff = ediff / np.abs(self._psites.eta)
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
             # self._logger.debug('EP step size: %e.', max(aerr, rerr))
-            if aerr < 2*EP_EPS or rerr < 2*EP_EPS:
+            if aerr < 2 * EP_EPS or rerr < 2 * EP_EPS:
                 break
 
         if i + 1 == MAX_EP_ITER:
-            self._logger.warn('Maximum number of EP iterations has'+
+            self._logger.warn('Maximum number of EP iterations has' +
                               ' been attained.')
 
         # self._logger.debug('EP loop has performed %d iterations.', i)
@@ -373,7 +389,7 @@ class EP(Cached):
     ################## Optimization of hyperparameters #########################
     ############################################################################
     ############################################################################
-    def _optimal_tbeta_nom(self):
+    def _optimal_beta_nom(self):
         A1 = self._A1()
         A2 = self._A2()
         Q0B1Q0t = self._Q0B1Q0t()
@@ -391,7 +407,7 @@ class EP(Cached):
         if np.all(np.abs(self._M) < 1e-15):
             return np.zeros_like(self._tbeta)
 
-        u = dot(self._tM.T, self._optimal_tbeta_nom())
+        u = dot(self._tM.T, self._optimal_beta_nom())
         Z = self._optimal_tbeta_denom()
 
         try:
@@ -399,7 +415,7 @@ class EP(Cached):
                 self._tbeta = solve(Z, u)
 
         except (np.linalg.LinAlgError, FloatingPointError):
-            self._logger.warn('Failed to compute the optimal beta.'+
+            self._logger.warn('Failed to compute the optimal beta.' +
                               ' Zeroing it.')
             self.__tbeta[:] = 0.
 
@@ -422,7 +438,7 @@ class EP(Cached):
         #                    "to find %s.", i, bytes(self._tbeta))
 
     def _h2_cost(self, h2):
-        h2 = clip(h2, 1e-3, 1-1e-3)
+        h2 = clip(h2, 1e-3, 1 - 1e-3)
         self._logger.debug("Evaluating for h2: %e.", h2)
         var = self.h2tovar(h2)
         self.genetic_variance = var
@@ -446,7 +462,7 @@ class EP(Cached):
         h2 = self.heritability
         atol = 1e-6
         eps = 1e-4
-        h2, nfev = find_minimum(self._h2_cost, h2, a=eps, b=1-eps, rtol=0,
+        h2, nfev = find_minimum(self._h2_cost, h2, a=eps, b=1 - eps, rtol=0,
                                 atol=atol)
         # r = minimize_scalar(self._h2_cost,
         #                     bracket=normal_bracket(h2),
@@ -512,7 +528,7 @@ class EP(Cached):
         Q0 = self._Q0
         A1 = self._A1()
         Q0tA1Q0 = dot(Q0.T, ddot(A1, Q0, left=True))
-        return sum2diag(Q0tA1Q0, 1./(self.genetic_variance * self._S0))
+        return sum2diag(Q0tA1Q0, 1. / (self.genetic_variance * self._S0))
 
     @cached
     def _L(self):
@@ -528,7 +544,7 @@ class EP(Cached):
 
         u = self.m() + K.dot(teta)
         A1u = A1 * u
-        return A1u - A1*Q0B1Q0t.dot(A1u) - teta
+        return A1u - A1 * Q0B1Q0t.dot(A1u) - teta
 
     def __str__(self):
         v = self.genetic_variance
@@ -540,6 +556,7 @@ class EP(Cached):
         S0 = self._S0
         tvar = self.total_variance
         set_printoptions(precision=3, threshold=10)
+
         def indent(s):
             final = []
             for si in s.split('\n'):
@@ -570,10 +587,10 @@ Statistics (latent space):
   Total variance:      {tvar}
   Covariates variance: {cvar}
   Heritability:        {h2}""".format(v="%.4f" % v, e="%.4f" % e, b=beta,
-                          Q0=indent(bytes(Q0)), Q1=indent(bytes(Q1)),
-                          S0=indent(bytes(S0)), M=indent(bytes(M)),
-                          tvar="%.4f" % tvar, cvar="%.4f" % cvar,
-                          h2="%.4f" % h2)
+                                      Q0=indent(bytes(Q0)), Q1=indent(bytes(Q1)),
+                                      S0=indent(bytes(S0)), M=indent(bytes(M)),
+                                      tvar="%.4f" % tvar, cvar="%.4f" % cvar,
+                                      h2="%.4f" % h2)
         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
                          precision=8, suppress=False, threshold=1000,
                          formatter=None)

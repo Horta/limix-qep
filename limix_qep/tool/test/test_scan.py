@@ -22,7 +22,7 @@ def test_estimate_bernoulli_real_trait():
 
     assert_array_less(np.sum(pvals[10:]) / 20., np.sum(pvals[:10]) / 10.)
     assert_array_less(pvals[10:].min(), pvals[:10].min())
-    assert_array_less(pvals.min(), 1e-6)
+    assert_array_less(pvals.min(), 1e-5)
     assert_array_less(0.9, pvals.max())
 
 #
