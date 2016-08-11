@@ -8,7 +8,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 PKG_NAME = 'limix_qep'
-VERSION  = '0.1.9'
+VERSION = '0.1.9'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
@@ -23,20 +23,26 @@ except ImportError:
     print("Error: numpy package couldn't be found." +
           " Please, install it so I can proceed.")
     sys.exit(1)
+else:
+    print("Good: numpy %s" % numpy.__version__)
 
 try:
     import scipy
 except ImportError:
-    print("Error: scipy package couldn't be found."+
+    print("Error: scipy package couldn't be found." +
           " Please, install it so I can proceed.")
     sys.exit(1)
+else:
+    print("Good: scipy %s" % scipy.__version__)
 
 try:
     import cython
 except ImportError:
-    print("Error: cython package couldn't be found."+
+    print("Error: cython package couldn't be found." +
           " Please, install it so I can proceed.")
     sys.exit(1)
+else:
+    print("Good: cython %s" % cython.__version__)
 
 
 def cephes_info():
@@ -47,7 +53,6 @@ def cephes_info():
         define_macros.append(('_USE_MATH_DEFINES', None))
     define_macros.append(('PI', 3.141592653589793238462643383279502884))
 
-
     cephes_src = glob.glob(os.path.join(curdir, 'cephes', '*/*.c'))
     cephes_src.extend(glob.glob(os.path.join(curdir, 'cephes', '*.c')))
 
@@ -57,7 +62,8 @@ def cephes_info():
     return dict(src=cephes_src, include_dirs=[curdir],
                 define_macros=define_macros,
                 extra_compile_args=['-Wno-unused-function'],
-                depends=cephes_src+cephes_hdr)
+                depends=cephes_src + cephes_hdr)
+
 
 def special_extension():
     ci = cephes_info()
@@ -75,7 +81,7 @@ def special_extension():
     depends = src + hdr + ci['depends']
 
     ext = Extension('limix_qep/special/nbinom_moms',
-                    src+ci['src'],
+                    src + ci['src'],
                     include_dirs=ci['include_dirs'],
                     extra_compile_args=ci['extra_compile_args'],
                     define_macros=ci['define_macros'],
@@ -83,9 +89,11 @@ def special_extension():
 
     return ext
 
+
 def get_test_suite():
     from unittest import TestLoader
     return TestLoader().discover(PKG_NAME)
+
 
 def write_version():
     cnt = """
@@ -99,6 +107,7 @@ version = '%(version)s'
                        'package_name': PKG_NAME.upper()})
     finally:
         a.close()
+
 
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
