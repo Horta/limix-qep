@@ -2,11 +2,14 @@ from __future__ import absolute_import
 
 import numpy as np
 from numpy import dot
+from numpy import full
 from numpy.testing import assert_array_less
 
 from limix_qep.tool.util import create_bernoulli
+from limix_qep.tool.dataset import create_binomial
 
 from limix_qep.tool.scan import scan
+from limix_qep.tool import scan_binomial
 
 
 def test_estimate_bernoulli_real_trait():
@@ -25,30 +28,23 @@ def test_estimate_bernoulli_real_trait():
     assert_array_less(pvals.min(), 1e-5)
     assert_array_less(0.9, pvals.max())
 
-#
-# class TestScan(unittest.TestCase):
-#
-#     def setUp(self):
-#         pass
-#
-#
-#     # def test_estimate_binomial_real_trait(self):
-#     #     seed = 3197
-#     #     nsamples = 30
-#     #     nfeatures = 30
-#     #     ntrials = 15
-#     #
-#     #     (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.,
-#     #                              delta=0.01, sige2=0.01, seed=seed)
-#     #
-#     #     K = dot(G[:, 0:10], G[:, 0:10].T)
-#     #     zG = np.hstack((np.zeros((nsamples, 1)), G))
-#     #     (pvals, _) = scan(y, zG, K=K, outcome_type=Binomial(ntrials, nsamples))
-#     #     # self.assertTrue(np.sum(pvals[1:11])/10. > np.sum(pvals[11:])/20.)
-#     #     # self.assertTrue(pvals[1:11].min() > pvals[11:].min())
-#     #     # self.assertTrue(pvals[1:].min() < 1e-3)
-#
-# if __name__ == '__main__':
-#     import logging
-#     logging.basicConfig(level=logging.INFO)
-#     unittest.main()
+
+def test_estimate_binomial_real_trait():
+    seed = 3197
+    nsamples = 30
+    nfeatures = 30
+    ntrials = 15
+
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.,
+                             delta=0.01, sige2=0.01, seed=seed)
+
+    K = dot(G[:, 0:10], G[:, 0:10].T)
+    zG = np.hstack((np.zeros((nsamples, 1)), G))
+    (pvals, info) = scan_binomial(y, full(nsamples, ntrials, float), zG, K=K)
+    print(info)
+    print(pvals)
+    # print(pvals)
+
+    assert_array_less(np.sum(pvals[11:]) / 20., np.sum(pvals[1:11]) / 10.)
+    assert_array_less(pvals[11:].min(), pvals[1:11].min())
+    assert_array_less(pvals[1:].min(), 1e-3)
