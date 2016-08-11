@@ -117,7 +117,7 @@ def setup_package():
 
     write_version()
 
-    install_requires = ['hcache', 'limix_math>=0.1.8', 'limix_tool',
+    install_requires = ['hcache', 'limix_math>=0.1.9', 'limix_tool',
                         'limix_util', 'lim']
     setup_requires = ['pytest-runner']
     tests_require = ['pytest']
