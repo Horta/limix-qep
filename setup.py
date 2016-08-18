@@ -90,11 +90,6 @@ def special_extension():
     return ext
 
 
-def get_test_suite():
-    from unittest import TestLoader
-    return TestLoader().discover(PKG_NAME)
-
-
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     old_path = os.getcwd()
@@ -111,7 +106,6 @@ def setup_package():
         maintainer="Limix Developers",
         version=VERSION,
         maintainer_email="horta@ebi.ac.uk",
-        test_suite='setup.get_test_suite',
         packages=find_packages(),
         license="BSD",
         url='http://pmbio.github.io/limix/',
