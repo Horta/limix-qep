@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <math.h>
-#include "nbinom_moms_base.h"
+#include "base.h"
 
 void get_extrema(double N, double K, double mu, double var,
                  double* left, double* right)
@@ -23,26 +23,19 @@ void get_extrema(double N, double K, double mu, double var,
   }
 }
 
-// void get_extrema(double N, double K, double mu, double var,
-//                  double* left, double* right)
-// {
-//   *left = mu - 10*sqrt(var);
-//   *right = mu + 10*sqrt(var);
-// }
-
 void update_moms(double lmom0_int, double lmu_int, double lmu_int_sign,
                  double lvar_int, double* lmom0_out, double* lmu_out,
                  double* lmu_out_sign, double* lvar_out)
 {
   double sign;
-  *lmom0_out = logaddexp(*lmom0_out, lmom0_int);
+  *lmom0_out = lmath_logaddexp(*lmom0_out, lmom0_int);
 
-  *lmu_out = logaddexpss(*lmu_out, lmu_int + lmom0_int, *lmu_out_sign,
+  *lmu_out = lmath_logaddexpss(*lmu_out, lmu_int + lmom0_int, *lmu_out_sign,
                          lmu_int_sign, &sign);
   *lmu_out_sign = sign;
 
-  *lvar_out = logaddexp(*lvar_out, lvar_int + lmom0_int);
-  *lvar_out = logaddexp(*lvar_out, 2*lmu_int + lmom0_int);
+  *lvar_out = lmath_logaddexp(*lvar_out, lvar_int + lmom0_int);
+  *lvar_out = lmath_logaddexp(*lvar_out, 2*lmu_int + lmom0_int);
 }
 
 void tail_integral(double x, int left, double mu, double var,
@@ -52,12 +45,12 @@ void tail_integral(double x, int left, double mu, double var,
   double sig = sqrt(var);
   double lsig = log(sig);
   double m = (x - mu)/sig;
-  double lpdf = norm_logpdf(m);
+  double lpdf = lmath_normal_logpdf(m);
 
   if (left)
-    *lmom0 = norm_logsf(m);
+    *lmom0 = lmath_normal_logsf(m);
   else
-    *lmom0 = norm_logcdf(m);
+    *lmom0 = lmath_normal_logcdf(m);
 
   double sign;
   if (left)
@@ -83,9 +76,9 @@ void tail_integral(double x, int left, double mu, double var,
 void f_fl_fll(double x, double N, double K,
               double* f_, double* fl_, double* fll_)
 {
-  double lpdf = norm_logpdf(x);
-  double lcdf = norm_logcdf(x);
-  double lsf = norm_logsf(x);
+  double lpdf = lmath_normal_logpdf(x);
+  double lcdf = lmath_normal_logcdf(x);
+  double lsf = lmath_normal_logsf(x);
   double a, b;
   double lK, lNK;
   double sign, lr;
@@ -113,7 +106,7 @@ void f_fl_fll(double x, double N, double K,
       *fl_ = 0.0;
     else
     {
-      lr = logaddexpss(a, b, 1.0, -1.0, &sign);
+      lr = lmath_logaddexpss(a, b, 1.0, -1.0, &sign);
       *fl_ = sign * exp(lr);
     }
   }
@@ -143,11 +136,16 @@ void f_fl_fll(double x, double N, double K,
   *fll_ = x * a - b;
 }
 
+inline double normal_logpdf2(double x, double mu, double var)
+{
+    return lmath_normal_logpdf((x - mu) / sqrt(var)) - log(var)/2.0;
+}
+
 double log_ulike_prior(double x, double N, double K, double mu, double var)
 {
-  double la = norm_logcdf(x);
-  double lb = norm_logsf(x);
-  return (K * la + (N-K) * lb + norm_logpdf2(x, mu, var));
+  double la = lmath_normal_logcdf(x);
+  double lb = lmath_normal_logsf(x);
+  return (K * la + (N-K) * lb + normal_logpdf2(x, mu, var));
 }
 
 void integrate_window(double l_, double r_,
@@ -178,8 +176,8 @@ void integrate_window(double l_, double r_,
   double mr = (r_ - mu_)/sig_;
   // printf("int 2 mr %.10f ml %.10f\n", mr, ml); fflush(stdout);
 
-  double lpdf_r = norm_logpdf(mr);
-  double lpdf_l = norm_logpdf(ml);
+  double lpdf_r = lmath_normal_logpdf(mr);
+  double lpdf_l = lmath_normal_logpdf(ml);
   double lcdf_l, lcdf_r;
   double lcdf_diff, lpdf_diff;
   double lsf_l, lsf_r;
@@ -187,17 +185,17 @@ void integrate_window(double l_, double r_,
 
   if (ml + mr >= 0.0)
   {
-    lsf_l = norm_logsf(ml);
-    lsf_r = norm_logsf(mr);
+    lsf_l = lmath_normal_logsf(ml);
+    lsf_r = lmath_normal_logsf(mr);
     // printf("lsf_l lsf_r %.10f %.10f\n", lsf_l, lsf_r); fflush(stdout);
-    lcdf_diff = logaddexps(lsf_l, lsf_r, 1.0, -1.0);
+    lcdf_diff = lmath_logaddexps(lsf_l, lsf_r, 1.0, -1.0);
     // printf("lcdf_diff %.10f\n", lcdf_diff); fflush(stdout);
   }
   else
   {
-    lcdf_l = norm_logcdf(ml);
-    lcdf_r = norm_logcdf(mr);
-    lcdf_diff = logaddexps(lcdf_r, lcdf_l, 1.0, -1.0);
+    lcdf_l = lmath_normal_logcdf(ml);
+    lcdf_r = lmath_normal_logcdf(mr);
+    lcdf_diff = lmath_logaddexps(lcdf_r, lcdf_l, 1.0, -1.0);
   }
   // printf("int 3\n"); fflush(stdout);
 
@@ -212,7 +210,7 @@ void integrate_window(double l_, double r_,
   }
   else
   {
-    lpdf_diff = logaddexpss(lpdf_l, lpdf_r, +1.0, -1.0, &lpdf_diff_sign);
+    lpdf_diff = lmath_logaddexpss(lpdf_l, lpdf_r, +1.0, -1.0, &lpdf_diff_sign);
     *lmu_res = mu_ + sig_ * exp(lpdf_diff - lcdf_diff) * lpdf_diff_sign;
     if (*lmu_res >= 0) *lmu_res_sign = +1.0;
     else *lmu_res_sign = -1.0;
@@ -220,23 +218,23 @@ void integrate_window(double l_, double r_,
   }
   // printf("int 4\n"); fflush(stdout);
   double t1_sign;
-  double t1 = logaddexpss(lpdf_l, lpdf_r, ml, -mr, &t1_sign);
+  double t1 = lmath_logaddexpss(lpdf_l, lpdf_r, ml, -mr, &t1_sign);
   t1 = t1 - lcdf_diff;
   double t2, t2_sign;
 
   // printf("int 4.1 t1 %.10f\n", t1); fflush(stdout);
 
   if (lpdf_l == lpdf_r)
-    t2 = logaddexps(0.0, t1, 1.0, t1_sign);
+    t2 = lmath_logaddexps(0.0, t1, 1.0, t1_sign);
   else
   {
     // printf("int 4.11 lpdf_diff lcdf_diff %.10f %.10f %.10f\n", lpdf_diff, lcdf_diff, 2*(lpdf_diff - lcdf_diff)); fflush(stdout);
     // printf("int 4.12 %.40f\n", t1 - 2*(lpdf_diff - lcdf_diff)); fflush(stdout);
     // printf("int 4.13 %.3f\n", t1_sign); fflush(stdout);
-    t2 = logaddexpss(t1, 2*(lpdf_diff - lcdf_diff), t1_sign, -1.0, &t2_sign);
+    t2 = lmath_logaddexpss(t1, 2*(lpdf_diff - lcdf_diff), t1_sign, -1.0, &t2_sign);
     // printf("int 4.2 t2 %.10f %.1f\n", t2, t2_sign); fflush(stdout);
     if (t2_sign == 1.0 || t2 < 0.0)
-      t2 = logaddexps(0.0, t2, 1.0, t2_sign);
+      t2 = lmath_logaddexps(0.0, t2, 1.0, t2_sign);
     else
       t2 = 0.0;
     // printf("int 4.3 t2 %.10f\n", t2); fflush(stdout);
@@ -265,7 +263,7 @@ void moments(double left, double step, int nints,
          &lmom0_final, &lmu_final, &lmu_final_sign, &lvar_final);
   // printf("%.10f ", lmom0_final)
   // printf("ponto 2\n"); fflush(stdout);
-  lvar_final = logaddexp(lvar_final, 2*lmu_final);
+  lvar_final = lmath_logaddexp(lvar_final, 2*lmu_final);
   lvar_final += lmom0_final;
   lmu_final += lmom0_final;
   l_ = r_;
@@ -302,9 +300,9 @@ void moments(double left, double step, int nints,
   }
   lmu_final -= lmom0_final;
   lvar_final -= lmom0_final;
-  lvar_final = logaddexps(lvar_final, 2*lmu_final, 1., -1.);
-  lmom0_final += binomln(N, K);
-  // printf("binomln(N, K): %.10f ", binomln(N, K))
+  lvar_final = lmath_logaddexps(lvar_final, 2*lmu_final, 1., -1.);
+  lmom0_final += lmath_logbinom(N, K);
+  // printf("lmath_logbinom(N, K): %.10f ", lmath_logbinom(N, K))
   // printf("%.10f ", lmom0_final)
 
   *lmom0_res = lmom0_final;

@@ -13,7 +13,7 @@ from numpy import set_printoptions
 
 from numpy.linalg import lstsq
 
-from limix_math.array import issingleton
+from limix_math import issingleton
 
 from lim.genetics import FastLMM
 

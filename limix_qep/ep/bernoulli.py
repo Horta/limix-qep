@@ -13,9 +13,9 @@ from numpy import set_printoptions
 from numpy import all as all_
 from numpy.linalg import lstsq
 
-from limix_math.array import issingleton
-from limix_math.dist.norm import logcdf
-from limix_math.dist.norm import logpdf
+from limix_math import issingleton
+from limix_math.special import normal_logcdf
+from limix_math.special import normal_logpdf
 
 from lim.genetics import FastLMM
 from lim.genetics.heritability import bern2lat_correction
@@ -27,12 +27,12 @@ class BernoulliPredictor(object):
         self._mean = mean
         self._cov = cov
 
-    def logpdf(self, y):
+    def normal_logpdf(self, y):
         ind = 2*y - 1
-        return logcdf(ind * self._mean / sqrt(1 + self._cov))
+        return normal_logcdf(ind * self._mean / sqrt(1 + self._cov))
 
     def pdf(self, y):
-        return exp(self.logpdf(y))
+        return exp(self.normal_logpdf(y))
 
 # K = \sigma_g^2 Q S Q.T
 class BernoulliEP(EP):
@@ -88,8 +88,8 @@ class BernoulliEP(EP):
         lb = log(b)
         c = self._y11 * self._cavs.eta / b
         lcdf = self._loghz
-        lcdf[:] = logcdf(c)
-        lpdf = logpdf(c)
+        lcdf[:] = normal_logcdf(c)
+        lpdf = normal_logpdf(c)
         self._hmu[:] = self._cavs.eta / self._cavs.tau \
                        + self._y11 * exp(lpdf - (lcdf + lb))
 
@@ -100,7 +100,7 @@ class BernoulliEP(EP):
     def _compute_hz(self):
         b = sqrt(self._cavs.tau**2 + self._cavs.tau)
         c = self._y11 * self._cavs.eta / b
-        self._loghz[:] = logcdf(c)
+        self._loghz[:] = normal_logcdf(c)
 
 
     def __str__(self):

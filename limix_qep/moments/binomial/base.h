@@ -1,7 +1,8 @@
-#ifndef _NBINOM_MOMS_BASE_H_
-#define _NBINOM_MOMS_BASE_H_
+#ifndef BASE_H
+#define BASE_H
 
-#include "cephes/cephes.h"
+#include <math.h>
+#include "limix_math/special.h"
 
 double log_ulike_prior(double x, double N, double K, double mu, double var);
 void update_moms(double lmom0_int, double lmu_int, double lmu_int_sign,
@@ -15,10 +16,10 @@ void get_extrema(double N, double K, double mu, double var,
 static inline double get_mode(double N, double K)
 {
   if (N == K)
-    return norm_cdfi(1./pow(2, 1/N));
+    return lmath_normal_icdf(1./pow(2, 1/N));
   if (K == 0)
-    return -norm_cdfi(1./pow(2, 1/N));
-  return norm_cdfi(K / N);
+    return -lmath_normal_icdf(1./pow(2, 1/N));
+  return lmath_normal_icdf(K / N);
 }
 void integrate_window(double l_, double r_,
                       double N, double K,

@@ -2,13 +2,11 @@ from __future__ import division, print_function
 import os
 import sys
 import glob
-from setuptools import setup, find_packages
-from setuptools.extension import Extension
-from Cython.Build import cythonize
-from Cython.Distutils import build_ext
+from setuptools import setup
+from setuptools import find_packages
 
 PKG_NAME = 'limix_qep'
-VERSION = '0.1.16'
+VERSION = '0.1.17.dev1'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
@@ -35,61 +33,6 @@ except ImportError:
 else:
     print("Good: scipy %s" % scipy.__version__)
 
-try:
-    import cython
-except ImportError:
-    print("Error: cython package couldn't be found." +
-          " Please, install it so I can proceed.")
-    sys.exit(1)
-else:
-    print("Good: cython %s" % cython.__version__)
-
-
-def cephes_info():
-    curdir = os.path.abspath(os.path.dirname(__file__))
-
-    define_macros = []
-    if sys.platform == 'win32':
-        define_macros.append(('_USE_MATH_DEFINES', None))
-    define_macros.append(('PI', 3.141592653589793238462643383279502884))
-
-    cephes_src = glob.glob(os.path.join(curdir, 'cephes', '*/*.c'))
-    cephes_src.extend(glob.glob(os.path.join(curdir, 'cephes', '*.c')))
-
-    cephes_hdr = glob.glob(os.path.join(curdir, 'cephes', '*/*.h'))
-    cephes_hdr.extend(glob.glob(os.path.join(curdir, 'cephes', '*.h')))
-
-    return dict(src=cephes_src, include_dirs=[curdir],
-                define_macros=define_macros,
-                extra_compile_args=['-Wno-unused-function'],
-                depends=cephes_src + cephes_hdr)
-
-
-def special_extension():
-    ci = cephes_info()
-
-    curdir = os.path.abspath(os.path.dirname(__file__))
-
-    special_folder = os.path.join(curdir, 'limix_qep/special/')
-
-    src = ['nbinom_moms.pyx', 'nbinom_moms_base.c']
-    src = [os.path.join(special_folder, s) for s in src]
-
-    hdr = ['nbinom_moms.pxd', 'nbinom_moms_base.h']
-    hdr = [os.path.join(special_folder, h) for h in hdr]
-
-    depends = src + hdr + ci['depends']
-
-    ext = Extension('limix_qep/special/nbinom_moms',
-                    src + ci['src'],
-                    include_dirs=ci['include_dirs'],
-                    extra_compile_args=ci['extra_compile_args'],
-                    define_macros=ci['define_macros'],
-                    depends=depends)
-
-    return ext
-
-
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     old_path = os.getcwd()
@@ -113,8 +56,8 @@ def setup_package():
         setup_requires=setup_requires,
         tests_require=tests_require,
         zip_safe=False,
-        ext_modules=cythonize([special_extension()]),
-        cmdclass=dict(build_ext=build_ext),
+        include_package_data=True,
+        cffi_modules=['moments_build.py:binomial']
     )
 
     if conda_present:
