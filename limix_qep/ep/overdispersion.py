@@ -143,7 +143,7 @@ class OverdispersionEP(EP):
 
         nr = self.noise_ratio
         nr, nfev = find_minimum(self._noise_ratio_cost, nr, a=a, b=b,
-                                rtol=0, atol=1e-3)
+                                rtol=0, atol=1e-4)
 
         self.noise_ratio = nr
 
@@ -167,7 +167,7 @@ class OverdispersionEP(EP):
         gr = self.genetic_ratio
 
         gr, nfev = find_minimum(self._genetic_ratio_cost, gr, a=a,
-                                b=b, rtol=0, atol=1e-3)
+                                b=b, rtol=0, atol=1e-4)
 
         self.genetic_ratio = gr
         self._find_best_noise_ratio()

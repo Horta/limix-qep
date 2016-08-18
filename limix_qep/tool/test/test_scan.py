@@ -31,9 +31,9 @@ def test_estimate_bernoulli_real_trait():
 
 def test_estimate_binomial_real_trait():
     seed = 3197
-    nsamples = 30
+    nsamples = 100
     nfeatures = 30
-    ntrials = 15
+    ntrials = 25
 
     (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=1.,
                              delta=0.01, sige2=0.01, seed=seed)
