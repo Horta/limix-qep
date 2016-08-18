@@ -41,9 +41,6 @@ def test_estimate_binomial_real_trait():
     K = dot(G[:, 0:10], G[:, 0:10].T)
     zG = np.hstack((np.zeros((nsamples, 1)), G))
     (pvals, info) = scan_binomial(y, full(nsamples, ntrials, float), zG, K=K)
-    print(info)
-    print(pvals)
-    # print(pvals)
 
     assert_array_less(np.sum(pvals[11:]) / 20., np.sum(pvals[1:11]) / 10.)
     assert_array_less(pvals[11:].min(), pvals[1:11].min())

@@ -417,5 +417,7 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     lrt.candidate_markers = X
     info['lrs'] = lrt.lrs()
     info['effsizes'] = lrt.effsizes
+    info['ep_null_model'] = lrt._ep
     return_ = (lrt.pvals(), info)
+    print(lrt._ep)
     return return_

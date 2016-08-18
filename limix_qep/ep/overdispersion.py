@@ -13,6 +13,7 @@ from numpy import set_printoptions
 from numpy import argmin
 from numpy import zeros
 from numpy import array
+from .util import greek_letter
 
 from .dists import Joint
 from .base import EP
@@ -213,7 +214,7 @@ class OverdispersionEP(EP):
             return zeros((nsamples, nsamples))
         return super(OverdispersionEP, self)._Q0B1Q0t()
 
-    def __str__(self):
+    def __repr__(self):
         v = self.genetic_variance
         e = self.environmental_variance
         beta = self.beta
@@ -263,6 +264,57 @@ Statistics (latent space):
              Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
              tvar="%.4f" % tvar, cvar="%.4f" % cvar, h2="%.4f" % h2,
              ivar="%.4f" % ivar, gr="%.4f" % gr, nr="%.4f" % nr)
+        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+                         precision=8, suppress=False, threshold=1000,
+                         formatter=None)
+        return s
+
+    def __str__(self):
+        v = self.genetic_variance
+        e = self.environmental_variance
+        beta = self.beta
+        M = self.M
+        Q0 = self._Q0
+        Q1 = self._Q1
+        S0 = self._S0
+        tvar = self.total_variance
+        set_printoptions(precision=3, threshold=10)
+
+        def indent(s):
+            final = []
+            for si in s.split('\n'):
+                final.append('      ' + si)
+            return '\n'.join(final)
+        cvar = self.covariates_variance
+        ivar = self.instrumental_variance
+        h2 = self.heritability
+        gr = self.genetic_ratio
+        nr = self.noise_ratio
+        var_sym = unichr(0x3bd).encode('utf-8')
+        s = """
+Latent phenotype:
+  f_i = o_i + u_i + e_i
+
+Definitions:
+  o: fixed-effects signal
+     M {b}.T
+  u: background signal
+     Normal(0, {v} * Kinship)
+  e: environmental signal
+     Normal(0, {e} * I)
+
+Statistics (latent space):
+  Total variance:        {tvar}     {vs}_o + {vs}_u + {vs}_e + {vs}_{eps}
+  Instrumental variance: {ivar}     {vs}_{eps}
+  Covariates variance:   {cvar}     {vs}_o
+  Heritability:          {h2}     {vs}_u / ({vs}_o + {vs}_u + {vs}_e)
+  Genetic ratio:         {gr}     {vs}_u / ({vs}_u + {vs}_e + {vs}_{eps})
+  Noise ratio:           {nr}     {vs}_e / ({vs}_e + {vs}_{eps})
+  """.format(v="%7.4f" % v, e="%7.4f" % e, b=beta, Q0=indent(bytes(Q0)),
+             Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
+             tvar="%7.4f" % tvar, cvar="%7.4f" % cvar, h2="%7.4f" % h2,
+             ivar="%7.4f" % ivar, gr="%7.4f" % gr, nr="%7.4f" % nr,
+             vs=var_sym, eps=greek_letter('epsilon'))
         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
                          precision=8, suppress=False, threshold=1000,
                          formatter=None)
