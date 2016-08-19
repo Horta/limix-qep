@@ -1,7 +1,9 @@
-# import unittest
-# import numpy as np
-# from limix_qep.special.nbinom_moms import moments_array3, init
-#
+import unittest
+import numpy as np
+import limix_qep.moments.binomial
+from limix_qep.moments.binomial import moments_array
+# print(moments_array)
+
 # class TestNBinomMoms(unittest.TestCase):
 #     def setUp(self):
 #         init(100)
