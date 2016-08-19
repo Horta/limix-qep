@@ -40,6 +40,13 @@ except ImportError:
           " Please, install it so I can proceed.")
     sys.exit(1)
 
+try:
+    import limix_math
+except ImportError:
+    print("Error: limix_math package couldn't be found." +
+          " Please, install it so I can proceed.")
+    sys.exit(1)
+
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     old_path = os.getcwd()
