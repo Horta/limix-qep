@@ -33,6 +33,13 @@ except ImportError:
 else:
     print("Good: scipy %s" % scipy.__version__)
 
+try:
+    import ncephes
+except ImportError:
+    print("Error: ncephes package couldn't be found." +
+          " Please, install it so I can proceed.")
+    sys.exit(1)
+
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
     old_path = os.getcwd()
