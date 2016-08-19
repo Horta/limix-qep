@@ -7,7 +7,8 @@ void compute_heights(double left, double step, int nint,
                      double N, double K, double mu, double var,
                      double* heights)
 {
-    for (int i = 0; i < nint+1; i++)
+    int i;
+    for (i = 0; i < nint+1; i++)
     {
         heights[i] = log_ulike_prior(left, N, K, mu, var);
         left += step;
@@ -22,7 +23,8 @@ double compute_weights(double left, double step, int nint,
     double hl, hr, c;
     double r, llc;
     double acum;
-    for (int i = 0; i < nint; i++)
+    int i;
+    for (i = 0; i < nint; i++)
     {
         r = left + step;
 

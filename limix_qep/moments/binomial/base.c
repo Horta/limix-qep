@@ -79,8 +79,8 @@ void f_fl_fll(double x, double N, double K,
   double lpdf = lmath_normal_logpdf(x);
   double lcdf = lmath_normal_logcdf(x);
   double lsf = lmath_normal_logsf(x);
-  double a, b;
-  double lK, lNK;
+  double a = 0, b = 0;
+  double lK = 0, lNK = 0;
   double sign, lr;
 
   *f_ = K * lcdf + (N-K) * lsf;
