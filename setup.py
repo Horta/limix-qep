@@ -40,7 +40,7 @@ def setup_package():
     sys.path.insert(0, src_path)
 
     install_requires = ['hcache', 'limix_math>=0.1.12', 'limix_tool>=0.1.16',
-                        'limix_util', 'lim>=0.0.5']
+                        'limix_util', 'lim>=0.0.5', 'pytest']
     setup_requires = ['pytest-runner']
     tests_require = ['pytest']
 

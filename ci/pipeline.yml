@@ -1,0 +1,16 @@
+resources:
+- name: limix-qep
+  type: git
+  source:
+    uri: https://github.com/Horta/limix-qep.git
+    branch: master
+
+jobs:
+
+- name: test
+  plan:
+  - get: limix-qep
+  - task: test-source
+    file: limix-qep/ci/test-source.yml
+  - task: test-sdist
+    file: limix-qep/ci/test-sdist.yml
