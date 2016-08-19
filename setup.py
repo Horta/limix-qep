@@ -57,7 +57,7 @@ def setup_package():
         tests_require=tests_require,
         zip_safe=False,
         include_package_data=True,
-        cffi_modules=['moments_build.py:binomial']
+        # cffi_modules=['moments_build.py:binomial']
     )
 
     if conda_present:
