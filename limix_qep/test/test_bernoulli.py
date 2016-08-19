@@ -1,19 +1,19 @@
-# from __future__ import division
+from __future__ import division
+
+from numpy import dot
+from numpy import ones
+from numpy import array
+from numpy import empty
+from numpy import hstack
+from numpy.testing import assert_almost_equal
 #
-# from numpy import dot
-# from numpy import ones
-# from numpy import array
-# from numpy import empty
-# from numpy import hstack
-# from numpy.testing import assert_almost_equal
-#
-# from limix_qep.ep import BernoulliEP
-#
-# from limix_math.linalg import qs_decomposition
-#
-# from limix_qep.tool.util import create_binomial
-#
-#
+from limix_qep.ep import BernoulliEP
+
+from limix_math.linalg import qs_decomposition
+
+from limix_qep.tool.util import create_binomial
+
+
 # def test_bernoulli_lml():
 #     n = 3
 #     M = ones((n, 1)) * 1.

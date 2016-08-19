@@ -19,23 +19,11 @@ from lim.genetics import FastLMM
 
 from .overdispersion import OverdispersionEP
 
-from limix_qep.special.nbinom_moms import moments_array3, init
+from limix_qep.moments.binomial import BinomMoments
 
 from .util import ratio_posterior
 from .util import greek_letter
 from .util import summation_symbol
-
-# class BernoulliPredictor(object):
-#     def __init__(self, mean, cov):
-#         self._mean = mean
-#         self._cov = cov
-#
-#     def logpdf(self, y):
-#         ind = 2*y - 1
-#         return logcdf(ind * self._mean / sqrt(1 + self._cov))
-#
-#     def pdf(self, y):
-#         return exp(self.logpdf(y))
 
 # K = v (Q S Q.T + \delta I)
 class BinomialEP(OverdispersionEP):
@@ -64,7 +52,7 @@ class BinomialEP(OverdispersionEP):
         assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
-        init(100)
+        self._moments = BinomMoments(100)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm
@@ -98,7 +86,7 @@ class BinomialEP(OverdispersionEP):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        moments_array3(N, K, ceta, ctau, lmom0, self._hmu, self._hvar)
+        self._moments.compute(N, K, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):
