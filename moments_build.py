@@ -18,7 +18,7 @@ def _make():
     incls = [join('limix_qep', 'moments', 'binomial'),
              limix_math.get_include(),
              ncephes.get_include()]
-    libraries = ['ncprob', 'm', 'limix_math', 'nmisc']
+    libraries = ['limix_math', 'ncprob', 'm', 'nmisc']
 
     logger.debug('Sources: %s', bytes(sources))
     logger.debug('Headers: %s', bytes(hdrs))
