@@ -31,8 +31,7 @@ def _make():
                    include_dirs=incls,
                    sources=sources,
                    libraries=libraries,
-                   library_dirs=[limix_math.get_lib(), ncephes.get_lib(),
-                                 'm'],
+                   library_dirs=[limix_math.get_lib(), ncephes.get_lib()],
                    depends=sources + hdrs)
 
     with open(join('limix_qep', 'moments', 'binomial', 'moments.h'), 'r') as f:
