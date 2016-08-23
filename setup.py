@@ -86,6 +86,4 @@ def setup_package():
         os.chdir(old_path)
 
 if __name__ == '__main__':
-    import logging.config
-    logging.config.fileConfig('logging.ini')
     setup_package()
