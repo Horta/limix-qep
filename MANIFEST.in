@@ -1,1 +1,2 @@
-include limix_qep/version.py
+include *.py *.txt *.mdk *.md *.rst
+recursive-include limix_qep *.py
