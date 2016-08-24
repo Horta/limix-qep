@@ -31,7 +31,7 @@ class FixedBaseEP(object):
         Q0B1Q0t = self._Q0B1Q0t
 
         p5 = A2teta.dot(ms) - dot(self._u, A1ms)
-        p6 = - (sum_(A1ms * ms, 0) + sum_(A1ms * dot(Q0B1Q0t, A1ms), 0)) / 2
+        p6 = (-sum_(A1ms * ms, 0) + sum_(A1ms * dot(Q0B1Q0t, A1ms), 0)) / 2
 
         return self._lml_const + p5 + p6
 

@@ -427,7 +427,7 @@ class EP(Cached):
 
         step = inf
         i = 0
-        while step > HYPERPARAM_EPS and i < 5:
+        while step > 1e-7 and i < 5:
             ptbeta[:] = self._tbeta
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)

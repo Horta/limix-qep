@@ -6,7 +6,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 PKG_NAME = 'limix_qep'
-VERSION = '0.1.18'
+VERSION = '0.1.20'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
@@ -54,7 +54,7 @@ def setup_package():
     sys.path.insert(0, src_path)
 
     install_requires = ['hcache', 'limix_math>=0.2.1', 'limix_tool>=0.1.16',
-                        'limix_util', 'lim>=0.0.5', 'pytest']
+                        'limix_util', 'lim>=0.0.5', 'pytest', 'tabulate']
     setup_requires = ['pytest-runner']
     tests_require = ['pytest']
 

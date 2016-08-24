@@ -1,4 +1,5 @@
 from __future__ import absolute_import
+from tabulate import tabulate
 import logging
 from numpy import asarray
 import numpy as np
@@ -52,6 +53,7 @@ class LRT(object):
         self._lml_null = np.nan
         self._X = None
         self._null_model_only = null_model_only
+        self._lml_alt = None
 
     @property
     def genetic_variance(self):
@@ -107,6 +109,7 @@ class LRT(object):
 
         t = self._lml_alts(fep, X, covariate)
         fp_lml_alt[:] = np.maximum(fp_lml_alt, t)
+        self._lml_alt = fp_lml_alt
 
         fp_lrs = -2 * lml_null + 2 * fp_lml_alt
         chi2 = st.chi2(df=1)
@@ -185,6 +188,9 @@ class LRT(object):
         lml_alt = fep.lmls(ms)
         self._betas = betas[p, :]
         return lml_alt
+
+    def lml_alt(self):
+        return self._lml_alt
 
     @property
     def effsizes(self):
@@ -377,6 +383,8 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     logger.info('Association scan has started.')
     nsuccesses = asarray(nsuccesses, dtype=float)
 
+    print("Number of candidate markers to scan: %d" % X.shape[1])
+
     info = dict()
 
     if K is not None:
@@ -412,12 +420,27 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     Q0, Q1 = QS[0]
     S0 = QS[1][0]
 
+    print("Scan has began...")
     lrt = _create_LRT(nsuccesses, Q0, Q1, S0, covariate, Binomial(ntrials),
                       null_model_only=False)
     lrt.candidate_markers = X
     info['lrs'] = lrt.lrs()
     info['effsizes'] = lrt.effsizes
     info['ep_null_model'] = lrt._ep
+    info['lml_alt'] = lrt.lml_alt()
     return_ = (lrt.pvals(), info)
+    print("Scan has finished.")
+
+    print("-------------------------- NULL MODEL --------------------------")
     print(lrt._ep)
+    print("----------------------------------------------------------------")
+    print("")
+
+    table = [info['effsizes'], info['lml_alt'], info['lrs'], lrt.pvals()]
+    table = [list(i) for i in table]
+    table = map(list, zip(*table))
+    print("---------------------- ALTERNATIVE MODELs ----------------------")
+    print(tabulate(table, headers=('EffSiz', 'LML', 'LR', 'Pval')))
+    print("----------------------------------------------------------------")
+
     return return_

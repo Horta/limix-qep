@@ -303,6 +303,8 @@ Definitions:
   e: environmental signal
      Normal(0, {e} * I)
 
+Log marginal likelihood: {lml}
+
 Statistics (latent space):
   Total variance:        {tvar}     {vs}_o + {vs}_u + {vs}_e + {vs}_{eps}
   Instrumental variance: {ivar}     {vs}_{eps}
@@ -314,7 +316,8 @@ Statistics (latent space):
              Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
              tvar="%7.4f" % tvar, cvar="%7.4f" % cvar, h2="%7.4f" % h2,
              ivar="%7.4f" % ivar, gr="%7.4f" % gr, nr="%7.4f" % nr,
-             vs=var_sym, eps=greek_letter('epsilon'))
+             vs=var_sym, eps=greek_letter('epsilon'),
+             lml="%9.6f" % self.lml())
         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
                          precision=8, suppress=False, threshold=1000,
                          formatter=None)
