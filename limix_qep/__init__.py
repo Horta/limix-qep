@@ -4,7 +4,8 @@ from pkg_resources import get_distribution
 from .lik import Bernoulli
 from .lik import Binomial
 # from .tool.heritability import estimate as h2_estimate
-from .tool.scan import scan as scan
+from .tool.scan import scan
+from .tool.scan import scan_binomial
 
 __version__ = get_distribution('limix-qep').version
 
@@ -21,3 +22,5 @@ def test():
         os.chdir(old_path)
 
     return return_code
+
+__all__ = ['test', 'scan_binomial']

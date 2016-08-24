@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 import logging
 from numpy import asarray
-# from limix_qep.ep import EP
 import numpy as np
 from numpy import dot
-from limix_qep import Bernoulli, Binomial
+from limix_qep.lik import Bernoulli
+from limix_qep.lik import Binomial
 from limix_math.linalg import qs_decomposition
 from limix_math.linalg import _QS_from_K_split
 from .util import gower_kinship_normalization
@@ -346,30 +346,31 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     with rows and columsn representing samples and genetic markers,
     respectively.
 
-    The user must specifiy only one of the parameters `G` and `K` for defining
+    The user must specify only one of the parameters `G` and `K` for defining
     the genetic background.
 
     Let :math:`N` be the sample size, :math:`S` the number of covariates,
     :math:`P_c` the number of genetic markers to be tested, and :math:`P_b`
     the number of genetic markers used for Kinship estimation.
 
-    :param numpy.ndarray nsuccesses: Phenotype described by the number of
-                                     successes, as non-negative integers.
-                                     Dimension (:math:`N\\times 0`).
-    :param numpy.ndarray ntrials: Phenotype described by the number of trials,
-                                  as positive integers. Dimension
-                                  (:math:`N\\times 0`).
-    :param numpy.ndarray X: Candidate genetic markers (or any other type of
-                            explanatory variable) whose association with the
-                            phenotype will be tested. Dimension
-                            (:math:`N\\times P_c`).
-    :param numpy.ndarray G: Genetic markers matrix used internally for kinship
-                            estimation. Dimension (:math:`N\\times P_b`).
-    :param numpy.ndarray K: Kinship matrix. Dimension (:math:`N\\times N`).
-    :param numpy.array covariate: Covariates. Default is an offset.
-                                  Dimension (:math:`N\\times S`).
-    :return:              a tuple containing the estimated p-values and
-                          additional information, respectively.
+    Args:
+        nsuccesses (numpy.ndarray): Phenotype described by the number of
+                                    successes, as non-negative integers.
+                                    Dimension (:math:`N\\times 0`).
+        ntrials    (numpy.ndarray): Phenotype described by the number of trials,
+                                    as positive integers. Dimension
+                                    (:math:`N\\times 0`).
+        X          (numpy.ndarray): Candidate genetic markers (or any other type of
+                                    explanatory variable) whose association with the
+                                    phenotype will be tested. Dimension
+                                    (:math:`N\\times P_c`).
+        G          (numpy.ndarray): Genetic markers matrix used internally for kinship
+                                    estimation. Dimension (:math:`N\\times P_b`).
+        K          (numpy.ndarray): Kinship matrix. Dimension (:math:`N\\times N`).
+        covariate  (numpy.ndarray): Covariates. Default is an offset.
+                                    Dimension (:math:`N\\times S`).
+    Returns:
+        tuple: The estimated p-values and additional information, respectively.
     """
 
     logger = logging.getLogger(__name__)
