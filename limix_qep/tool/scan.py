@@ -357,12 +357,12 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
         nsuccesses (numpy.ndarray): Phenotype described by the number of
                                     successes, as non-negative integers.
                                     Dimension (:math:`N\\times 0`).
-        ntrials    (numpy.ndarray): Phenotype described by the number of trials,
-                                    as positive integers. Dimension
+        ntrials    (numpy.ndarray): Phenotype described by the number of
+                                    trials, as positive integers. Dimension
                                     (:math:`N\\times 0`).
-        X          (numpy.ndarray): Candidate genetic markers (or any other type of
-                                    explanatory variable) whose association with the
-                                    phenotype will be tested. Dimension
+        X          (numpy.ndarray): Candidate genetic markers (or any other
+                                    type of explanatory variable) whose
+                                    association with the phenotype will be tested. Dimension
                                     (:math:`N\\times P_c`).
         G          (numpy.ndarray): Genetic markers matrix used internally for kinship
                                     estimation. Dimension (:math:`N\\times P_b`).
@@ -407,7 +407,6 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     s = np.std(X, 0)
     ok = s > 0.
     X[:, ok] /= s[ok]
-    X /= np.sqrt(X.shape[1])
     info['X'] = X
 
     Q0, Q1 = QS[0]

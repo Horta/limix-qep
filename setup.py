@@ -6,7 +6,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 PKG_NAME = 'limix_qep'
-VERSION = '0.1.18.dev1'
+VERSION = '0.1.18'
 
 try:
     from distutils.command.bdist_conda import CondaDistribution
