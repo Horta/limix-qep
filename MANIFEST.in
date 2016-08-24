@@ -1,2 +1,2 @@
 include *.py *.txt *.mdk *.md *.rst
-recursive-include limix_qep *.py
+recursive-include limix_qep *.py *.h *.c
