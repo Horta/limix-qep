@@ -1,3 +1,4 @@
+pipeline.yml
 limix_qep.egg-info/*
 save-commands.json
 build/

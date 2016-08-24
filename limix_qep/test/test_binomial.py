@@ -35,7 +35,6 @@ def test_binomial_lml():
 
     assert_almost_equal(lml1 - lml2, 0., decimal=5)
 
-
 def test_binomial_optimize():
 
     seed = 10
