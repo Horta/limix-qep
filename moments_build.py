@@ -1,12 +1,13 @@
-from cffi import FFI
 from os.path import join
-import ncephes
-import limix_math
 from glob import glob
 import logging
 
 
 def _make():
+    from cffi import FFI
+    import ncephes
+    import limix_math
+
     logger = logging.getLogger()
 
     logger.debug('CFFI make')

@@ -1,51 +1,8 @@
-from __future__ import division, print_function
 import os
 import sys
-import glob
 from setuptools import setup
 from setuptools import find_packages
 
-PKG_NAME = 'limix_qep'
-VERSION = '0.1.20'
-
-try:
-    from distutils.command.bdist_conda import CondaDistribution
-except ImportError:
-    conda_present = False
-else:
-    conda_present = True
-
-try:
-    import numpy
-except ImportError:
-    print("Error: numpy package couldn't be found." +
-          " Please, install it so I can proceed.")
-    sys.exit(1)
-else:
-    print("Good: numpy %s" % numpy.__version__)
-
-try:
-    import scipy
-except ImportError:
-    print("Error: scipy package couldn't be found." +
-          " Please, install it so I can proceed.")
-    sys.exit(1)
-else:
-    print("Good: scipy %s" % scipy.__version__)
-
-try:
-    import ncephes
-except ImportError:
-    print("Error: ncephes package couldn't be found." +
-          " Please, install it so I can proceed.")
-    sys.exit(1)
-
-try:
-    import limix_math
-except ImportError:
-    print("Error: limix_math package couldn't be found." +
-          " Please, install it so I can proceed.")
-    sys.exit(1)
 
 def setup_package():
     src_path = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -53,15 +10,19 @@ def setup_package():
     os.chdir(src_path)
     sys.path.insert(0, src_path)
 
-    install_requires = ['hcache', 'limix_math>=0.2.1', 'limix_tool>=0.1.16',
-                        'limix_util', 'lim>=0.0.5', 'pytest', 'tabulate']
-    setup_requires = ['pytest-runner']
-    tests_require = ['pytest']
+    needs_pytest = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
+    pytest_runner = ['pytest-runner'] if needs_pytest else []
+
+    setup_requires = ['build_capi>=0.0.8', 'ncephes>=0.1',
+                      'cffi>=1.6', 'limix_math>=0.3'] + pytest_runner
+    install_requires = ['hcache', 'limix_math>=0.3',
+                        'lim>=0.1', 'pytest', 'tabulate>=0.7']
+    tests_require = install_requires
 
     metadata = dict(
-        name=PKG_NAME,
+        name='limix_qep',
         maintainer="Limix Developers",
-        version=VERSION,
+        version='0.2.0.dev1',
         maintainer_email="horta@ebi.ac.uk",
         packages=find_packages(),
         license="BSD",
@@ -74,7 +35,11 @@ def setup_package():
         cffi_modules=['moments_build.py:binomial']
     )
 
-    if conda_present:
+    try:
+        from distutils.command.bdist_conda import CondaDistribution
+    except ImportError:
+        pass
+    else:
         metadata['distclass'] = CondaDistribution
         metadata['conda_buildnum'] = 1
         metadata['conda_features'] = ['mkl']
