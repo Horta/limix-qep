@@ -26,7 +26,10 @@ from .util import greek_letter
 from .util import summation_symbol
 
 # K = v (Q S Q.T + \delta I)
+
+
 class BinomialEP(OverdispersionEP):
+
     def __init__(self, y, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
@@ -64,15 +67,16 @@ class BinomialEP(OverdispersionEP):
 
         Q0 = self._Q0
         Q1 = self._Q1
-        flmm = FastLMM(latent, QS=[[Q0, Q1], [self._S0]])
+        covariates = self._M
+        flmm = FastLMM(latent, covariates, QS=[[Q0, Q1], [self._S0]])
         flmm.learn()
         gv = flmm.genetic_variance
-        nv = flmm.noise_variance
+        nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
         h2 = clip(h2, 0.01, 0.9)
 
-        offset = flmm.offset
-        self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
+        mean = flmm.mean
+        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
         self.environmental_variance = self.instrumental_variance
         self.pseudo_heritability = h2
 
@@ -94,20 +98,6 @@ class BinomialEP(OverdispersionEP):
         # b = sqrt(self._cavs.tau**2 + self._cavs.tau)
         # c = self._y11 * self._cavs.eta / b
         # self._loghz[:] = logcdf(c)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     # def _tilted_params(self):
     #     otype = self._outcome_type
@@ -164,9 +154,6 @@ class BinomialEP(OverdispersionEP):
     #     sig2 = var2
     #
     #     return (mu, sig2)
-
-
-
 
     # def _create_fun_cost_sigg2(self, opt_beta):
     #     def fun_cost(h2):
@@ -251,7 +238,6 @@ Observed phenotype:
         distributed according to Normal(0, 1).
 """.format(epsilon=greek_letter('epsilon'),
            sum=summation_symbol())
-
 
         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
                          precision=8, suppress=False, threshold=1000,

@@ -25,6 +25,7 @@ def test_bernoulli_lml():
     ep.genetic_variance = 1.
     assert_almost_equal(ep.lml(), -2.59563598457)
 
+
 def test_bernoulli_optimize():
     seed = 15
     nsamples = 500
@@ -41,6 +42,7 @@ def test_bernoulli_optimize():
     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
     ep.optimize()
     assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
+
 
 def test_bernoulli_prediction():
     seed = 15

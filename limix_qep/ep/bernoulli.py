@@ -22,20 +22,25 @@ from lim.genetics.heritability import bern2lat_correction
 
 from .base import EP
 
+
 class BernoulliPredictor(object):
+
     def __init__(self, mean, cov):
         self._mean = mean
         self._cov = cov
 
     def normal_logpdf(self, y):
-        ind = 2*y - 1
+        ind = 2 * y - 1
         return normal_logcdf(ind * self._mean / sqrt(1 + self._cov))
 
     def pdf(self, y):
         return exp(self.normal_logpdf(y))
 
 # K = \sigma_g^2 Q S Q.T
+
+
 class BernoulliEP(EP):
+
     def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
@@ -67,17 +72,19 @@ class BernoulliEP(EP):
 
         Q0 = self._Q0
         Q1 = self._Q1
-        flmm = FastLMM(full(len(y), latent), QS=[[Q0, Q1], [self._S0]])
+        covariates = self._M
+        flmm = FastLMM(full(len(y), latent), covariates,
+                       QS=[[Q0, Q1], [self._S0]])
         flmm.learn()
         gv = flmm.genetic_variance
-        nv = flmm.noise_variance
+        nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
         h2 = bern2lat_correction(h2, ratio, ratio)
         h2 = clip(h2, 0.01, 0.9)
 
-        offset = flmm.offset
-        self._v = h2/(1-h2)
-        self._tbeta = lstsq(self._tM, full(len(y), offset))[0]
+        mean = flmm.mean
+        self._v = h2 / (1 - h2)
+        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
 
     def predict(self, m, var, covar):
         (mu, sig2) = self._posterior_normal(m, var, covar)
@@ -91,17 +98,16 @@ class BernoulliEP(EP):
         lcdf[:] = normal_logcdf(c)
         lpdf = normal_logpdf(c)
         self._hmu[:] = self._cavs.eta / self._cavs.tau \
-                       + self._y11 * exp(lpdf - (lcdf + lb))
+            + self._y11 * exp(lpdf - (lcdf + lb))
 
-        self._hvar[:] = 1./self._cavs.tau\
-                        - exp(lpdf - (lcdf + 2*lb)) * (c + exp(lpdf - lcdf))
+        self._hvar[:] = 1. / self._cavs.tau\
+            - exp(lpdf - (lcdf + 2 * lb)) * (c + exp(lpdf - lcdf))
 
     # \hat z
     def _compute_hz(self):
         b = sqrt(self._cavs.tau**2 + self._cavs.tau)
         c = self._y11 * self._cavs.eta / b
         self._loghz[:] = normal_logcdf(c)
-
 
     def __str__(self):
         set_printoptions(precision=3, threshold=10)
