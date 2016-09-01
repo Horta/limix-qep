@@ -278,7 +278,7 @@ Statistics (latent space):
         return s
 
     def __str__(self):
-        return six.u(self).encode('utf-8')
+        return self.__unicode__().encode('utf-8')
 
     def __unicode__(self):
         v = self.genetic_variance
