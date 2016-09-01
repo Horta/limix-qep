@@ -16,6 +16,7 @@ from numpy.linalg import lstsq
 from limix_math import issingleton
 
 from lim.genetics import FastLMM
+from lim.genetics import BinomialModel
 
 from .overdispersion import OverdispersionEP
 
@@ -30,11 +31,11 @@ from .util import summation_symbol
 
 class BinomialEP(OverdispersionEP):
 
-    def __init__(self, y, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
+    def __init__(self, nsuccesses, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        y = asarray(y, float)
+        y = asarray(nsuccesses, float)
 
         if isscalar(ntrials):
             ntrials = full(len(y), ntrials, dtype=float)
@@ -228,48 +229,65 @@ class BinomialEP(OverdispersionEP):
     #                        self.sigg2, self.delta)
     #     self._logger.debug("End of optimization.")
 
-    def __str__(self):
-        set_printoptions(precision=3, threshold=10)
+    def model(self):
+        covariate_effect_sizes = self.beta
+        fixed_effects_variance = self.beta.var()
+        real_variance = self.real_variance
+        noise_ratio = self.noise_ratio
+        genetic_variance = self.genetic_variance
+        environmental_variance = self.environmental_variance
+        instrumental_variance = self.instrumental_variance
+        environmental_genetic_ratio = self.environmental_genetic_ratio
+        genetic_ratio = self.genetic_ratio
+        heritability = self.heritability
+        return BinomialModel(covariate_effect_sizes, fixed_effects_variance,
+                             real_variance, noise_ratio, genetic_variance,
+                             environmental_variance, instrumental_variance,
+                             environmental_genetic_ratio, genetic_ratio,
+                             heritability)
 
-        s = """
-Observed phenotype:
-  y_i = {sum}_{{j=1}}^{{n}} Indicator(f_i + {epsilon}_{{i,j}} > 0), where f_i is
-        the latent phenotype of the i-th individual and {epsilon}_{{i,j}} is
-        distributed according to Normal(0, 1).
-""".format(epsilon=greek_letter('epsilon'),
-           sum=summation_symbol())
-
-        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
-                         precision=8, suppress=False, threshold=1000,
-                         formatter=None)
-
-        return s + super(BinomialEP, self).__str__()
-
-    def __repr__(self):
-        set_printoptions(precision=3, threshold=10)
-        s = self.__str__() + """
-Input data:
-  y: {y}
-  d: {ntrials}""".format(y=bytes(self._y), ntrials=bytes(self._ntrials))
-
-        set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
-                         precision=8, suppress=False, threshold=1000,
-                         formatter=None)
-        return s + "\n" + super(BinomialEP, self).__str__()
-
-
-# Statistics (latent space):
-#   Total variance:        {tvar}
-#   Instrumental variance: {ivar}
-#   Covariates variance:   {cvar}
-#   Heritability:          {h2}
-#   Genetic ratio:         {gr}
-#   Noise ratio:           {nr}
-#   """.format(v="%.4f" % v, e="%.4f" % e, b=beta, Q0=indent(bytes(Q0)),
-#              Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
-#              tvar="%.4f" % tvar, cvar="%.4f" % cvar, h2="%.4f" % h2,
-#              ivar="%.4f" % ivar, gr="%.4f" % gr, nr="%.4f" % nr)
+#     def __str__(self):
+#         set_printoptions(precision=3, threshold=10)
+#
+#         s = """
+# Observed phenotype:
+#   y_i = {sum}_{{j=1}}^{{n}} Indicator(f_i + {epsilon}_{{i,j}} > 0), where f_i is
+#         the latent phenotype of the i-th individual and {epsilon}_{{i,j}} is
+#         distributed according to Normal(0, 1).
+# """.format(epsilon=greek_letter('epsilon'),
+#            sum=summation_symbol())
+#
 #         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
 #                          precision=8, suppress=False, threshold=1000,
 #                          formatter=None)
-#         return s
+#
+#         return s + super(BinomialEP, self).__str__()
+#
+#     def __repr__(self):
+#         set_printoptions(precision=3, threshold=10)
+#         s = self.__str__() + """
+# Input data:
+#   y: {y}
+#   d: {ntrials}""".format(y=bytes(self._y), ntrials=bytes(self._ntrials))
+#
+#         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+#                          precision=8, suppress=False, threshold=1000,
+#                          formatter=None)
+#         return s + "\n" + super(BinomialEP, self).__str__()
+#
+#
+# # Statistics (latent space):
+# #   Total variance:        {tvar}
+# #   Instrumental variance: {ivar}
+# #   Covariates variance:   {cvar}
+# #   Heritability:          {h2}
+# #   Genetic ratio:         {gr}
+# #   Noise ratio:           {nr}
+# #   """.format(v="%.4f" % v, e="%.4f" % e, b=beta, Q0=indent(bytes(Q0)),
+# #              Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
+# #              tvar="%.4f" % tvar, cvar="%.4f" % cvar, h2="%.4f" % h2,
+# #              ivar="%.4f" % ivar, gr="%.4f" % gr, nr="%.4f" % nr)
+# #         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+# #                          precision=8, suppress=False, threshold=1000,
+# #                          formatter=None)
+# #         return s

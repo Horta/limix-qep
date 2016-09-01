@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from __future__ import absolute_import
 from __future__ import division
 
@@ -31,6 +32,7 @@ class OverdispersionEP(EP):
         m = M \\beta
         m = \\tilde M \\tilde \\beta
     """
+
     def __init__(self, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(OverdispersionEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
@@ -140,7 +142,7 @@ class OverdispersionEP(EP):
     def _find_best_noise_ratio(self):
         start = time()
 
-        a, b = 1e-3, 1-1e-3
+        a, b = 1e-3, 1 - 1e-3
 
         nr = self.noise_ratio
         nr, nfev = find_minimum(self._noise_ratio_cost, nr, a=a, b=b,
@@ -157,24 +159,30 @@ class OverdispersionEP(EP):
         self._find_best_noise_ratio()
         return -self.lml()
 
-    def optimize(self):
+    def optimize(self, progress=None):
         start = time()
 
         self._logger.debug("Start of optimization.")
-        self._logger.debug(self.__str__())
+        # self._logger.debug(self.__str__())
 
-        a, b = 1e-3, 1-1e-3
+        a, b = 1e-3, 1 - 1e-3
 
         gr = self.genetic_ratio
 
-        gr, nfev = find_minimum(self._genetic_ratio_cost, gr, a=a,
-                                b=b, rtol=0, atol=1e-4)
+        def func(gr):
+            if progress:
+                progress.update(func.i)
+            func.i += 1
+            return self._genetic_ratio_cost(gr)
+        func.i = 0
+
+        gr, nfev = find_minimum(func, gr, a=a, b=b, rtol=0, atol=1e-4)
 
         self.genetic_ratio = gr
         self._find_best_noise_ratio()
         self._optimize_beta()
 
-        self._logger.debug(self.__str__())
+        # self._logger.debug(self.__str__())
         self._logger.debug("End of optimization (%.3f seconds" +
                            ", %d function calls).", time() - start, nfev)
 
@@ -270,6 +278,9 @@ Statistics (latent space):
         return s
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         v = self.genetic_variance
         e = self.environmental_variance
         beta = self.beta

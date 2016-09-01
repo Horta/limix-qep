@@ -432,7 +432,7 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     print("Scan has finished.")
 
     print("-------------------------- NULL MODEL --------------------------")
-    print(lrt._ep)
+    # print(lrt._ep)
     print("----------------------------------------------------------------")
     print("")
 
@@ -440,7 +440,7 @@ def scan_binomial(nsuccesses, ntrials, X, G=None, K=None, covariate=None):
     table = [list(i) for i in table]
     table = map(list, zip(*table))
     print("---------------------- ALTERNATIVE MODELs ----------------------")
-    print(tabulate(table, headers=('EffSiz', 'LML', 'LR', 'Pval')))
+    # print(tabulate(table, headers=('EffSiz', 'LML', 'LR', 'Pval')))
     print("----------------------------------------------------------------")
 
     return return_

@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from __future__ import absolute_import
 from __future__ import division
 
@@ -547,6 +548,9 @@ class EP(Cached):
         return A1u - A1 * Q0B1Q0t.dot(A1u) - teta
 
     def __str__(self):
+        return unicode(self).encode('utf-8')
+
+    def __unicode__(self):
         v = self.genetic_variance
         e = self.environmental_variance
         beta = self.beta
