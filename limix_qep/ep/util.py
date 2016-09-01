@@ -59,9 +59,26 @@ def ratio_posterior(nsuccesses, ndraws):
     """
     import scipy as sp
     import scipy.special
+    from numpy import logical_and
+    from numpy import logical_not
+    from numpy import finfo
+    from numpy import empty_like
+
+    nok_0 = nsuccesses == 0
+    nok_1 = nsuccesses == ndraws
+
+    # ok = logical_and(nsuccesses > 0, nsuccesses < ndraws)
+
     a = sp.special.beta(nsuccesses + 1 + 1, ndraws - nsuccesses + 1)
     b = sp.special.beta(nsuccesses + 1, ndraws - nsuccesses + 1)
-    return a / b
+
+    r = empty_like(a)
+    ok = b > 0
+    r[ok] = a[ok] / b[ok]
+    nok = logical_not(ok)
+    r[logical_and(nok, nsuccesses / ndraws < 0.5)] = finfo(float).eps
+    r[logical_and(nok, nsuccesses / ndraws >= 0.5)] = 1 - finfo(float).eps
+    return r
 
 
 def greek_letter(name):

@@ -10,9 +10,9 @@ def ptr(a):
         return _binomial_ffi.ffi.cast("double *", a.ctypes.data)
     return a
 
-class BinomMoments(object):
+class BinomialMoments(object):
     def __init__(self, nintervals):
-        super(BinomMoments, self).__init__()
+        super(BinomialMoments, self).__init__()
         self._nintervals = nintervals
         self._height = empty(nintervals+1)
         self._weight = empty(nintervals)

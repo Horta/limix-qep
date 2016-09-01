@@ -13,13 +13,13 @@ def gower_kinship_normalization(K):
     Perform Gower normalizion on covariance matrix K
     the rescaled covariance matrix has sample variance of 1
     """
-    c = (K.shape[0]-1) / (K.trace() - K.mean(0).sum())
+    c = (K.shape[0] - 1) / (K.trace() - K.mean(0).sum())
     return c * K
 
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
 def create_binomial(nsamples, nfeatures, ntrials, var=0.8, delta=0.2,
-                    sige2=1., seed=None):
+                    sige2=1., seed=None, offset=0.):
     if seed is not None:
         random.seed(seed)
 
@@ -48,23 +48,25 @@ def create_binomial(nsamples, nfeatures, ntrials, var=0.8, delta=0.2,
     g2 /= g2.std()
     g2 *= sqrt(var * delta)
 
-    g = g1 + g2
+    g = g1 + g2 + offset
 
     E = random.randn(nsamples, max(ntrials))
     E *= sqrt(sige2)
 
     Z = g[:, newaxis] + E
 
-    Z[Z >  0.] = 1.
+    Z[Z > 0.] = 1.
     Z[Z <= 0.] = 0.
 
     y = empty(nsamples)
     for i in range(y.shape[0]):
-        y[i] = sum(Z[i,:ntrials[i]])
+        y[i] = sum(Z[i, :ntrials[i]])
 
     return (y, X)
 
 # K = \sigma_g^2 Q (S + \delta I) Q.T
+
+
 def create_bernoulli(nsamples, nfeatures, h2=0.5, seed=None):
 
     import numpy as np
@@ -73,7 +75,7 @@ def create_bernoulli(nsamples, nfeatures, h2=0.5, seed=None):
 
     # K = \sigma_g^2 Q (S + \delta I) Q.T
     def _create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8, delta=0.2,
-                        sige2=1., seed=None):
+                         sige2=1., seed=None):
         if seed is not None:
             np.random.seed(seed)
 
@@ -106,21 +108,20 @@ def create_bernoulli(nsamples, nfeatures, h2=0.5, seed=None):
 
         Z = g[:, newaxis] + E
 
-        Z[Z >  0.] = 1.
+        Z[Z > 0.] = 1.
         Z[Z <= 0.] = 0.
 
         y = np.empty(nsamples)
         for i in range(y.shape[0]):
-            y[i] = np.sum(Z[i,:ntrials[i]])
+            y[i] = np.sum(Z[i, :ntrials[i]])
 
         return (y, X)
-
 
     sige2 = 1.
     sigg2 = h2 * sige2 / (1. - h2)
     ntrials = 1
 
     (y, X) = _create_binomial(nsamples, nfeatures, ntrials, sigg2=sigg2,
-                             delta=0., seed=seed)
+                              delta=0., seed=seed)
 
     return (y, X)

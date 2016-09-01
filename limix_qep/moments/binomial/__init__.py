@@ -1,1 +1,1 @@
-from .binom_moments import BinomMoments
+from .binom_moments import BinomialMoments

@@ -4,7 +4,7 @@ from numpy import asarray
 from numpy import empty_like
 from numpy.testing import assert_almost_equal
 import limix_qep.moments.binomial
-from limix_qep.moments.binomial import BinomMoments
+from limix_qep.moments.binomial import BinomialMoments
 
 def _test_moments(bm, N, K, mu, var, lmom0, mu_res, var_res):
     mu = asarray([mu])
@@ -23,7 +23,7 @@ def _test_moments(bm, N, K, mu, var, lmom0, mu_res, var_res):
     assert_almost_equal(var_resn, var_res, decimal=4)
 
 def test_moments():
-    bm = BinomMoments(100)
+    bm = BinomialMoments(100)
 
     N = 5
     K = 2
