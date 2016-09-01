@@ -16,13 +16,13 @@ def setup_package():
     setup_requires = ['build_capi>=0.0.8', 'ncephes>=0.1',
                       'cffi>=1.6', 'limix_math>=0.3'] + pytest_runner
     install_requires = ['hcache', 'limix_math>=0.3',
-                        'lim>=0.1', 'pytest', 'tabulate>=0.7']
+                        'lim>=0.1', 'pytest', 'tabulate>=0.7', 'six']
     tests_require = install_requires
 
     metadata = dict(
         name='limix_qep',
         maintainer="Limix Developers",
-        version='0.3.0',
+        version='0.3.1',
         maintainer_email="horta@ebi.ac.uk",
         packages=find_packages(),
         license="BSD",
