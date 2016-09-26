@@ -6,22 +6,24 @@ from numpy.testing import assert_almost_equal
 import limix_qep.moments.binomial
 from limix_qep.moments.binomial import BinomialMoments
 
+
 def _test_moments(bm, N, K, mu, var, lmom0, mu_res, var_res):
     mu = asarray([mu])
     var = asarray([var])
     lmom0n, mu_resn, var_resn = empty_like(mu), empty_like(mu), \
-                                empty_like(mu)
+        empty_like(mu)
     NN = empty_like(mu)
     NN[:] = N
 
     KK = empty_like(mu)
     KK[:] = K
 
-    bm.compute(NN, KK, mu/var, 1./var, lmom0n, mu_resn, var_resn)
+    bm.compute(NN, KK, mu / var, 1. / var, lmom0n, mu_resn, var_resn)
     #assert_almost_equal(lmom0n, lmom0, decimal=3)
-    print(mu_resn)
+    # print(mu_resn)
     #assert_almost_equal(mu_resn, mu_res, decimal=3)
     #assert_almost_equal(var_resn, var_res, decimal=4)
+
 
 def test_moments():
     bm = BinomialMoments(100)
