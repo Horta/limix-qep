@@ -5,8 +5,6 @@ import logging
 
 def _make():
     from cffi import FFI
-    import ncephes
-    import limix_math
 
     logger = logging.getLogger()
 
@@ -14,10 +12,9 @@ def _make():
 
     ffi = FFI()
 
-    sources = glob(join('lib', 'liknorm', 'src', '*.c'))
-    hdrs = glob(join('lib', 'liknorm', 'include', '*.h'))
-    hdrs += glob(join('lib', 'liknorm', 'lib', '*.h'))
-    incls = [join('lib', 'liknorm', 'include'), join('lib', 'liknorm', 'lib')]
+    sources = [join('lib', 'liknorm.c')]
+    hdrs = glob(join('lib', 'liknorm', '*.h')) + [join('lib', 'liknorm.h')]
+    incls = ['lib']
     libraries = ['m']
 
     logger.debug('Sources: %s', bytes(sources))
@@ -25,8 +22,8 @@ def _make():
     logger.debug('Incls: %s', bytes(incls))
     logger.debug('Libraries: %s', bytes(libraries))
 
-    ffi.set_source('limix_qep.moments.liknorm._liknorm_ffi',
-                   '''#include "liknorm_python.h"''',
+    ffi.set_source('limix_qep.liknorm._liknorm_ffi',
+                   '''#include "liknorm.h"''',
                    include_dirs=incls,
                    sources=sources,
                    libraries=libraries,
@@ -34,7 +31,7 @@ def _make():
                    depends=sources + hdrs,
                    extra_compile_args=["-std=c11"])
 
-    with open(join('lib', 'liknorm', 'include', 'liknorm_python.h'), 'r') as f:
+    with open(join('lib', 'liknorm.h'), 'r') as f:
         ffi.cdef(f.read())
 
     return ffi
