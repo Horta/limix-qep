@@ -17,9 +17,9 @@ void destroy(void)
   destroy_liknorm_machine(machine);
 }
 
-void py_integrate(int likname_id, double *y, double *aphi,
-                  double *normal_tau, double *normal_eta, int n,
-                  double *mean, double *variance)
+void moments(int likname_id, double *y, double *aphi,
+             double *normal_tau, double *normal_eta, int n,
+             double *mean, double *variance)
 {
   Normal normal;
   ExpFam ef;

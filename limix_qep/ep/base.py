@@ -45,6 +45,10 @@ from .util import make_sure_reasonable_conditioning
 
 from ._fixed_ep import FixedBaseEP
 
+MAX_EP_ITER = 10
+EP_EPS = 1e-4
+HYPERPARAM_EPS = 1e-5
+
 
 class EP(Cached):
     """

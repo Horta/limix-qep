@@ -9,7 +9,7 @@ from limix_math.linalg import qs_decomposition
 
 from limix_qep.ep import PoissonEP
 from limix_qep.ep import BinomialEP
-from limix_qep.ep import PoissonEP2
+# from limix_qep.ep import PoissonEP2
 
 from limix_qep.tool.util import create_binomial
 
@@ -33,7 +33,7 @@ def test_poisson_lml():
     print(nsuc)
     ep1 = BinomialEP(nsuc, ntrials, M, Q[0], Q[1], S[0])
     ep2 = PoissonEP(nsuc, M, Q[0], Q[1], S[0])
-    ep3 = PoissonEP2(nsuc, M, Q[0], Q[1], S[0])
+    # ep3 = PoissonEP2(nsuc, M, Q[0], Q[1], S[0])
 
     print(ep1.lml())
     print(ep2.lml())
