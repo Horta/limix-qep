@@ -31,7 +31,8 @@ def _make():
                    sources=sources,
                    libraries=libraries,
                    library_dirs=[],
-                   depends=sources + hdrs)
+                   depends=sources + hdrs,
+                   extra_compile_args=["-std=c11"])
 
     with open(join('lib', 'liknorm', 'include', 'liknorm_python.h'), 'r') as f:
         ffi.cdef(f.read())
