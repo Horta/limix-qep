@@ -18,14 +18,14 @@ class LikNormMoments(object):
 
         liknames = dict(zip(["binomial", "bernoulli", "poisson", "gamma",
                              "exponential", "geometric"], range(6)))
-        _liknorm_ffi.lib.py_create_liknorm_machine(nintervals, 1e-7)
+        _liknorm_ffi.lib.initialize(nintervals, 1e-7)
 
         self._likname_id = liknames[likname]
 
     def compute(self, y, aphi, eta, tau, mean, variance):
-        _liknorm_ffi.lib.py_integrate(self._likname_id, ptr(y), ptr(aphi),
-                                      ptr(tau), ptr(eta), len(tau), ptr(mean),
-                                      ptr(variance))
+        _liknorm_ffi.lib.integrate(self._likname_id, ptr(y), ptr(aphi),
+                                   ptr(tau), ptr(eta), len(tau), ptr(mean),
+                                   ptr(variance))
 
     def destroy(self):
-        _liknorm_ffi.lib.py_destroy_liknorm_machine()
+        _liknorm_ffi.lib.destroy()
