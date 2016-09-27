@@ -1,5 +1,5 @@
 from __future__ import division
-from limix_qep.moments.liknorm import LikNormMoments
+from limix_qep.liknorm import LikNormMoments
 
 from numpy import array
 from numpy import empty

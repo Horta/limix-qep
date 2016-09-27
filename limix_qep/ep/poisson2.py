@@ -20,7 +20,7 @@ from lim.genetics import FastLMM
 
 from .overdispersion import OverdispersionEP
 
-from limix_qep.moments.liknorm import LikNormMoments
+from limix_qep.liknorm import LikNormMoments
 
 from .util import ratio_posterior
 from .util import greek_letter
