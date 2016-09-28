@@ -23,7 +23,8 @@ void moments(int likname_id, double *y, double *aphi,
 {
   Normal normal;
   ExpFam ef;
-  log_partition *lp = get_log_partition(liknames[likname_id]);
+  log_partition  *lp  = get_log_partition(liknames[likname_id]);
+  log_partition0 *lp0 = get_log_partition0(liknames[likname_id]);
 
   get_interval(liknames[likname_id], &(ef.left), &(ef.right));
 
@@ -33,6 +34,7 @@ void moments(int likname_id, double *y, double *aphi,
     ef.aphi        = aphi[i];
     ef.log_aphi    = log(ef.aphi);
     ef.lp          = lp;
+    ef.lp0         = lp0;
     normal.tau     = normal_tau[i];
     normal.eta     = normal_eta[i];
     normal.log_tau = -log(normal.tau);
