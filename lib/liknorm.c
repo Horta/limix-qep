@@ -9,17 +9,17 @@ const char *liknames[] = { "binomial",    "bernoulli",    "poisson",    "gamma",
 
 void initialize(int n)
 {
-  machine = create_liknorm_machine(350, 1e-7);
+  machine = liknorm_create_machine(350);
 }
 
 void destroy(void)
 {
-  destroy_liknorm_machine(machine);
+  liknorm_destroy_machine(machine);
 }
 
 void moments(int likname_id, double *y, double *aphi,
              double *normal_tau, double *normal_eta, int n,
-             double *mean, double *variance)
+             double *log_zeroth, double *mean, double *variance)
 {
   Normal normal;
   ExpFam ef;
@@ -37,6 +37,11 @@ void moments(int likname_id, double *y, double *aphi,
     normal.eta     = normal_eta[i];
     normal.log_tau = -log(normal.tau);
 
-    integrate(machine, &ef, &normal, mean + i, variance + i);
+    liknorm_integrate(machine,
+                      &ef,
+                      &normal,
+                      log_zeroth + i,
+                      mean + i,
+                      variance + i);
   }
 }
