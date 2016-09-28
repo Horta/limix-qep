@@ -58,3 +58,13 @@ class BinomialMoments(LikNormMoments):
     def compute(self, K_N, N, eta, tau, log_zeroth, mean, variance):
         super(BinomialMoments, self).compute_scale(K_N, 1 / N, eta, tau,
                                                    log_zeroth, mean, variance)
+
+
+class PoissonMoments(LikNormMoments):
+
+    def __init__(self, nintervals):
+        super(PoissonMoments, self).__init__(nintervals, "poisson")
+
+    def compute(self, k, eta, tau, log_zeroth, mean, variance):
+        super(PoissonMoments, self).compute_noscale(k, eta, tau,
+                                                    log_zeroth, mean, variance)

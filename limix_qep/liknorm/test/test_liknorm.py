@@ -1,5 +1,6 @@
 from __future__ import division
-from limix_qep.liknorm import LikNormMoments
+from limix_qep.liknorm import BinomialMoments
+from limix_qep.liknorm import PoissonMoments
 
 from numpy import array
 from numpy import empty
@@ -10,12 +11,12 @@ from numpy.testing import assert_allclose
 def test_liknorm():
     set_printoptions(precision=16)
 
-    ln = LikNormMoments(350, "binomial")
+    ln = BinomialMoments(350)
 
     N = [3, 7, 1, 98]
     K = array([2, 0, 1, 66], float)
     y = K / N
-    aphi = 1 / array(N, float)
+    N = array(N, float)
 
     tau = array([0.1, 0.9, 1.3, 1.1])
     eta = array([-1.2, 0.0, +0.9, -0.1]) * tau
@@ -24,7 +25,7 @@ def test_liknorm():
     mean = empty(4)
     variance = empty(4)
 
-    ln.compute(y, aphi, eta, tau, log_zeroth, mean, variance)
+    ln.compute(y, N, eta, tau, log_zeroth, mean, variance)
 
     assert_allclose([-2.3408345658185441, -2.1095165980375743,
                      1.6817388883718341, -62.8505790200703558], log_zeroth)
@@ -35,18 +36,14 @@ def test_liknorm():
 
     ln.destroy()
 
-    ln = LikNormMoments(350, "poisson")
+    ln = PoissonMoments(350)
 
-    y = array([2, 0, 1, 66], float)
-    aphi = array([1, 1, 1, 1], float)
+    k = array([2, 0, 1, 66], float)
 
     tau = array([0.1, 0.9, 1.3, 1.1])
     eta = array([-1.2, 0.0, +0.9, -0.1]) * tau
 
-    mean = empty(4)
-    variance = empty(4)
-
-    ln.compute(y, aphi, eta, tau, log_zeroth, mean, variance)
+    ln.compute(k, eta, tau, log_zeroth, mean, variance)
 
     assert_allclose([-1.2495777244111932e+00, -1.0082075657296130e-01,
                      -1.9302711085886148e-01, 2.0104292304239095e+02],

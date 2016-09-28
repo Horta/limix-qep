@@ -20,7 +20,7 @@ from lim.genetics import FastLMM
 
 from .overdispersion import OverdispersionEP
 
-from limix_qep.liknorm import LikNormMoments
+from limix_qep.liknorm import PoissonMoments
 
 from .util import ratio_posterior
 from .util import greek_letter
@@ -47,8 +47,7 @@ class PoissonEP2(OverdispersionEP):
         assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
-        self._moments = LikNormMoments(100, "poisson")
-        self._aphi = ones(len(y))
+        self._moments = PoissonMoments(350)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm
@@ -75,7 +74,7 @@ class PoissonEP2(OverdispersionEP):
         ceta = self._cavs.eta
         lmom0 = self._loghz
         # self._moments.compute(y, ceta, ctau, lmom0, self._hmu, self._hvar)
-        self._moments.compute(y, self._aphi, ceta, ctau, self._hmu, self._hvar)
+        self._moments.compute(y, ceta, ctau, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):
