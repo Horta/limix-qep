@@ -350,6 +350,8 @@ class EP(Cached):
             self._tilted_params()
 
             if not np.all(np.isfinite(hvar)) or np.any(hvar == 0.):
+                import ipdb
+                ipdb.set_trace()
                 raise Exception('Error: not np.all(np.isfinite(hsig2))' +
                                 ' or np.any(hsig2 == 0.).')
 

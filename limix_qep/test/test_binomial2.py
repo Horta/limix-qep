@@ -27,7 +27,6 @@ def test_binomial2_lml():
     ep1.genetic_variance = 1.
     ep1.environmental_variance = 1e-7
     lml1 = ep1.lml()
-    print(lml1)
 
     ep2 = BernoulliEP2(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
     ep2.beta = array([1.])
@@ -37,20 +36,22 @@ def test_binomial2_lml():
     assert_almost_equal(lml1 - lml2, 0., decimal=5)
 
 
-# def test_binomial2_optimize():
-#
-#     seed = 10
-#     nsamples = 200
-#     nfeatures = 1200
-#     ntrials = random.RandomState(seed).randint(1, 1000, nsamples)
-#
-#     M = ones((nsamples, 1))
-#
-#     (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
-#                              delta=0.1, sige2=0.1, seed=seed)
-#
-#     (Q, S) = qs_decomposition(G)
-#
-#     ep = BinomialEP2(y, ntrials, M, Q[0], Q[1], S[0])
-#     ep.optimize()
-#     assert_almost_equal(ep.lml(), -874.00729729513591, decimal=3)
+def test_binomial2_optimize():
+
+    seed = 10
+    nsamples = 200
+    nfeatures = 1200
+    ntrials = random.RandomState(seed).randint(1, 1000, nsamples)
+
+    M = ones((nsamples, 1))
+
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
+                             delta=0.1, sige2=0.1, seed=seed)
+
+    (Q, S) = qs_decomposition(G)
+
+    ep = BinomialEP2(y, ntrials, M, Q[0], Q[1], S[0])
+    print(ep.lml())
+    ep.optimize()
+    print(ep.lml())
+    # assert_almost_equal(ep.lml(), -874.00729729513591, decimal=3)

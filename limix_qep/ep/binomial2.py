@@ -42,8 +42,9 @@ class BinomialEP2(OverdispersionEP):
         else:
             ntrials = asarray(ntrials, float)
 
-        self._y = y
+        self._nsuccesses = nsuccesses
         self._ntrials = ntrials
+        self._y = nsuccesses / ntrials
 
         if issingleton(y):
             raise ValueError("The phenotype array has a single unique value" +
@@ -60,10 +61,10 @@ class BinomialEP2(OverdispersionEP):
 
     def initialize_hyperparams(self):
         from scipy.stats import norm
-        y = self._y
+        nsuc = self._nsuccesses
         ntrials = self._ntrials
 
-        ratios = ratio_posterior(y, ntrials)
+        ratios = ratio_posterior(nsuc, ntrials)
         latent = norm(0, 1).isf(1 - ratios)
 
         Q0 = self._Q0
@@ -77,7 +78,7 @@ class BinomialEP2(OverdispersionEP):
         h2 = clip(h2, 0.01, 0.9)
 
         mean = flmm.mean
-        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
+        self._tbeta = lstsq(self._tM, full(len(nsuc), mean))[0]
         self.environmental_variance = self.instrumental_variance
         self.pseudo_heritability = h2
 
@@ -92,9 +93,6 @@ class BinomialEP2(OverdispersionEP):
     # \hat z
     def _compute_hz(self):
         self._tilted_params()
-        # b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-        # c = self._y11 * self._cavs.eta / b
-        # self._loghz[:] = logcdf(c)
 
     def model(self):
         covariate_effect_sizes = self.beta
