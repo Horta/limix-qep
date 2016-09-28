@@ -37,10 +37,6 @@ from .dists import SiteLik
 from .dists import Joint
 from .dists import Cavity
 
-from .config import MAX_EP_ITER
-from .config import EP_EPS
-from .config import HYPERPARAM_EPS
-
 from .util import make_sure_reasonable_conditioning
 
 from ._fixed_ep import FixedBaseEP
