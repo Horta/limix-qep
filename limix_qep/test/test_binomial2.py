@@ -8,7 +8,7 @@ from numpy.testing import assert_almost_equal
 from limix_math.linalg import qs_decomposition
 
 from limix_qep.ep import BinomialEP2
-from limix_qep.ep import BernoulliEP
+from limix_qep.ep import BernoulliEP2
 
 from limix_qep.tool.util import create_binomial
 
@@ -29,7 +29,7 @@ def test_binomial2_lml():
     lml1 = ep1.lml()
     print(lml1)
 
-    ep2 = BernoulliEP(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
+    ep2 = BernoulliEP2(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
     ep2.beta = array([1.])
     ep2.genetic_variance = 1.
     lml2 = ep2.lml()

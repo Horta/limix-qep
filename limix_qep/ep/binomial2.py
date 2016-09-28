@@ -87,8 +87,6 @@ class BinomialEP2(OverdispersionEP):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        import ipdb
-        ipdb.set_trace()
         self._moments.compute(K_N, N, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z

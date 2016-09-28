@@ -17,9 +17,9 @@ void destroy(void)
   liknorm_destroy_machine(machine);
 }
 
-void moments(int likname_id, double *y, double *aphi,
-             double *normal_tau, double *normal_eta, int n,
-             double *log_zeroth, double *mean, double *variance)
+void moments_scale(int likname_id, double *y, double *aphi,
+                   double *normal_tau, double *normal_eta, int n,
+                   double *log_zeroth, double *mean, double *variance)
 {
   Normal normal;
   ExpFam ef;
@@ -31,8 +31,8 @@ void moments(int likname_id, double *y, double *aphi,
   for (int i = 0; i < n; ++i)
   {
     ef.y           = y[i];
-    ef.aphi        = aphi[i];
-    ef.log_aphi    = log(ef.aphi);
+    ef.aphi        = aphi ? aphi[i] : 1;
+    ef.log_aphi    = aphi ? log(ef.aphi) : 0;
     ef.lp          = lp;
     ef.lp0         = lp0;
     normal.tau     = normal_tau[i];
@@ -46,4 +46,12 @@ void moments(int likname_id, double *y, double *aphi,
                       mean + i,
                       variance + i);
   }
+}
+
+void moments_noscale(int likname_id, double *y,
+                     double *normal_tau, double *normal_eta, int n,
+                     double *log_zeroth, double *mean, double *variance)
+{
+  moments_scale(likname_id, y, 0, normal_tau, normal_eta, n, log_zeroth,
+                mean, variance);
 }

@@ -13,16 +13,6 @@ def ptr(a):
     return a
 
 
-class BinomialMoments(LikNormMoments):
-
-    def __init__(self, nintervals):
-        super(BinomialMoments, self).__init__(nintervals, "binomial")
-
-    def compute(self, K_N, N, eta, tau, log_zeroth, mean, variance):
-        super(BinomialMoments, self).compute(K_N, 1 / N, eta, tau, log_zeroth,
-                                             mean, variance)
-
-
 class LikNormMoments(object):
 
     def __init__(self, nintervals, likname):
@@ -34,10 +24,37 @@ class LikNormMoments(object):
 
         self._likname_id = liknames[likname]
 
-    def compute(self, y, aphi, eta, tau, log_zeroth, mean, variance):
-        _liknorm_ffi.lib.moments(self._likname_id, ptr(y), ptr(aphi),
-                                 ptr(tau), ptr(eta), len(tau), ptr(log_zeroth),
-                                 ptr(mean), ptr(variance))
+    def compute_scale(self, y, aphi, eta, tau, log_zeroth, mean, variance):
+        _liknorm_ffi.lib.moments_scale(self._likname_id, ptr(y), ptr(aphi),
+                                       ptr(tau), ptr(eta), len(tau),
+                                       ptr(log_zeroth), ptr(mean),
+                                       ptr(variance))
+
+    def compute_noscale(self, y, eta, tau, log_zeroth, mean, variance):
+        _liknorm_ffi.lib.moments_noscale(self._likname_id, ptr(y),
+                                         ptr(tau), ptr(eta), len(tau),
+                                         ptr(log_zeroth), ptr(mean),
+                                         ptr(variance))
 
     def destroy(self):
         _liknorm_ffi.lib.destroy()
+
+
+class BernoulliMoments(LikNormMoments):
+
+    def __init__(self, nintervals):
+        super(BernoulliMoments, self).__init__(nintervals, "bernoulli")
+
+    def compute(self, y, eta, tau, log_zeroth, mean, variance):
+        super(BernoulliMoments, self).compute_noscale(y, eta, tau, log_zeroth,
+                                                      mean, variance)
+
+
+class BinomialMoments(LikNormMoments):
+
+    def __init__(self, nintervals):
+        super(BinomialMoments, self).__init__(nintervals, "binomial")
+
+    def compute(self, K_N, N, eta, tau, log_zeroth, mean, variance):
+        super(BinomialMoments, self).compute_scale(K_N, 1 / N, eta, tau,
+                                                   log_zeroth, mean, variance)
