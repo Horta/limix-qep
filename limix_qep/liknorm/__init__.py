@@ -22,10 +22,10 @@ class LikNormMoments(object):
 
         self._likname_id = liknames[likname]
 
-    def compute(self, y, aphi, eta, tau, mean, variance):
+    def compute(self, y, aphi, eta, tau, log_zeroth, mean, variance):
         _liknorm_ffi.lib.moments(self._likname_id, ptr(y), ptr(aphi),
-                                 ptr(tau), ptr(eta), len(tau), ptr(mean),
-                                 ptr(variance))
+                                 ptr(tau), ptr(eta), len(tau), ptr(log_zeroth),
+                                 ptr(mean), ptr(variance))
 
     def destroy(self):
         _liknorm_ffi.lib.destroy()

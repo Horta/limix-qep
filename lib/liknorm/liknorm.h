@@ -238,6 +238,7 @@ void liknorm_integrate(LikNormMachine *machine,
 
   if (left >= ef->right)
   {
+      *log_zeroth = 0;
     *mean     = 0;
     *variance = 0;
     return;

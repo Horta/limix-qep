@@ -9,7 +9,7 @@ const char *liknames[] = { "binomial",    "bernoulli",    "poisson",    "gamma",
 
 void initialize(int n)
 {
-  machine = liknorm_create_machine(350);
+  machine = liknorm_create_machine(n);
 }
 
 void destroy(void)
