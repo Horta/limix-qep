@@ -1,57 +1,16 @@
 #include "liknorm/liknorm.h"
-#include <math.h>
 
 static LikNormMachine *machine;
 
-const char *liknames[] = { "binomial",    "bernoulli",    "poisson",    "gamma",
-                           "exponential", "geometric" };
+void initialize(int n) { machine = liknorm_create_machine(n); }
 
+void destroy(void) { liknorm_destroy_machine(machine); }
 
-void initialize(int n)
-{
-  machine = liknorm_create_machine(n);
-}
+void binomial_moments(double size, double *k, double *n, double eta, double tau,
+                      double *log_zeroth, double *mean, double *variance) {
 
-void destroy(void)
-{
-  liknorm_destroy_machine(machine);
-}
-
-void moments_scale(int likname_id, double *y, double *aphi,
-                   double *normal_tau, double *normal_eta, int n,
-                   double *log_zeroth, double *mean, double *variance)
-{
-  Normal normal;
-  ExpFam ef;
-  log_partition  *lp  = get_log_partition(liknames[likname_id]);
-  log_partition0 *lp0 = get_log_partition0(liknames[likname_id]);
-
-  get_interval(liknames[likname_id], &(ef.left), &(ef.right));
-
-  for (int i = 0; i < n; ++i)
-  {
-    ef.y           = y[i];
-    ef.aphi        = aphi ? aphi[i] : 1;
-    ef.log_aphi    = aphi ? log(ef.aphi) : 0;
-    ef.lp          = lp;
-    ef.lp0         = lp0;
-    normal.tau     = normal_tau[i];
-    normal.eta     = normal_eta[i];
-    normal.log_tau = -log(normal.tau);
-
-    liknorm_integrate(machine,
-                      &ef,
-                      &normal,
-                      log_zeroth + i,
-                      mean + i,
-                      variance + i);
+  for (size_t i = 0; i < size; i++) {
+    liknorm_set_binomial(machine, k[i], n[i]);
+    liknorm_moments(machine, log_zeroth + i, mean + i, variance + i);
   }
-}
-
-void moments_noscale(int likname_id, double *y,
-                     double *normal_tau, double *normal_eta, int n,
-                     double *log_zeroth, double *mean, double *variance)
-{
-  moments_scale(likname_id, y, 0, normal_tau, normal_eta, n, log_zeroth,
-                mean, variance);
 }
