@@ -22,20 +22,20 @@ class LikNormMoments(object):
 
     def binomial(self, k, n, eta, tau, log_zeroth, mean, variance):
         size = len(k)
-        _liknorm_ffi.lib.binomial_moments(ptr(k), ptr(n),
-                                          ptr(eta), ptr(tau), size,
+        _liknorm_ffi.lib.binomial_moments(size, ptr(k), ptr(n),
+                                          ptr(eta), ptr(tau),
                                           ptr(log_zeroth), ptr(mean),
                                           ptr(variance))
 
     def poisson(self, k, eta, tau, log_zeroth, mean, variance):
         size = len(k)
-        _liknorm_ffi.lib.poisson_moments(ptr(k), ptr(eta), ptr(tau), size,
+        _liknorm_ffi.lib.poisson_moments(size, ptr(k), ptr(eta), ptr(tau),
                                          ptr(log_zeroth), ptr(mean),
                                          ptr(variance))
 
     def exponential(self, x, eta, tau, log_zeroth, mean, variance):
         size = len(x)
-        _liknorm_ffi.lib.exponential_moments(ptr(x), ptr(eta), ptr(tau), size,
+        _liknorm_ffi.lib.exponential_moments(size, ptr(x), ptr(eta), ptr(tau),
                                              ptr(log_zeroth), ptr(mean),
                                              ptr(variance))
 
