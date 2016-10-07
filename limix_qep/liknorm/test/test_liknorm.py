@@ -7,10 +7,10 @@ from numpy import set_printoptions
 from numpy.testing import assert_allclose
 
 
-def test_liknorm():
+def test_liknorm_binomial():
     set_printoptions(precision=16)
 
-    ln = LikNormMoments(350)
+    ln = LikNormMoments(500)
 
     N = array([3, 7, 1, 98], float)
     K = array([2, 0, 1, 66], float)
@@ -24,30 +24,38 @@ def test_liknorm():
 
     ln.binomial(K, N, eta, tau, log_zeroth, mean, variance)
 
-    # assert_allclose([-2.3408345658185441, -2.1095165980375743,
-    #                  1.6817388883718341, -62.8505790200703558], log_zeroth)
-    # assert_allclose([0.0354041395808048, -1.3853743380699952,
-    #                  1.7654307169642343, 0.696967590209962], mean)
-    # assert_allclose([0.0931700379328726, 0.454999155845663,
-    #                  1.113326179275818, 0.0445446693427618], variance)
-    #
-    # ln.destroy()
-    #
-    # ln = PoissonMoments(350)
-    #
-    # k = array([2, 0, 1, 66], float)
-    #
-    # tau = array([0.1, 0.9, 1.3, 1.1])
-    # eta = array([-1.2, 0.0, +0.9, -0.1]) * tau
-    #
-    # ln.compute(k, eta, tau, log_zeroth, mean, variance)
-    #
-    # assert_allclose([-1.2495777244111932e+00, -1.0082075657296130e-01,
-    #                  -1.9302711085886148e-01, 2.0104292304239095e+02],
-    #                 log_zeroth)
-    # assert_allclose([0.0752434403858402, -0.6283056227745004,
-    #                  0.4213176599565073, 4.1214915483196641], mean)
-    # assert_allclose([0.0899087536848139, 0.5727406406064515,
-    #                  0.4162894959504529, 0.0159825976367891], variance)
+    assert_allclose([-1.9523944026844868, -2.8039404963019825,
+                     -0.3788565926515431, -4.3286813960067958], log_zeroth)
+    assert_allclose([0.5808253224545352, -1.5435498588501912,
+                     1.1109257189367012, 0.6910369705990104], mean)
+    assert_allclose([1.5854044107023924,  0.5286947014880381,
+                     0.6775522066257242, 0.0440818199239704], variance)
+
+    ln.destroy()
+
+
+def test_liknorm_poisson():
+    set_printoptions(precision=16)
+
+    ln = LikNormMoments(500)
+
+    k = array([2, 0, 1, 66], float)
+
+    tau = array([0.1, 0.9, 1.3, 1.1])
+    eta = array([-1.2, 0.0, +0.9, -0.1]) * tau
+
+    log_zeroth = empty(4)
+    mean = empty(4)
+    variance = empty(4)
+
+    ln.poisson(k, eta, tau, log_zeroth, mean, variance)
+
+    assert_allclose([-2.2274621473192218, -0.9585584570898347,
+                     -1.649214737245454, 198.5480932106154057],
+                    log_zeroth)
+    assert_allclose([0.3401321321980286, -0.7306833253132138,
+                     0.3637351533499351, 4.108900854827759], mean)
+    assert_allclose([0.6425143694408278, 0.6735068928338729,
+                     0.3500115006759242, 0.0161318528782672], variance)
 
     ln.destroy()
