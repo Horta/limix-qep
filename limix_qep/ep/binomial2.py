@@ -20,8 +20,6 @@ from lim.genetics import BinomialModel
 
 from .overdispersion import OverdispersionEP
 
-from limix_qep.liknorm import BinomialMoments
-
 from .util import ratio_posterior
 from .util import greek_letter
 from .util import summation_symbol
@@ -57,7 +55,8 @@ class BinomialEP2(OverdispersionEP):
         assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
-        self._moments = BinomialMoments(350)
+        from ..moments import LikNormMoments
+        self._moments = LikNormMoments(350)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm

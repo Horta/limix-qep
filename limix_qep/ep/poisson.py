@@ -19,8 +19,6 @@ from lim.genetics import FastLMM
 
 from .overdispersion import OverdispersionEP
 
-from limix_qep.moments.poisson import PoissonMoments
-
 from .util import ratio_posterior
 from .util import greek_letter
 from .util import summation_symbol
@@ -46,7 +44,8 @@ class PoissonEP(OverdispersionEP):
         assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
-        self._moments = PoissonMoments(100)
+        from .. import LikNormMoments
+        self._moments = LikNormMoments(100)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm

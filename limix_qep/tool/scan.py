@@ -4,14 +4,13 @@ import logging
 from numpy import asarray
 import numpy as np
 from numpy import dot
-from limix_qep.lik import Bernoulli
-from limix_qep.lik import Binomial
 from limix_math.linalg import qs_decomposition
 from limix_math.linalg import _QS_from_K_split
 from .util import gower_kinship_normalization
 import scipy.stats as st
-from limix_qep.ep import BernoulliEP
-from limix_qep.ep import BinomialEP
+
+from ..lik import Bernoulli
+from ..lik import Binomial
 
 
 def _get_offset_covariate(covariate, n):
@@ -120,6 +119,9 @@ class LRT(object):
         self._alt_model_ready = True
 
     def _compute_null_model(self):
+        from ..ep import BernoulliEP
+        from ..ep import BinomialEP
+
         if self._null_model_ready:
             return
 
