@@ -6,8 +6,10 @@ from .lik import Binomial
 # from .tool.heritability import estimate as h2_estimate
 from .tool.scan import scan
 from .tool.scan import scan_binomial
+from . import liknorm
 
 __version__ = get_distribution('limix-qep').version
+
 
 def test():
     import os

@@ -22,7 +22,7 @@ from lim.genetics.heritability import bern2lat_correction
 
 from .base import EP
 
-from limix_qep.liknorm import BernoulliMoments
+from limix_qep.liknorm import LikNormMoments
 
 
 class Bernoulli2Predictor(object):
@@ -64,7 +64,7 @@ class BernoulliEP2(EP):
         self._y11 = 2. * self._y - 1.0
         self._Q1 = Q1
 
-        self._moments = BernoulliMoments(350)
+        self._moments = LikNormMoments(350)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm
