@@ -12,7 +12,7 @@ def _make():
 
     ffi = FFI()
 
-    sources = [join('lib', 'liknorm.c')]
+    sources = glob(join('lib', 'liknorm', '*.c'))
     hdrs = glob(join('lib', 'liknorm', '*.h')) + [join('lib', 'liknorm.h')]
     incls = ['lib']
     libraries = ['m']
