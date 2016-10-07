@@ -17,7 +17,7 @@ from limix_qep.tool.util import create_binomial
 def test_poisson_lml():
 
     random.seed(6)
-    n = 10
+    n = 500
     nfeatures = 10
 
     M = ones((n, 1)) * 1.
@@ -35,7 +35,10 @@ def test_poisson_lml():
     ep2 = PoissonEP(nsuc, M, Q[0], Q[1], S[0])
     # ep3 = PoissonEP2(nsuc, M, Q[0], Q[1], S[0])
 
-    print(ep1.lml())
+    print(ep2.lml())
+    # print(ep2.lml())
+
+    ep2.optimize()
     print(ep2.lml())
 #     # ep1.beta = array([1.])
 #     # ep1.genetic_variance = 1.
