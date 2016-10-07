@@ -72,8 +72,7 @@ class PoissonEP2(OverdispersionEP):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        # self._moments.compute(y, ceta, ctau, lmom0, self._hmu, self._hvar)
-        self._moments.compute(y, ceta, ctau, self._hmu, self._hvar)
+        self._moments.poisson(y, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):

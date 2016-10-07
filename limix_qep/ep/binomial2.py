@@ -82,12 +82,12 @@ class BinomialEP2(OverdispersionEP):
         self.pseudo_heritability = h2
 
     def _tilted_params(self):
+        K = self._nsuccesses
         N = self._ntrials
-        K_N = self._y
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        self._moments.compute(K_N, N, ceta, ctau, lmom0, self._hmu, self._hvar)
+        self._moments.binomial(K, N, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):

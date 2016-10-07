@@ -99,7 +99,8 @@ class BernoulliEP2(EP):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        self._moments.compute(y, ceta, ctau, lmom0, self._hmu, self._hvar)
+        self._moments.binomial(y, ones(len(y)), ceta,
+                               ctau, lmom0, self._hmu, self._hvar)
 
         # b = sqrt(self._cavs.tau**2 + self._cavs.tau)
         # lb = log(b)

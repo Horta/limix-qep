@@ -90,7 +90,7 @@ class BinomialEP(OverdispersionEP):
         ctau = self._cavs.tau
         ceta = self._cavs.eta
         lmom0 = self._loghz
-        self._moments.compute(N, K, ceta, ctau, lmom0, self._hmu, self._hvar)
+        self._moments.binomial(K, N, ceta, ctau, lmom0, self._hmu, self._hvar)
 
     # \hat z
     def _compute_hz(self):
