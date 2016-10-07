@@ -15,7 +15,7 @@ def ptr(a):
 
 class LikNormMoments(object):
 
-    def __init__(self, nintervals, likname):
+    def __init__(self, nintervals):
         super(LikNormMoments, self).__init__()
 
         _liknorm_ffi.lib.initialize(nintervals)
