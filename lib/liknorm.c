@@ -23,3 +23,12 @@ void poisson_moments(double size, double *k, double eta, double tau,
     liknorm_moments(machine, log_zeroth + i, mean + i, variance + i);
   }
 }
+
+void exponential_moments(double size, double *x, double eta, double tau,
+                         double *log_zeroth, double *mean, double *variance) {
+
+  for (size_t i = 0; i < size; i++) {
+    liknorm_set_exponential(machine, x[i]);
+    liknorm_moments(machine, log_zeroth + i, mean + i, variance + i);
+  }
+}
