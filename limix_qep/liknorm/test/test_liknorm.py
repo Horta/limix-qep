@@ -22,8 +22,6 @@ def test_liknorm():
     mean = empty(4)
     variance = empty(4)
 
-    import pytest
-    pytest.set_trace()
     ln.binomial(K, N, eta, tau, log_zeroth, mean, variance)
 
     # assert_allclose([-2.3408345658185441, -2.1095165980375743,
