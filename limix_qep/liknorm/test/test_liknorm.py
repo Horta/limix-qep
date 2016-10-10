@@ -50,8 +50,8 @@ def test_liknorm_poisson():
 
     ln.poisson(k, eta, tau, log_zeroth, mean, variance)
 
-    assert_allclose([-2.2274621473192218, -0.9585584570898347,
-                     -1.649214737245454, 198.5480932106154057],
+    assert_allclose([-2.9206093278791672, -0.9585584570898347,
+                     -1.649214737245454, -14.9841482839478264],
                     log_zeroth)
     assert_allclose([0.3401321321980286, -0.7306833253132138,
                      0.3637351533499351, 4.108900854827759], mean)
@@ -59,3 +59,6 @@ def test_liknorm_poisson():
                      0.3500115006759242, 0.0161318528782672], variance)
 
     ln.destroy()
+
+if __name__ == '__main__':
+    __import__('pytest').main([__file__, '-s'])

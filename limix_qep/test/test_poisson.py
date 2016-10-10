@@ -49,10 +49,8 @@ def test_poisson_optimize():
     (Q, S) = qs_decomposition(G)
 
     ep = PoissonEP(y, ones((nsamples, 1)), Q[0], Q[1], S[0])
-    print(ep.lml())
     ep.optimize()
-    print(ep.lml())
-    # assert_almost_equal(ep.lml(), -827.22936074000131, decimal=4)
+    assert_almost_equal(ep.lml(), -530.902249163, decimal=4)
 
 if __name__ == '__main__':
     __import__('pytest').main([__file__, '-s'])
