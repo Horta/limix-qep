@@ -10,6 +10,7 @@ from numpy import isscalar
 from numpy import isfinite
 from numpy import all as all_
 from numpy import set_printoptions
+from numpy import zeros
 
 from numpy.linalg import lstsq
 
@@ -48,23 +49,9 @@ class PoissonEP(OverdispersionEP):
         self._moments = LikNormMoments(100)
 
     def initialize_hyperparams(self):
-        from scipy.stats import norm
-        y = self._y
-
-        Q0 = self._Q0
-        Q1 = self._Q1
-        covariates = self._M
-        flmm = FastLMM(y, covariates, QS=[[Q0, Q1], [self._S0]])
-        flmm.learn()
-        gv = flmm.genetic_variance
-        nv = flmm.environmental_variance
-        h2 = gv / (gv + nv)
-        h2 = clip(h2, 0.01, 0.9)
-
-        mean = flmm.mean
-        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
+        self._tbeta = zeros((1,))
         self.environmental_variance = self.instrumental_variance
-        self.pseudo_heritability = h2
+        self.pseudo_heritability = 0.5
 
     def _tilted_params(self):
         y = self._y

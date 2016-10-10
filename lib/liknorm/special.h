@@ -20,4 +20,6 @@ static inline double logbinom(double k, double n) {
   return lgamma(n + 1) - lgamma(k + 1) - lgamma(n - k + 1);
 }
 
+static inline double logfactorial(double k) { return lgamma(k + 1); }
+
 #endif /* end of include guard: SPECIAL_H */

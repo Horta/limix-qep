@@ -49,7 +49,8 @@ void liknorm_set_bernoulli(LikNormMachine *machine, double k) {
   set_expfam(machine, BERNOULLI, k, 1, 0, get_likelihood_string(BERNOULLI));
 }
 void liknorm_set_poisson(LikNormMachine *machine, double k) {
-  set_expfam(machine, POISSON, k, 1, 0, get_likelihood_string(POISSON));
+  set_expfam(machine, POISSON, k, 1, logfactorial(k),
+             get_likelihood_string(POISSON));
 }
 void liknorm_set_exponential(LikNormMachine *machine, double x) {
   set_expfam(machine, EXPONENTIAL, x, 1, 0, get_likelihood_string(EXPONENTIAL));

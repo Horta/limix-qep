@@ -317,6 +317,7 @@ class EP(Cached):
 
         p9 = log(A2).sum() / 2
 
+        print(p1, p3, p4, p5, p6, p7, p8, p9)
         return (p1, p3, p4, p5, p6, p7, p8, p9)
 
     def lml(self):

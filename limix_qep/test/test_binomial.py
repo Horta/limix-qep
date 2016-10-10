@@ -54,7 +54,7 @@ def test_binomial_optimize():
 
     ep = BinomialEP(nsuc, ntrials, ones((nsamples, 1)), Q[0], Q[1], S[0])
     ep.optimize()
-    assert_almost_equal(ep.lml(), -827.230261501, decimal=4)
+    assert_almost_equal(ep.lml(), -827.22936074000131, decimal=4)
 
 if __name__ == '__main__':
     __import__('pytest').main([__file__, '-s'])

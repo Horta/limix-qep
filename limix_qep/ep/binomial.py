@@ -55,7 +55,7 @@ class BinomialEP(OverdispersionEP):
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
         from ..liknorm import LikNormMoments
-        self._moments = LikNormMoments(100)
+        self._moments = LikNormMoments(500)
 
     def initialize_hyperparams(self):
         from scipy.stats import norm
@@ -269,7 +269,8 @@ class BinomialEP(OverdispersionEP):
 #   y: {y}
 #   d: {ntrials}""".format(y=bytes(self._y), ntrials=bytes(self._ntrials))
 #
-#         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+#         set_printoptions(edgeitems=3, infstr='inf', linewidth=75,
+# nanstr = 'nan',
 #                          precision=8, suppress=False, threshold=1000,
 #                          formatter=None)
 #         return s + "\n" + super(BinomialEP, self).__str__()
@@ -286,7 +287,8 @@ class BinomialEP(OverdispersionEP):
 # #              Q1=indent(bytes(Q1)), S0=bytes(S0), M=indent(bytes(M)),
 # #              tvar="%.4f" % tvar, cvar="%.4f" % cvar, h2="%.4f" % h2,
 # #              ivar="%.4f" % ivar, gr="%.4f" % gr, nr="%.4f" % nr)
-# #         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
+# #         set_printoptions(edgeitems=3, infstr='inf', linewidth=75,
+# nanstr = 'nan',
 # #                          precision=8, suppress=False, threshold=1000,
 # #                          formatter=None)
 # #         return s
