@@ -46,7 +46,7 @@ class PoissonEP(OverdispersionEP):
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
         from ..liknorm import LikNormMoments
-        self._moments = LikNormMoments(100)
+        self._moments = LikNormMoments(300)
 
     def initialize_hyperparams(self):
         self._tbeta = zeros((1,))
