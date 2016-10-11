@@ -28,6 +28,7 @@ def test_estimate_bernoulli_real_trait():
     assert_array_less(pvals.min(), 1e-5)
     assert_array_less(0.9, pvals.max())
 
+
 def test_estimate_binomial_real_trait():
     seed = 3197
     nsamples = 100

@@ -50,7 +50,7 @@ def test_poisson_optimize():
 
     ep = PoissonEP(y, ones((nsamples, 1)), Q[0], Q[1], S[0])
     ep.optimize()
-    assert_almost_equal(ep.lml(), -530.902249163, decimal=4)
+    assert_almost_equal(ep.lml(), -530.8988815711748, decimal=4)
 
 
 def test_poisson_optimize2():
