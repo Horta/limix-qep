@@ -23,9 +23,7 @@ def test_bernoulli_lml():
     ep.beta = array([1.])
     assert_almost_equal(ep.beta, array([1.]))
     ep.genetic_variance = 1.
-    import pytest
-    pytest.set_trace()
-    print(ep.lml())
+    # print(ep.lml())
     # assert_almost_equal(ep.lml(), -2.59563598457)
 #
 #
