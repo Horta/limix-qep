@@ -22,6 +22,8 @@ MAX_EP_ITER = 10
 EP_EPS = 1e-4
 HYPERPARAM_EPS = 1e-5
 
+# sigma2_b = v
+
 
 class EPBase(Cached):
     """
@@ -135,11 +137,11 @@ class EPBase(Cached):
     @cached
     def K(self):
         """:math:`K = v Q S Q0.T`"""
-        return self.genetic_variance * self._Q0S0Q0t()
+        return self.sigma2_b * self._Q0S0Q0t()
 
     @cached
     def diagK(self):
-        return self.genetic_variance * self._diagQ0S0Q0t()
+        return self.sigma2_b * self._diagQ0S0Q0t()
 
     def _diagQ0S0Q0t(self):
         return self._Q0S0Q0t().diagonal()
@@ -150,38 +152,15 @@ class EPBase(Cached):
         return dot(self._tM, self._tbeta)
 
     @property
-    def genetic_variance(self):
-        return self._v
-
-    @property
-    def total_variance(self):
-        tv = self.covariates_variance + self.genetic_variance
-        tv += self.environmental_variance
-        return tv
-
-    @property
     def covariates_variance(self):
         return variance(self.m())
 
     @property
-    def environmental_variance(self):
-        raise NotImplementedError
+    def sigma2_b(self):
+        return self._v
 
-    @environmental_variance.setter
-    def environmental_variance(self, v):
-        raise NotImplementedError
-
-    @property
-    def heritability(self):
-        return self.genetic_variance / self.total_variance
-
-    @heritability.setter
-    def heritability(self, v):
-        t = self.covariates_variance + self.environmental_variance
-        self.genetic_variance = t * (v / (1 - v))
-
-    @genetic_variance.setter
-    def genetic_variance(self, value):
+    @sigma2_b.setter
+    def sigma2_b(self, v):
         # self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
@@ -189,7 +168,11 @@ class EPBase(Cached):
         self.clear_cache('_update')
         self.clear_cache('K')
         self.clear_cache('diagK')
-        self._v = max(value, 1e-7)
+        self._v = max(v, 1e-7)
+
+    @property
+    def sigma2_epsilon(self):
+        return 0.0
 
     @property
     def _tbeta(self):
@@ -244,9 +227,8 @@ class EPBase(Cached):
         L = self._L()
         QBiQt = self._Q0BiQ0t()
 
-        gS0 = self.genetic_variance * S0
-        # eC = self.environmental_variance * C
-        eC = 0
+        gS0 = self.sigma2_b * S0
+        eC = self.sigma2_epsilon * C
 
         w1 = -sum(log(diagonal(L))) + (- sum(log(gS0)) / 2 + log(A).sum() / 2)
         w2 = sum(teta * eC * teta)
@@ -407,15 +389,15 @@ class EPBase(Cached):
         self._logger.info("Start of optimization.")
 
         def function_cost(v):
-            self.genetic_variance = v
+            self.sigma2_b = v
             self._optimize_beta()
             return -self.lml()
 
         start = time()
-        v, nfev = find_minimum(function_cost, self.genetic_variance, a=1e-4,
+        v, nfev = find_minimum(function_cost, self.sigma2_b, a=1e-4,
                                b=1e4, rtol=0, atol=1e-6)
 
-        self.genetic_variance = v
+        self.sigma2_b = v
 
         self._optimize_beta()
         elapsed = time() - start
@@ -452,7 +434,7 @@ class EPBase(Cached):
         Q0 = self._Q0
         A = self._A()
         Q0tAQ0 = dot(Q0.T, ddot(A, Q0, left=True))
-        return sum2diag(Q0tAQ0, 1. / (self.genetic_variance * self._S0))
+        return sum2diag(Q0tAQ0, 1. / (self.sigma2_b * self._S0))
 
     @cached
     def _L(self):

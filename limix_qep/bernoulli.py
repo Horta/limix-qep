@@ -55,6 +55,25 @@ class BernoulliEP(EPBase):
         self._moments = LikNormMoments(350)
         self.initialize()
 
+    @property
+    def genetic_variance(self):
+        return self.sigma2_b
+
+    @genetic_variance.setter
+    def genetic_variance(self, v):
+        self.sigma2_b = v
+
+    @property
+    def heritability(self):
+        total = self.genetic_variance + self.covariates_variance
+        total += self.environmental_variance
+        return self.genetic_variance / total
+
+    @heritability.setter
+    def heritability(self, v):
+        t = self.environmental_variance + self.covariates_variance
+        self.genetic_variance = t * (v / (1 - v))
+
     def initialize(self):
         from scipy.stats import norm
         from lim.genetics.core import FastLMM
@@ -89,10 +108,6 @@ class BernoulliEP(EPBase):
     @property
     def environmental_variance(self):
         return (pi * pi) / 3
-
-    @environmental_variance.setter
-    def environmental_variance(self, v):
-        raise NotImplementedError
 
     def _tilted_params(self):
         y = self._y

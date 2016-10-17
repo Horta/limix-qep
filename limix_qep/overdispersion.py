@@ -1,3 +1,55 @@
+from __future__ import absolute_import, division, unicode_literals
+
+import logging
+
+from hcache import Cached, cached
+
+from .base import EPBase
+
+
+# K = v Q ((1-delta)*S + delta*I) Q.T
+# sigma2_epsilon = v * delta
+# sigma2_b = v * (1-delta)
+
+class OverdispersionEP(EPBase):
+    """
+    .. math::
+        K = v Q ((1-delta)*S + delta*I) Q.T
+        M = svd_U svd_S svd_V.T
+        \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
+        \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
+        m = M \\beta
+        m = \\tilde M \\tilde \\beta
+    """
+
+    def __init__(self, M, Q0, Q1, S0, Q0S0Q0t=None):
+        super(OverdispersionEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
+        self._logger = logging.getLogger(__name__)
+
+        nsamples = M.shape[0]
+        self._Q1 = Q1
+        self._delta = 0.5
+
+        @cached
+        def _A(self):
+            ttau = self._sitelik_tau
+            s2 = self.sigma2_epsilon
+            return ttau / (ttau * s2 + 1)
+
+        @cached
+        def _C(self):
+            ttau = self._sitelik_tau
+            s2 = self.sigma2_epsilon
+            return 1 / (ttau * s2 + 1)
+
+        @property
+        def sigma2_epsilon(self):
+            return self._v * self._delta
+
+        @sigma2_epsilon.setter
+        def sigma2_epsilon(self, v):
+            self._delta = v / self._v
+
 # def _joint_update(self):
 #     K = self.K()
 #     m = self.m()
