@@ -5,9 +5,9 @@ from time import time
 
 from hcache import Cached, cached
 from numpy import var as variance
-from numpy import (all, asarray, atleast_1d, atleast_2d, clip, dot, empty,
-                   empty_like, inf, isfinite, log, set_printoptions, sqrt,
-                   zeros)
+from numpy import (abs, all, any, asarray, atleast_1d, atleast_2d, clip,
+                   diagonal, dot, empty, empty_like, inf, isfinite, log,
+                   maximum, set_printoptions, sqrt, sum, zeros)
 from numpy.linalg import multi_dot
 from scipy.linalg import cho_factor
 
@@ -117,12 +117,21 @@ class EPBase(Cached):
     def _init_ep_params(self):
         assert self._ep_params_initialized is False
         self._logger.info("EP parameters initialization.")
-        self._joint.initialize(self.m(), self.diagK())
-        self._sites.initialize()
+        self._joint_initialize()
+        self._sitelik_initialize()
         self._ep_params_initialized = True
 
     def initialize_hyperparams(self):
         raise NotImplementedError
+
+    def _joint_initialize(self):
+        self._joint_tau[:] = 1 / self.diagK()
+        self._joint_eta[:] = self.m()
+        self._joint_eta[:] *= self._joint_tau
+
+    def _sitelik_initialize(self):
+        self._sitelik_tau[:] = 0.
+        self._sitelik_eta[:] = 0.
 
     @cached
     def K(self):
@@ -229,11 +238,13 @@ class EPBase(Cached):
         self._update()
         S0 = self._S0
         m = self.m()
-        ttau = self._sites.tau
-        teta = self._sites.eta
-        ctau = self._cavs.tau
-        ceta = self._cavs.eta
-        cmu = self._cavs.mu
+        ttau = self._sitelik_tau
+        teta = self._sitelik_eta
+        ctau = self._cav_tau
+        ceta = self._cav_eta
+        # cmu = self._cavs.mu
+        # TODO: MUDAR ISSO AQUI
+        cmu = ceta / ctau
         A0 = self._A0()
         A1 = self._A1()
         A2 = self._A2()
@@ -247,7 +258,7 @@ class EPBase(Cached):
 
         L = self._L()
 
-        p1 = - np.sum(log(np.diagonal(L))) - log(vS0).sum() / 2
+        p1 = - sum(log(diagonal(L))) - log(vS0).sum() / 2
 
         p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
         p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
@@ -282,43 +293,54 @@ class EPBase(Cached):
         self._logger.info('EP loop has started.')
         m = self.m()
 
-        ttau = self._sites.tau
-        teta = self._sites.eta
+        ttau = self._sitelik_tau
+        teta = self._sitelik_eta
+
+        jtau = self._joint_tau
+        jeta = self._joint_eta
 
         hmu = self._hmu
         hvar = self._hvar
 
         i = 0
         while i < MAX_EP_ITER:
-            self._psites.tau[:] = ttau
-            self._psites.eta[:] = teta
+            self._previous_sitelik_tau[:] = ttau
+            self._previous_sitelik_eta[:] = teta
 
-            self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
+            # self._cav_update()
+            # self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
+
+            self._cav_tau[:] = jtau - ttau
+            self._cav_eta[:] = jeta - teta
             self._tilted_params()
 
-            if not all(isfinite(hvar)) or np.any(hvar == 0.):
+            if not all(isfinite(hvar)) or any(hvar == 0.):
                 raise Exception('Error: not all(isfinite(hsig2))' +
-                                ' or np.any(hsig2 == 0.).')
+                                ' or any(hsig2 == 0.).')
 
-            self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
+            # self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
+            self._sitelik_update(hmu, hvar)
             self.clear_cache('_r')
             self.clear_cache('_L')
             self.clear_cache('_A1')
             self.clear_cache('_A2')
             self.clear_cache('_Q0B1Q0t')
 
-            self._joint.update(m, teta, self._A1(), self._A2(),
-                               self._Q0B1Q0t(), self.K())
+            # self._joint.update(m, teta, self._A1(), self._A2(),
+            #                    self._Q0B1Q0t(), self.K())
+            import pytest
+            pytest.set_trace()
+            self._joint_update()
 
-            tdiff = np.abs(self._psites.tau - ttau)
-            ediff = np.abs(self._psites.eta - teta)
+            tdiff = abs(self._psites.tau - ttau)
+            ediff = abs(self._psites.eta - teta)
             aerr = tdiff.max() + ediff.max()
 
             if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
-                rerr = np.inf
+                rerr = inf
             else:
-                rtdiff = tdiff / np.abs(self._psites.tau)
-                rediff = ediff / np.abs(self._psites.eta)
+                rtdiff = tdiff / abs(self._psites.tau)
+                rediff = ediff / abs(self._psites.eta)
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
@@ -331,6 +353,29 @@ class EPBase(Cached):
                               ' been attained.')
 
         self._logger.info('EP loop has performed %d iterations.', i)
+
+    def _joint_update(self):
+        K = self.K()
+        m = self.m()
+        A2 = self._A2()
+        QB1Qt = self._Q0B1Q0t()
+
+        jtau = self._joint_tau
+        jeta = self._joint_eta
+
+        diagK = K.diagonal()
+        QB1QtA1 = ddot(QB1Qt, self._A1(), left=False)
+        jtau[:] = 1 / (A2 * diagK - A2 * dotd(QB1QtA1, K))
+
+        Kteta = K.dot(self._sitelik_eta)
+        jeta[:] = A2 * (m - QB1QtA1.dot(m) + Kteta - QB1QtA1.dot(Kteta))
+        jeta *= jtau
+
+    def _sitelik_update(self, hmu, hvar):
+        tau = self._cav_tau
+        eta = self._cav_eta
+        tau[:] = maximum(1.0 / hvar - tau, 1e-16)
+        eta[:] = hmu / hvar - eta
 
     # def _optimal_beta_nom(self):
     #     A1 = self._A1()
@@ -441,17 +486,17 @@ class EPBase(Cached):
     #     """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
     #     return 1.0
     #
-    # @cached
-    # def _S0Q0t(self):
-    #     """:math:`S Q^t`"""
-    #     return ddot(self._S0, self._Q0.T, left = True)
-    #
-    # def _Q0S0Q0t(self):
-    #     """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
-    #     if self.__Q0S0Q0t is None:
-    #         Q0=self._Q0
-    #         self.__Q0S0Q0t=dot(Q0, self._S0Q0t())
-    #     return self.__Q0S0Q0t
+    @cached
+    def _S0Q0t(self):
+        """:math:`S Q^t`"""
+        return ddot(self._S0, self._Q0.T, left=True)
+
+    def _Q0S0Q0t(self):
+        """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
+        if self.__Q0S0Q0t is None:
+            Q0 = self._Q0
+            self.__Q0S0Q0t = dot(Q0, self._S0Q0t())
+        return self.__Q0S0Q0t
     #
     # @cached
     # def _Q0B1Q0t(self):

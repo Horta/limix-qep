@@ -82,25 +82,13 @@ class BernoulliEP(EPBase):
 #         (mu, sig2) = self._posterior_normal(m, var, covar)
 #         return Bernoulli2Predictor(mu, sig2)
 #
-#     def _tilted_params(self):
-#         y = self._y
-#         ctau = self._cavs.tau
-#         ceta = self._cavs.eta
-#         lmom0 = self._loghz
-#         self._moments.binomial(y, ones(len(y)), ceta,
-#                                ctau, lmom0, self._hmu, self._hvar)
-#
-#         # b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-#         # lb = log(b)
-#         # c = self._y11 * self._cavs.eta / b
-#         # lcdf = self._loghz
-#         # lcdf[:] = normal_logcdf(c)
-#         # lpdf = normal_logpdf(c)
-#         # self._hmu[:] = self._cavs.eta / self._cavs.tau \
-#         #     + self._y11 * exp(lpdf - (lcdf + lb))
-#         #
-#         # self._hvar[:] = 1. / self._cavs.tau\
-#         #     - exp(lpdf - (lcdf + 2 * lb)) * (c + exp(lpdf - lcdf))
+    def _tilted_params(self):
+        y = self._y
+        ctau = self._cav_tau
+        ceta = self._cav_eta
+        lmom0 = self._loghz
+        self._moments.binomial(y, ones(len(y)), ceta,
+                               ctau, lmom0, self._hmu, self._hvar)
 #
 #     # \hat z
 #     def _compute_hz(self):
