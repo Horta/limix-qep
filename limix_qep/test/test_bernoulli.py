@@ -20,7 +20,8 @@ def test_bernoulli_lml():
     (Q, S) = qs_decomposition(G)
     y = array([1., 0., 1.])
     ep = BernoulliEP(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
-#     ep.beta = array([1.])
+    ep.beta = array([1.])
+    assert_almost_equal(ep.beta, array([1.]))
 #     ep.genetic_variance = 1.
 #     assert_almost_equal(ep.lml(), -2.59563598457)
 #

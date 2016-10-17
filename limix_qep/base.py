@@ -176,13 +176,13 @@ class EPBase(Cached):
 
     @genetic_variance.setter
     def genetic_variance(self, value):
-        self.clear_cache('_r')
-        self.clear_cache('_lml_components')
-        self.clear_cache('_L')
-        self.clear_cache('_Q0B1Q0t')
-        self.clear_cache('_update')
-        self.clear_cache('K')
-        self.clear_cache('diagK')
+        # self.clear_cache('_r')
+        # self.clear_cache('_lml_components')
+        # self.clear_cache('_L')
+        # self.clear_cache('_Q0B1Q0t')
+        # self.clear_cache('_update')
+        # self.clear_cache('K')
+        # self.clear_cache('diagK')
         self._v = max(value, 1e-7)
 
     @property
@@ -193,10 +193,10 @@ class EPBase(Cached):
 
     @_tbeta.setter
     def _tbeta(self, value):
-        self.clear_cache('_r')
-        self.clear_cache('_lml_components')
-        self.clear_cache('m')
-        self.clear_cache('_update')
+        # self.clear_cache('_r')
+        # self.clear_cache('_lml_components')
+        # self.clear_cache('m')
+        # self.clear_cache('_update')
         if self.__tbeta is None:
             self.__tbeta = asarray(value, float).copy()
         else:
