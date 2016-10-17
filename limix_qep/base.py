@@ -185,12 +185,12 @@ class EPBase(Cached):
     @genetic_variance.setter
     def genetic_variance(self, value):
         # self.clear_cache('_r')
-        # self.clear_cache('_lml_components')
-        # self.clear_cache('_L')
-        # self.clear_cache('_Q0B1Q0t')
-        # self.clear_cache('_update')
-        # self.clear_cache('K')
-        # self.clear_cache('diagK')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_L')
+        self.clear_cache('_Q0BiQ0t')
+        self.clear_cache('_update')
+        self.clear_cache('K')
+        self.clear_cache('diagK')
         self._v = max(value, 1e-7)
 
     @property
@@ -200,9 +200,9 @@ class EPBase(Cached):
     @_tbeta.setter
     def _tbeta(self, value):
         # self.clear_cache('_r')
-        # self.clear_cache('_lml_components')
-        # self.clear_cache('m')
-        # self.clear_cache('_update')
+        self.clear_cache('_lml_components')
+        self.clear_cache('m')
+        self.clear_cache('_update')
         if self.__tbeta is None:
             self.__tbeta = asarray(value, float).copy()
         else:
@@ -223,59 +223,10 @@ class EPBase(Cached):
     @M.setter
     def M(self, value):
         self._covariate_setup(value)
-        self.clear_cache('_r')
+        # self.clear_cache('_r')
         self.clear_cache('m')
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
-
-    # @cached
-    # def _lml_components(self):
-    #     self._update()
-    #     S0 = self._S0
-    #     m = self.m()
-    #     ttau = self._sitelik_tau
-    #     teta = self._sitelik_eta
-    #     ctau = self._cav_tau
-    #     ceta = self._cav_eta
-    #     # cmu = self._cavs.mu
-    #     # TODO: MUDAR ISSO AQUI
-    #     cmu = ceta / ctau
-    #     A0 = self._A0()
-    #     A1 = self._A1()
-    #     A2 = self._A2()
-    #
-    #     vS0 = self.genetic_variance * S0
-    #     tctau = ttau + ctau
-    #     A1m = A1 * m
-    #     A2m = A2 * m
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #     A2teta = A2 * teta
-    #
-    #     L = self._L()
-    #
-    #     p1 = - sum(log(diagonal(L))) - log(vS0).sum() / 2
-    #
-    #     p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
-    #     p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
-    #     p3 -= ((teta * teta) / tctau).sum()
-    #     p3 /= 2
-    #
-    #     p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
-    #
-    #     A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
-    #
-    #     p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
-    #
-    #     p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
-    #     p6 /= 2
-    #
-    #     p7 = (log(tctau).sum() - log(ctau).sum()) / 2
-    #
-    #     p8 = self._loghz.sum()
-    #
-    #     p9 = log(A2).sum() / 2
-    #
-    #     return (p1, p3, p4, p5, p6, p7, p8, p9)
 
     @cached
     def _lml_components(self):
@@ -328,7 +279,6 @@ class EPBase(Cached):
             self._init_ep_params()
 
         self._logger.info('EP loop has started.')
-        m = self.m()
 
         pttau = self._previous_sitelik_tau
         pteta = self._previous_sitelik_eta
@@ -356,11 +306,11 @@ class EPBase(Cached):
                                 ' or any(hsig2 == 0.).')
 
             self._sitelik_update(hmu, hvar)
-            self.clear_cache('_r')
+            # self.clear_cache('_r')
             self.clear_cache('_L')
-            self.clear_cache('_A1')
-            self.clear_cache('_A2')
-            self.clear_cache('_Q0B1Q0t')
+            self.clear_cache('_A')
+            self.clear_cache('_C')
+            self.clear_cache('_Q0BiQ0t')
 
             self._joint_update()
 
@@ -376,7 +326,6 @@ class EPBase(Cached):
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
-            # self._logger.info('EP step size: %e.', max(aerr, rerr))
             if aerr < 2 * EP_EPS or rerr < 2 * EP_EPS:
                 break
 
@@ -453,15 +402,6 @@ class EPBase(Cached):
             step = sum((self._tbeta - ptbeta)**2)
             i += 1
 
-    #
-    # def _h2_cost(self, h2):
-    #     h2=clip(h2, 1e-3, 1 - 1e-3)
-    #     self._logger.info("Evaluating for h2: %e.", h2)
-    #     var=self.h2tovar(h2)
-    #     self.genetic_variance=var
-    #     self._optimize_beta()
-    #     return -self.lml()
-    #
     def optimize(self):
 
         self._logger.info("Start of optimization.")
@@ -476,10 +416,6 @@ class EPBase(Cached):
                                b=1e4, rtol=0, atol=1e-6)
 
         self.genetic_variance = v
-        # if not r.success:
-        #     self._logger.warn("Optimizer has failed: %s.", str(r))
-
-        # nfev = r.nfev
 
         self._optimize_beta()
         elapsed = time() - start
@@ -487,19 +423,13 @@ class EPBase(Cached):
         msg = "End of optimization (%.3f seconds, %d function calls)."
         self._logger.info(msg, elapsed, nfev)
 
-    #
-    # @cached
+    @cached
     def _A(self):
         return self._sitelik_tau
 
+    @cached
     def _C(self):
         return 1
-    #
-    # @cached
-    # def _A2(self):
-    #     """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
-    #     return 1.0
-    #
 
     @cached
     def _S0Q0t(self):
