@@ -1,0 +1,49 @@
+language: python
+matrix:
+  include:
+  - os: linux
+    sudo: false
+    dist: trusty
+    python: '2.7'
+  - os: linux
+    sudo: false
+    dist: trusty
+    python: '3.4'
+  - os: linux
+    sudo: false
+    dist: trusty
+    python: '3.5'
+  - os: osx
+    language: generic
+    env: TRAVIS_PYTHON_VERSION=3.5
+before_install:
+- wget https://raw.githubusercontent.com/Horta/travis-miniconda/master/install.sh
+  -O install.sh
+- chmod +x install.sh
+- travis_retry bash -x ./install.sh
+install:
+- export PATH="$HOME/miniconda/bin:$PATH"
+- source activate travisci
+- travis_retry conda install pycparser -y --name travisci
+before_script:
+- export PATH="$HOME/miniconda/bin:$PATH"
+- source activate travisci
+- python setup.py test
+script:
+- export PATH="$HOME/miniconda/bin:$PATH"
+- source activate travisci
+- python setup.py sdist
+- pip install dist/`ls dist | grep -i -E '\.(gz)$' | head -1`
+- pushd /
+- python -c "import limix_qep; limix_qep.test()"
+- popd
+deploy:
+  provider: pypi
+  skip_cleanup: true
+  user: danilo.horta
+  on:
+    branch: master
+  password:
+    secure: wms3/N5q/d79c2WDN5fkcd4ZacPblUEkZy3CTsVPJ2sqoJ5POkmlAH9KEZ/yTHfaTynrqi81Vx8ZIGPxVfXQZc5zB/zCjiulLI3QSd1Wmu8VswTC0UE0BtdBn1dX9oeaYb5vGhcLExTPmdvaul7wB3w0mA/6GixNkfMVunCqVwf2tbwX0rkG7KhrCl5NZc+/9WckSPlDQwdk8YhGbCFKx4hudNoKpzQUnSeuxhDqLEkK/T97hoALHLE3mxEQcpbM+MkCSL+rUqqWtD+IAeAHluXKoic2UngLMI3gq/kcVYAqJ+TzxY2C3u2j4dAmLt2n4Udn0BhSD2ENMaegbTwdZRnEcq4Rf6XupmCjyU4vNbt3s1Twc3K+zjBs2zw010r7wfDaVpCvmVP6ehcUasdBwD7kpfm5pWfB9xjM1fPwdGYGvXQgiP7ypHxVaKG63lgiKhCtNcO8nChSD434zFjNMMOF2Tgw8EpHXzH01qcKp/dXNPFmrvzvymKrphmlw6GCKT85fXg5xIVOiA88Md6zPvX8k1lLL9JcvgRyoWr0QtIvFypDr7FHztgLKvuAxf4EbVjNfDmmOzQpej72Mcjo1gS0STYJRqXAM4dr/mDrVHcTPnPlvRJCGrhOGwpB5xxPZ1ZeH8U1/NS6FTiAjS4BW6aE0bo2aqIklixK7EfPItg=
+notifications:
+  email: false
