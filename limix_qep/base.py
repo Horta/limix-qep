@@ -212,128 +212,126 @@ class EPBase(Cached):
     def beta(self, value):
         self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
 
-    #
-    # @property
-    # def M(self):
-    #     return self._M
-    #
-    # @M.setter
-    # def M(self, value):
-    #     self._covariate_setup(value)
-    #     self.clear_cache('_r')
-    #     self.clear_cache('m')
-    #     self.clear_cache('_lml_components')
-    #     self.clear_cache('_update')
-    #
-    # @cached
-    # def _lml_components(self):
-    #     self._update()
-    #     S0 = self._S0
-    #     m = self.m()
-    #     ttau = self._sites.tau
-    #     teta = self._sites.eta
-    #     ctau = self._cavs.tau
-    #     ceta = self._cavs.eta
-    #     cmu = self._cavs.mu
-    #     A0 = self._A0()
-    #     A1 = self._A1()
-    #     A2 = self._A2()
-    #
-    #     vS0 = self.genetic_variance * S0
-    #     tctau = ttau + ctau
-    #     A1m = A1 * m
-    #     A2m = A2 * m
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #     A2teta = A2 * teta
-    #
-    #     L = self._L()
-    #
-    #     p1 = - np.sum(log(np.diagonal(L))) - log(vS0).sum() / 2
-    #
-    #     p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
-    #     p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
-    #     p3 -= ((teta * teta) / tctau).sum()
-    #     p3 /= 2
-    #
-    #     p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
-    #
-    #     A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
-    #
-    #     p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
-    #
-    #     p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
-    #     p6 /= 2
-    #
-    #     p7 = (log(tctau).sum() - log(ctau).sum()) / 2
-    #
-    #     p8 = self._loghz.sum()
-    #
-    #     p9 = log(A2).sum() / 2
-    #
-    #     # print(p1, p3, p4, p5, p6, p7, p8, p9)
-    #     return (p1, p3, p4, p5, p6, p7, p8, p9)
-    #
-    # def lml(self):
-    #     return sum(self._lml_components())
-    #
-    # @cached
-    # def _update(self):
-    #     if not self._ep_params_initialized:
-    #         self._init_ep_params()
-    #
-    #     # self._logger.info('EP loop has started.')
-    #     m = self.m()
-    #
-    #     ttau = self._sites.tau
-    #     teta = self._sites.eta
-    #
-    #     hmu = self._hmu
-    #     hvar = self._hvar
-    #
-    #     i = 0
-    #     while i < MAX_EP_ITER:
-    #         self._psites.tau[:] = ttau
-    #         self._psites.eta[:] = teta
-    #
-    #         self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
-    #         self._tilted_params()
-    #
-    #         if not all(isfinite(hvar)) or np.any(hvar == 0.):
-    #             raise Exception('Error: not all(isfinite(hsig2))' +
-    #                             ' or np.any(hsig2 == 0.).')
-    #
-    #         self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
-    #         self.clear_cache('_r')
-    #         self.clear_cache('_L')
-    #         self.clear_cache('_A1')
-    #         self.clear_cache('_A2')
-    #         self.clear_cache('_Q0B1Q0t')
-    #
-    #         self._joint.update(m, teta, self._A1(), self._A2(), self._Q0B1Q0t(),
-    #                            self.K())
-    #
-    #         tdiff = np.abs(self._psites.tau - ttau)
-    #         ediff = np.abs(self._psites.eta - teta)
-    #         aerr = tdiff.max() + ediff.max()
-    #
-    #         if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
-    #             rerr = np.inf
-    #         else:
-    #             rtdiff = tdiff / np.abs(self._psites.tau)
-    #             rediff = ediff / np.abs(self._psites.eta)
-    #             rerr = rtdiff.max() + rediff.max()
-    #
-    #         i += 1
-    #         # self._logger.info('EP step size: %e.', max(aerr, rerr))
-    #         if aerr < 2 * EP_EPS or rerr < 2 * EP_EPS:
-    #             break
-    #
-    #     if i + 1 == MAX_EP_ITER:
-    #         self._logger.warn('Maximum number of EP iterations has' +
-    #                           ' been attained.')
-    #
-    #     # self._logger.info('EP loop has performed %d iterations.', i)
-    #
+    @property
+    def M(self):
+        return self._M
+
+    @M.setter
+    def M(self, value):
+        self._covariate_setup(value)
+        self.clear_cache('_r')
+        self.clear_cache('m')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_update')
+
+    @cached
+    def _lml_components(self):
+        self._update()
+        S0 = self._S0
+        m = self.m()
+        ttau = self._sites.tau
+        teta = self._sites.eta
+        ctau = self._cavs.tau
+        ceta = self._cavs.eta
+        cmu = self._cavs.mu
+        A0 = self._A0()
+        A1 = self._A1()
+        A2 = self._A2()
+
+        vS0 = self.genetic_variance * S0
+        tctau = ttau + ctau
+        A1m = A1 * m
+        A2m = A2 * m
+        Q0B1Q0t = self._Q0B1Q0t()
+        A2teta = A2 * teta
+
+        L = self._L()
+
+        p1 = - np.sum(log(np.diagonal(L))) - log(vS0).sum() / 2
+
+        p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
+        p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
+        p3 -= ((teta * teta) / tctau).sum()
+        p3 /= 2
+
+        p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
+
+        A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
+
+        p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
+
+        p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
+        p6 /= 2
+
+        p7 = (log(tctau).sum() - log(ctau).sum()) / 2
+
+        p8 = self._loghz.sum()
+
+        p9 = log(A2).sum() / 2
+
+        return (p1, p3, p4, p5, p6, p7, p8, p9)
+
+    def lml(self):
+        return sum(self._lml_components())
+
+    @cached
+    def _update(self):
+        if not self._ep_params_initialized:
+            self._init_ep_params()
+
+        self._logger.info('EP loop has started.')
+        m = self.m()
+
+        ttau = self._sites.tau
+        teta = self._sites.eta
+
+        hmu = self._hmu
+        hvar = self._hvar
+
+        i = 0
+        while i < MAX_EP_ITER:
+            self._psites.tau[:] = ttau
+            self._psites.eta[:] = teta
+
+            self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
+            self._tilted_params()
+
+            if not all(isfinite(hvar)) or np.any(hvar == 0.):
+                raise Exception('Error: not all(isfinite(hsig2))' +
+                                ' or np.any(hsig2 == 0.).')
+
+            self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
+            self.clear_cache('_r')
+            self.clear_cache('_L')
+            self.clear_cache('_A1')
+            self.clear_cache('_A2')
+            self.clear_cache('_Q0B1Q0t')
+
+            self._joint.update(m, teta, self._A1(), self._A2(),
+                               self._Q0B1Q0t(), self.K())
+
+            tdiff = np.abs(self._psites.tau - ttau)
+            ediff = np.abs(self._psites.eta - teta)
+            aerr = tdiff.max() + ediff.max()
+
+            if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
+                rerr = np.inf
+            else:
+                rtdiff = tdiff / np.abs(self._psites.tau)
+                rediff = ediff / np.abs(self._psites.eta)
+                rerr = rtdiff.max() + rediff.max()
+
+            i += 1
+            # self._logger.info('EP step size: %e.', max(aerr, rerr))
+            if aerr < 2 * EP_EPS or rerr < 2 * EP_EPS:
+                break
+
+        if i + 1 == MAX_EP_ITER:
+            self._logger.warn('Maximum number of EP iterations has' +
+                              ' been attained.')
+
+        self._logger.info('EP loop has performed %d iterations.', i)
+
     # def _optimal_beta_nom(self):
     #     A1 = self._A1()
     #     A2 = self._A2()
