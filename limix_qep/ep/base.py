@@ -132,7 +132,7 @@ class EP(Cached):
 
     def _init_ep_params(self):
         assert self._ep_params_initialized is False
-        self._logger.debug("EP parameters initialization.")
+        self._logger.info("EP parameters initialization.")
         self._joint.initialize(self.m(), self.diagK())
         self._sites.initialize()
         self._ep_params_initialized = True
@@ -333,7 +333,7 @@ class EP(Cached):
         if not self._ep_params_initialized:
             self._init_ep_params()
 
-        # self._logger.debug('EP loop has started.')
+        # self._logger.info('EP loop has started.')
         m = self.m()
 
         ttau = self._sites.tau
@@ -376,7 +376,7 @@ class EP(Cached):
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
-            # self._logger.debug('EP step size: %e.', max(aerr, rerr))
+            # self._logger.info('EP step size: %e.', max(aerr, rerr))
             if aerr < 2 * EP_EPS or rerr < 2 * EP_EPS:
                 break
 
@@ -384,7 +384,7 @@ class EP(Cached):
             self._logger.warn('Maximum number of EP iterations has' +
                               ' been attained.')
 
-        # self._logger.debug('EP loop has performed %d iterations.', i)
+        # self._logger.info('EP loop has performed %d iterations.', i)
 
     ##########################################################################
     ##########################################################################
@@ -424,7 +424,7 @@ class EP(Cached):
         return self.__tbeta
 
     def _optimize_beta(self):
-        # self._logger.debug("Beta optimization.")
+        # self._logger.info("Beta optimization.")
         ptbeta = empty_like(self._tbeta)
 
         step = inf
@@ -433,15 +433,15 @@ class EP(Cached):
             ptbeta[:] = self._tbeta
             self._optimal_tbeta()
             step = np.sum((self._tbeta - ptbeta)**2)
-            # self._logger.debug("Beta step: %e.", step)
+            # self._logger.info("Beta step: %e.", step)
             i += 1
 
-        # self._logger.debug("Beta optimization performed %d steps " +
+        # self._logger.info("Beta optimization performed %d steps " +
         #                    "to find %s.", i, bytes(self._tbeta))
 
     def _h2_cost(self, h2):
         h2 = clip(h2, 1e-3, 1 - 1e-3)
-        self._logger.debug("Evaluating for h2: %e.", h2)
+        self._logger.info("Evaluating for h2: %e.", h2)
         var = self.h2tovar(h2)
         self.genetic_variance = var
         self._optimize_beta()
@@ -453,9 +453,9 @@ class EP(Cached):
 
         start = time()
 
-        self._logger.debug("Start of optimization.")
-        # self._logger.debug(self.__str__())
-        # self._logger.debug("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
+        self._logger.info("Start of optimization.")
+        # self._logger.info(self.__str__())
+        # self._logger.info("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
         #                    self.heritability, self.genetic_variance,
         #                    bytes(self.beta))
 
@@ -479,13 +479,13 @@ class EP(Cached):
 
         self._optimize_beta()
 
-        # self._logger.debug("Final parameters: h2=%.5f, var=%.5f, beta=%s",
+        # self._logger.info("Final parameters: h2=%.5f, var=%.5f, beta=%s",
         #                    self.heritability, self.genetic_variance,
         #                    bytes(self.beta))
 
-        # self._logger.debug(self.__str__())
-        self._logger.debug("End of optimization (%.3f seconds" +
-                           ", %d function calls).", time() - start, nfev)
+        # self._logger.info(self.__str__())
+        self._logger.info("End of optimization (%.3f seconds" +
+                          ", %d function calls).", time() - start, nfev)
 
     ##########################################################################
     ##########################################################################

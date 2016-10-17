@@ -14,6 +14,7 @@ from numpy import set_printoptions
 from numpy import argmin
 from numpy import zeros
 from numpy import array
+from numpy import pi as PI
 from .util import greek_letter
 
 from .dists import Joint
@@ -77,7 +78,7 @@ class OverdispersionEP(EP):
 
     @property
     def instrumental_variance(self):
-        return 1.
+        return (PI * PI) / 3
 
     @property
     def real_variance(self):
@@ -125,18 +126,18 @@ class OverdispersionEP(EP):
         self.environmental_genetic_ratio = delta
         self._optimize_beta()
         c = -self.lml()
-        self._logger.debug("_environmental_genetic_cost:cost: %.15f", c)
+        self._logger.info("_environmental_genetic_cost:cost: %.15f", c)
         return c
 
     def _environmental_genetic_delta_cost(self, delta):
-        self._logger.debug("_environmental_genetic_cost:delta: %.15f.", delta)
+        self._logger.info("_environmental_genetic_cost:delta: %.15f.", delta)
         return self._eg_delta_cost(delta)
 
     def _noise_ratio_cost(self, nr):
         self.noise_ratio = nr
         self._optimize_beta()
         c = -self.lml()
-        self._logger.debug("_noise_ratio_cost:nr_cost: %.10f %.15f", nr, c)
+        self._logger.info("_noise_ratio_cost:nr_cost: %.10f %.15f", nr, c)
         return c
 
     def _find_best_noise_ratio(self):
@@ -150,11 +151,11 @@ class OverdispersionEP(EP):
 
         self.noise_ratio = nr
 
-        self._logger.debug("End of noise_ratio optimization (%.3f seconds" +
-                           ", %d function calls).", time() - start, nfev)
+        self._logger.info("End of noise_ratio optimization (%.3f seconds" +
+                          ", %d function calls).", time() - start, nfev)
 
     def _genetic_ratio_cost(self, gr):
-        self._logger.debug("_genetic_ratio_cost:gr: %.10f", gr)
+        self._logger.info("_genetic_ratio_cost:gr: %.10f", gr)
         self.genetic_ratio = gr
         self._find_best_noise_ratio()
         return -self.lml()
@@ -162,8 +163,8 @@ class OverdispersionEP(EP):
     def optimize(self, progress=None):
         start = time()
 
-        self._logger.debug("Start of optimization.")
-        # self._logger.debug(self.__str__())
+        self._logger.info("Start of optimization.")
+        # self._logger.info(self.__str__())
 
         a, b = 1e-3, 1 - 1e-3
 
@@ -182,9 +183,9 @@ class OverdispersionEP(EP):
         self._find_best_noise_ratio()
         self._optimize_beta()
 
-        # self._logger.debug(self.__str__())
-        self._logger.debug("End of optimization (%.3f seconds" +
-                           ", %d function calls).", time() - start, nfev)
+        # self._logger.info(self.__str__())
+        self._logger.info("End of optimization (%.3f seconds" +
+                          ", %d function calls).", time() - start, nfev)
 
     # Key but Intermediary Matrix Definitions
     @cached
