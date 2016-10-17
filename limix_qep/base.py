@@ -6,9 +6,10 @@ from time import time
 from hcache import Cached, cached
 from numpy import var as variance
 from numpy import (abs, all, any, asarray, atleast_1d, atleast_2d, clip,
-                   diagonal, dot, empty, empty_like, inf, isfinite, log,
-                   maximum, set_printoptions, sqrt, sum, zeros)
-from numpy.linalg import multi_dot
+                   diagonal, dot, empty, empty_like, errstate, inf, isfinite,
+                   log, maximum, set_printoptions, sqrt, sum, zeros,
+                   zeros_like)
+from numpy.linalg import LinAlgError, multi_dot
 from scipy.linalg import cho_factor
 
 from limix_math.linalg import (cho_solve, ddot, dotd, economic_svd, solve,
@@ -121,7 +122,7 @@ class EPBase(Cached):
         self._sitelik_initialize()
         self._ep_params_initialized = True
 
-    def initialize_hyperparams(self):
+    def initialize(self):
         raise NotImplementedError
 
     def _joint_initialize(self):
@@ -152,8 +153,6 @@ class EPBase(Cached):
 
     @property
     def genetic_variance(self):
-        if self._v is None:
-            self.initialize_hyperparams()
         return self._v
 
     @property
@@ -196,8 +195,6 @@ class EPBase(Cached):
 
     @property
     def _tbeta(self):
-        if self.__tbeta is None:
-            self.initialize_hyperparams()
         return self.__tbeta
 
     @_tbeta.setter
@@ -213,8 +210,6 @@ class EPBase(Cached):
 
     @property
     def beta(self):
-        if self.__tbeta is None:
-            self.initialize_hyperparams()
         return solve(self._svd_V.T, self._tbeta / self._svd_S12)
 
     @beta.setter
@@ -415,53 +410,49 @@ class EPBase(Cached):
         self._sitelik_tau[:] = maximum(1.0 / hvar - tau, 1e-16)
         self._sitelik_eta[:] = hmu / hvar - eta
 
-    # def _optimal_beta_nom(self):
-    #     A1 = self._A1()
-    #     A2 = self._A2()
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #     teta = self._sites.eta
-    #     return A2 * teta - A1 * Q0B1Q0t.dot(A2 * teta)
-    #
-    # def _optimal_tbeta_denom(self):
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #     A1M = ddot(self._A1(), self._tM, left=True)
-    #     return dot(self._tM.T, A1M) - multi_dot([A1M.T, Q0B1Q0t, A1M])
-    #
-    # def _optimal_tbeta(self):
-    #     self._update()
-    #
-    #     if all(np.abs(self._M) < 1e-15):
-    #         return np.zeros_like(self._tbeta)
-    #
-    #     u = dot(self._tM.T, self._optimal_beta_nom())
-    #     Z = self._optimal_tbeta_denom()
-    #
-    #     try:
-    #         with np.errstaall_ = 'raise'):
-    #             self._tbeta=solve(Z, u)
-    #
-    #     except (np.linalg.LinAlgError, FloatingPointError):
-    #         self._logger.warn('Failed to compute the optimal beta.' +
-    #                           ' Zeroing it.')
-    #         self.__tbeta[:]=0.
-    #
-    #     return self.__tbeta
-    #
-    # def _optimize_beta(self):
-    #     # self._logger.info("Beta optimization.")
-    #     ptbeta=empty_like(self._tbeta)
-    #
-    #     step=inf
-    #     i=0
-    #     while step > 1e-7 and i < 5:
-    #         ptbeta[:]=self._tbeta
-    #         self._optimal_tbeta()
-    #         step=np.sum((self._tbeta - ptbeta)**2)
-    #         # self._logger.info("Beta step: %e.", step)
-    #         i += 1
-    #
-    #     # self._logger.info("Beta optimization performed %d steps " +
-    #     #                    "to find %s.", i, bytes(self._tbeta))
+    def _optimal_beta_nom(self):
+        A = self._A()
+        C = self._C()
+        QBiQt = self._Q0BiQ0t()
+        teta = self._sitelik_eta
+        return C * teta - A * dot(QBiQt, C * teta)
+
+    def _optimal_tbeta_denom(self):
+        QBiQt = self._Q0BiQ0t()
+        AM = ddot(self._A(), self._tM, left=True)
+        return dot(self._tM.T, AM) - multi_dot([AM.T, QBiQt, AM])
+
+    def _optimal_tbeta(self):
+        self._update()
+
+        if all(abs(self._M) < 1e-15):
+            return zeros_like(self._tbeta)
+
+        u = dot(self._tM.T, self._optimal_beta_nom())
+        Z = self._optimal_tbeta_denom()
+
+        try:
+            with errstate(all='raise'):
+                self._tbeta = solve(Z, u)
+
+        except (LinAlgError, FloatingPointError):
+            self._logger.warn('Failed to compute the optimal beta.' +
+                              ' Zeroing it.')
+            self.__tbeta[:] = 0.
+
+        return self.__tbeta
+
+    def _optimize_beta(self):
+        ptbeta = empty_like(self._tbeta)
+
+        step = inf
+        i = 0
+        while step > 1e-7 and i < 5:
+            ptbeta[:] = self._tbeta
+            self._optimal_tbeta()
+            step = sum((self._tbeta - ptbeta)**2)
+            i += 1
+
     #
     # def _h2_cost(self, h2):
     #     h2=clip(h2, 1e-3, 1 - 1e-3)
@@ -471,48 +462,31 @@ class EPBase(Cached):
     #     self._optimize_beta()
     #     return -self.lml()
     #
-    # def optimize(self):
-    #
-    #     start=time()
-    #
-    #     self._logger.info("Start of optimization.")
-    #     # self._logger.info(self.__str__())
-    #     # self._logger.info("Initial parameters: h2=%.5f, var=%.5f, beta=%s.",
-    #     #                    self.heritability, self.genetic_variance,
-    #     #                    bytes(self.beta))
-    #
-    #     nfev=0
-    #
-    #     h2=self.heritability
-    #     atol=1e-6
-    #     eps=1e-4
-    #     h2, nfev=find_minimum(self._h2_cost, h2, a = eps, b = 1 - eps, rtol = 0,
-    #                             atol = atol)
-    #     # r = minimize_scalar(self._h2_cost,
-    #     #                     bracket=normal_bracket(h2),
-    #     #                     method='Brent', tol=HYPERPARAM_EPS)
-    #
-    #     self.genetic_variance=self.h2tovar(h2)
-    #
-    #     # if not r.success:
-    #     #     self._logger.warn("Optimizer has failed: %s.", str(r))
-    #
-    #     # nfev = r.nfev
-    #
-    #     self._optimize_beta()
-    #
-    #     # self._logger.info("Final parameters: h2=%.5f, var=%.5f, beta=%s",
-    #     #                    self.heritability, self.genetic_variance,
-    #     #                    bytes(self.beta))
-    #
-    #     # self._logger.info(self.__str__())
-    #     msg="End of optimization (%.3f seconds, %d function calls)."
-    #     self._logger.info(msg, time() - start, nfev)
-    #
-    # @cached
-    # def _A0(self):
-    #     """:math:`v \\delta \\mathrm I`"""
-    #     return 0.0
+    def optimize(self):
+
+        self._logger.info("Start of optimization.")
+
+        def function_cost(v):
+            self.genetic_variance = v
+            self._optimize_beta()
+            return -self.lml()
+
+        start = time()
+        v, nfev = find_minimum(function_cost, self.genetic_variance, a=1e-4,
+                               b=1e4, rtol=0, atol=1e-6)
+
+        self.genetic_variance = v
+        # if not r.success:
+        #     self._logger.warn("Optimizer has failed: %s.", str(r))
+
+        # nfev = r.nfev
+
+        self._optimize_beta()
+        elapsed = time() - start
+
+        msg = "End of optimization (%.3f seconds, %d function calls)."
+        self._logger.info(msg, elapsed, nfev)
+
     #
     # @cached
     def _A(self):

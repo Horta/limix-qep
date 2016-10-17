@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import logging
 
-from numpy import (all, asarray, clip, exp, full, isfinite, log, ones,
+from numpy import (all, asarray, clip, exp, full, isfinite, log, ones, pi,
                    set_printoptions, sqrt)
 from numpy.linalg import lstsq
 
@@ -53,35 +53,47 @@ class BernoulliEP(EPBase):
         self._Q1 = Q1
 
         self._moments = LikNormMoments(350)
+        self.initialize()
 
-#     def initialize_hyperparams(self):
-#         from scipy.stats import norm
-#         y = self._y
-#         ratio = sum(y) / float(len(y))
-#         latent_mean = norm(0, 1).isf(1 - ratio)
-#         latent = y / y.std()
-#         latent = latent - latent.mean() + latent_mean
-#
-#         Q0 = self._Q0
-#         Q1 = self._Q1
-#         covariates = self._M
-#         flmm = FastLMM(full(len(y), latent), covariates,
-#                        QS=[[Q0, Q1], [self._S0]])
-#         flmm.learn()
-#         gv = flmm.genetic_variance
-#         nv = flmm.environmental_variance
-#         h2 = gv / (gv + nv)
-#         h2 = bern2lat_correction(h2, ratio, ratio)
-#         h2 = clip(h2, 0.01, 0.9)
-#
-#         mean = flmm.mean
-#         self._v = h2 / (1 - h2)
-#         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
+    def initialize(self):
+        from scipy.stats import norm
+        from lim.genetics.core import FastLMM
+        y = self._y
+        ratio = sum(y) / float(len(y))
+        latent_mean = norm(0, 1).isf(1 - ratio)
+        latent = y / y.std()
+        latent = latent - latent.mean() + latent_mean
+
+        Q0 = self._Q0
+        Q1 = self._Q1
+        S0 = self._S0
+        covariates = self._M
+        flmm = FastLMM(full(len(y), latent), covariates, QS=((Q0, Q1), (S0,)))
+        flmm.learn()
+        gv = flmm.genetic_variance
+        nv = flmm.environmental_variance
+        h2 = gv / (gv + nv)
+        h2 = bern2lat_correction(h2, ratio, ratio)
+        h2 = clip(h2, 0.01, 0.9)
+
+        mean = flmm.mean
+        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
+        self.heritability = h2
+
 #
 #     def predict(self, m, var, covar):
 #         (mu, sig2) = self._posterior_normal(m, var, covar)
 #         return Bernoulli2Predictor(mu, sig2)
 #
+
+    @property
+    def environmental_variance(self):
+        return (pi * pi) / 3
+
+    @environmental_variance.setter
+    def environmental_variance(self, v):
+        raise NotImplementedError
+
     def _tilted_params(self):
         y = self._y
         ctau = self._cav_tau

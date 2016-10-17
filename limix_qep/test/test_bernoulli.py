@@ -35,8 +35,9 @@ def test_bernoulli_optimize():
     (Q, S) = qs_decomposition(G)
 
     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
-    # ep.optimize()
-#     assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
+    ep.optimize()
+    assert_almost_equal(ep.genetic_variance, 4.52344648643)
+    assert_almost_equal(ep.beta, [0.2274308389825681])
 #
 #
 # def test_bernoulli_prediction():
