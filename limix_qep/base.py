@@ -39,8 +39,6 @@ class EPBase(Cached):
         self._logger = logging.getLogger(__name__)
         self._ep_params_initialized = False
 
-        nsamples = M.shape[0]
-
         if not all(isfinite(Q0)) or not all(isfinite(S0)):
             raise ValueError("There are non-finite numbers in the provided" +
                              " eigen decomposition.")
@@ -57,6 +55,7 @@ class EPBase(Cached):
         self._Q0 = Q0
         self.__Q0S0Q0t = Q0S0Q0t
 
+        nsamples = M.shape[0]
         self._previous_sitelik_tau = zeros(nsamples)
         self._previous_sitelik_eta = zeros(nsamples)
 
@@ -69,7 +68,6 @@ class EPBase(Cached):
         self._joint_tau = zeros(nsamples)
         self._joint_eta = zeros(nsamples)
 
-        # genetic variance
         self._v = None
         self.__tbeta = None
 
@@ -99,21 +97,21 @@ class EPBase(Cached):
         self._tM = ddot(self._svd_U, self._svd_S12, left=False)
         self.__tbeta = None
 
-    def _posterior_normal(self, m, var, covar):
-        m = atleast_1d(m)
-        var = atleast_2d(var)
-        covar = atleast_2d(covar)
-
-        A1 = self._A1()
-        Q0B1Q0t = self._Q0B1Q0t()
-
-        mu = m - covar.dot(self._r())
-
-        A1covar = ddot(A1, covar.T, left=True)
-        sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
-            + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
-
-        return (mu, sig2)
+    # def _posterior_normal(self, m, var, covar):
+    #     m = atleast_1d(m)
+    #     var = atleast_2d(var)
+    #     covar = atleast_2d(covar)
+    #
+    #     A1 = self._A1()
+    #     Q0B1Q0t = self._Q0B1Q0t()
+    #
+    #     mu = m - covar.dot(self._r())
+    #
+    #     A1covar = ddot(A1, covar.T, left=True)
+    #     sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
+    #         + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
+    #
+    #     return (mu, sig2)
 
     def _init_ep_params(self):
         assert self._ep_params_initialized is False
@@ -250,7 +248,7 @@ class EPBase(Cached):
         # eC = self.environmental_variance * C
         eC = 0
 
-        w1 = -sum(log(diagonal(L))) - log(gS0).sum() / 2 + log(A).sum() / 2
+        w1 = -sum(log(diagonal(L))) + (- sum(log(gS0)) / 2 + log(A).sum() / 2)
         w2 = sum(teta * eC * teta)
         w2 += dot(C * teta, dot(QBiQt, C * teta))
         w2 -= sum((teta * teta) / tctau)
@@ -263,7 +261,7 @@ class EPBase(Cached):
         Am = A * m
         w5 = -sum(m * A * m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
 
-        w6 = -sum(log(ttau)) + sum(log(tctau)) + sum(log(ctau))
+        w6 = -sum(log(ttau)) + sum(log(tctau)) - sum(log(ctau))
         w6 /= 2
 
         w7 = sum(self._loghz)
@@ -289,23 +287,23 @@ class EPBase(Cached):
         jtau = self._joint_tau
         jeta = self._joint_eta
 
-        hmu = self._hmu
-        hvar = self._hvar
+        ctau = self._cav_tau
+        ceta = self._cav_eta
 
         i = 0
         while i < MAX_EP_ITER:
-            self._previous_sitelik_tau[:] = ttau
-            self._previous_sitelik_eta[:] = teta
+            pttau[:] = ttau
+            pteta[:] = teta
 
-            self._cav_tau[:] = jtau - ttau
-            self._cav_eta[:] = jeta - teta
+            ctau[:] = jtau - ttau
+            ceta[:] = jeta - teta
             self._tilted_params()
 
-            if not all(isfinite(hvar)) or any(hvar == 0.):
+            if not all(isfinite(self._hvar)) or any(self._hvar == 0.):
                 raise Exception('Error: not all(isfinite(hsig2))' +
                                 ' or any(hsig2 == 0.).')
 
-            self._sitelik_update(hmu, hvar)
+            self._sitelik_update()
             # self.clear_cache('_r')
             self.clear_cache('_L')
             self.clear_cache('_A')
@@ -353,7 +351,9 @@ class EPBase(Cached):
         jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
         jeta *= jtau
 
-    def _sitelik_update(self, hmu, hvar):
+    def _sitelik_update(self):
+        hmu = self._hmu
+        hvar = self._hvar
         tau = self._cav_tau
         eta = self._cav_eta
         self._sitelik_tau[:] = maximum(1.0 / hvar - tau, 1e-16)
