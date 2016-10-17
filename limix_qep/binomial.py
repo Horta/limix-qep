@@ -6,7 +6,6 @@ from numpy import (all, asarray, clip, exp, full, isfinite, isscalar, log,
                    ones, pi, set_printoptions, sqrt)
 from numpy.linalg import lstsq
 
-from lim.genetics import FastLMM
 from lim.genetics.heritability import bern2lat_correction
 from limix_math import issingleton
 from limix_math.special import normal_logcdf, normal_logpdf
@@ -92,12 +91,6 @@ class BinomialEP(OverdispersionEP):
         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
         self.heritability = h2
 
-#
-#     def predict(self, m, var, covar):
-#         (mu, sig2) = self._posterior_normal(m, var, covar)
-#         return Bernoulli2Predictor(mu, sig2)
-#
-
     @property
     def environmental_variance(self):
         return (pi * pi) / 3
@@ -109,23 +102,3 @@ class BinomialEP(OverdispersionEP):
         lmom0 = self._loghz
         self._moments.binomial(y, ones(len(y)), ceta,
                                ctau, lmom0, self._hmu, self._hvar)
-#
-#     # \hat z
-#     def _compute_hz(self):
-#         b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-#         c = self._y11 * self._cavs.eta / b
-#         self._loghz[:] = normal_logcdf(c)
-#
-#     def __str__(self):
-#         set_printoptions(precision=3, threshold=10)
-#         s = """
-# Phenotype definition:
-#   y_l = Indicator(f_l > 0), where f_l is the latent phenotype of the l-th
-#         individual.
-#
-# Input data:
-#   y: {y}""".format(y=bytes(self._y))
-#         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
-#                          precision=8, suppress=False, threshold=1000,
-#                          formatter=None)
-#         return s + "\n" + super(BernoulliEP2, self).__str__()

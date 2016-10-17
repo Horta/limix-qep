@@ -29,7 +29,6 @@ class OverdispersionEP(EPBase):
         super(OverdispersionEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        nsamples = M.shape[0]
         self._Q1 = Q1
         self._delta = 0.5
 
