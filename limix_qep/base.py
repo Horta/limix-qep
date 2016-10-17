@@ -233,6 +233,55 @@ class EPBase(Cached):
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
 
+    # @cached
+    # def _lml_components(self):
+    #     self._update()
+    #     S0 = self._S0
+    #     m = self.m()
+    #     ttau = self._sitelik_tau
+    #     teta = self._sitelik_eta
+    #     ctau = self._cav_tau
+    #     ceta = self._cav_eta
+    #     # cmu = self._cavs.mu
+    #     # TODO: MUDAR ISSO AQUI
+    #     cmu = ceta / ctau
+    #     A0 = self._A0()
+    #     A1 = self._A1()
+    #     A2 = self._A2()
+    #
+    #     vS0 = self.genetic_variance * S0
+    #     tctau = ttau + ctau
+    #     A1m = A1 * m
+    #     A2m = A2 * m
+    #     Q0B1Q0t = self._Q0B1Q0t()
+    #     A2teta = A2 * teta
+    #
+    #     L = self._L()
+    #
+    #     p1 = - sum(log(diagonal(L))) - log(vS0).sum() / 2
+    #
+    #     p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
+    #     p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
+    #     p3 -= ((teta * teta) / tctau).sum()
+    #     p3 /= 2
+    #
+    #     p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
+    #
+    #     A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
+    #
+    #     p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
+    #
+    #     p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
+    #     p6 /= 2
+    #
+    #     p7 = (log(tctau).sum() - log(ctau).sum()) / 2
+    #
+    #     p8 = self._loghz.sum()
+    #
+    #     p9 = log(A2).sum() / 2
+    #
+    #     return (p1, p3, p4, p5, p6, p7, p8, p9)
+
     @cached
     def _lml_components(self):
         self._update()
@@ -242,45 +291,38 @@ class EPBase(Cached):
         teta = self._sitelik_eta
         ctau = self._cav_tau
         ceta = self._cav_eta
+        tctau = ttau + ctau
         # cmu = self._cavs.mu
         # TODO: MUDAR ISSO AQUI
         cmu = ceta / ctau
-        A0 = self._A0()
-        A1 = self._A1()
-        A2 = self._A2()
-
-        vS0 = self.genetic_variance * S0
-        tctau = ttau + ctau
-        A1m = A1 * m
-        A2m = A2 * m
-        Q0B1Q0t = self._Q0B1Q0t()
-        A2teta = A2 * teta
-
+        A = self._A()
+        C = self._C()
         L = self._L()
+        QBiQt = self._Q0BiQ0t()
 
-        p1 = - sum(log(diagonal(L))) - log(vS0).sum() / 2
+        gS0 = self.genetic_variance * S0
+        # eC = self.environmental_variance * C
+        eC = 0
 
-        p3 = (teta * A0 * teta / (ttau * A0 + 1)).sum()
-        p3 += (A2teta * Q0B1Q0t.dot(A2teta)).sum()
-        p3 -= ((teta * teta) / tctau).sum()
-        p3 /= 2
+        w1 = -sum(log(diagonal(L))) - log(gS0).sum() / 2 + log(A).sum() / 2
+        w2 = sum(teta * eC * teta)
+        w2 += dot(C * teta, dot(QBiQt, C * teta))
+        w2 -= sum((teta * teta) / tctau)
+        w2 /= 2
 
-        p4 = (ceta * (ttau * cmu - 2 * teta) / tctau).sum() / 2
+        w3 = sum(ceta * (ttau * cmu - 2 * teta) / tctau) / 2
 
-        A1mQ0B1Q0t = A1m.dot(Q0B1Q0t)
+        w4 = sum(m * C * teta) - sum(m * A * dot(QBiQt, C * teta))
 
-        p5 = A2m.dot(teta) - A1mQ0B1Q0t.dot(A2 * teta)
+        Am = A * m
+        w5 = -sum(m * A * m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
 
-        p6 = - A1m.dot(m) + A1mQ0B1Q0t.dot(A1m)
-        p6 /= 2
+        w6 = -sum(log(ttau)) + sum(log(tctau)) + sum(log(ctau))
+        w6 /= 2
 
-        p7 = (log(tctau).sum() - log(ctau).sum()) / 2
+        w7 = sum(self._loghz)
 
-        p8 = self._loghz.sum()
-
-        p9 = log(A2).sum() / 2
-
-        return (p1, p3, p4, p5, p6, p7, p8, p9)
+        return (w1, w2, w3, w4, w5, w6, w7)
 
     def lml(self):
         return sum(self._lml_components())
@@ -475,6 +517,9 @@ class EPBase(Cached):
     # @cached
     def _A(self):
         return self._sitelik_tau
+
+    def _C(self):
+        return 1
     #
     # @cached
     # def _A2(self):
