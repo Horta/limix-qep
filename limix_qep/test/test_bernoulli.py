@@ -5,12 +5,7 @@ from numpy.testing import assert_almost_equal
 
 from limix_math.linalg import qs_decomposition
 from limix_qep import BernoulliEP
-
-
-#
-# from limix_qep.tool.util import create_binomial
-#
-#
+from limix_qep.util import create_binomial
 
 
 def test_bernoulli_lml():
@@ -24,23 +19,23 @@ def test_bernoulli_lml():
     assert_almost_equal(ep.beta, array([1.]))
     ep.genetic_variance = 1.
     assert_almost_equal(ep.lml(), -5.43381950943)
-#
-#
-# def test_bernoulli_optimize():
-#     seed = 15
-#     nsamples = 500
-#     nfeatures = 600
-#     ntrials = 1
-#
-#     M = ones((nsamples, 1))
-#
-#     (y, G) = create_binomial(nsamples, nfeatures, ntrials, var=1.0,
-#                              delta=1e-6, seed=seed)
-#
-#     (Q, S) = qs_decomposition(G)
-#
-#     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
-#     ep.optimize()
+
+
+def test_bernoulli_optimize():
+    seed = 15
+    nsamples = 500
+    nfeatures = 600
+    ntrials = 1
+
+    M = ones((nsamples, 1))
+
+    (y, G) = create_binomial(nsamples, nfeatures, ntrials, sigg2=0.8,
+                             delta=1e-6, sige2=1., seed=seed)
+
+    (Q, S) = qs_decomposition(G)
+
+    ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
+    # ep.optimize()
 #     assert_almost_equal(ep.genetic_variance, 1.6795435940073431, decimal=4)
 #
 #
