@@ -1,6 +1,6 @@
-from os.path import join
-from glob import glob
 import logging
+from glob import glob
+from os.path import join
 
 
 def _make():
@@ -12,9 +12,11 @@ def _make():
 
     ffi = FFI()
 
-    sources = glob(join('lib', 'liknorm', '*.c')) + [join('lib', 'liknorm.c')]
-    hdrs = glob(join('lib', 'liknorm', '*.h')) + [join('lib', 'liknorm.h')]
-    incls = ['lib']
+    sources = glob(join('liknorm', 'liknorm', '*.c')) + \
+        [join('liknorm', 'liknorm.c')]
+    hdrs = glob(join('liknorm', 'liknorm', '*.h')) + \
+        [join('liknorm', 'liknorm.h')]
+    incls = ['liknorm']
     libraries = ['m']
 
     logger.debug('Sources: %s', bytes(sources))
@@ -31,7 +33,7 @@ def _make():
                    depends=sources + hdrs,
                    extra_compile_args=["-std=c11"])
 
-    with open(join('lib', 'liknorm.h'), 'r') as f:
+    with open(join('liknorm', 'liknorm.h'), 'r') as f:
         ffi.cdef(f.read())
 
     return ffi
