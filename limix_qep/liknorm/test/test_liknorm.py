@@ -1,10 +1,9 @@
 from __future__ import division
-from limix_qep.liknorm import LikNormMoments
 
-from numpy import array
-from numpy import empty
-from numpy import set_printoptions
+from numpy import array, empty, set_printoptions
 from numpy.testing import assert_allclose
+
+from limix_qep.liknorm import LikNormMoments
 
 
 def test_liknorm_binomial():

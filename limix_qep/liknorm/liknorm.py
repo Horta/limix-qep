@@ -1,10 +1,11 @@
 from __future__ import division
 
-from . import _liknorm_ffi
 from numba import cffi_support as _cffi_support
-_cffi_support.register_module(_liknorm_ffi)
-
 from numpy import ndarray
+
+from . import _liknorm_ffi
+
+_cffi_support.register_module(_liknorm_ffi)
 
 
 def ptr(a):

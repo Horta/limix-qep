@@ -1,10 +1,6 @@
 from __future__ import absolute_import
-from pkg_resources import get_distribution
 
-from . import lik
-from . import tool
-from . import liknorm
-from . import ep
+from pkg_resources import get_distribution
 
 __version__ = get_distribution('limix-qep').version
 
@@ -22,5 +18,3 @@ def test():
         os.chdir(old_path)
 
     return return_code
-
-__all__ = ['test', 'scan_binomial']
