@@ -68,6 +68,7 @@ class EPBase(Cached):
         self._joint_tau = zeros(nsamples)
         self._joint_eta = zeros(nsamples)
 
+        # genetic variance
         self._v = None
         self.__tbeta = None
 
@@ -113,32 +114,32 @@ class EPBase(Cached):
 
         return (mu, sig2)
 
-    # def _init_ep_params(self):
-    #     assert self._ep_params_initialized is False
-    #     self._logger.info("EP parameters initialization.")
-    #     self._joint.initialize(self.m(), self.diagK())
-    #     self._sites.initialize()
-    #     self._ep_params_initialized = True
-    #
-    # def initialize_hyperparams(self):
-    #     raise NotImplementedError
-    #
-    # @cached
-    # def K(self):
-    #     """:math:`K = v Q S Q0.T`"""
-    #     return self.genetic_variance * self._Q0S0Q0t()
-    #
-    # @cached
-    # def diagK(self):
-    #     return self.genetic_variance * self._diagQ0S0Q0t()
-    #
-    # def _diagQ0S0Q0t(self):
-    #     return self._Q0S0Q0t().diagonal()
-    #
-    # @cached
-    # def m(self):
-    #     """:math:`m = M \\beta`"""
-    #     return dot(self._tM, self._tbeta)
+    def _init_ep_params(self):
+        assert self._ep_params_initialized is False
+        self._logger.info("EP parameters initialization.")
+        self._joint.initialize(self.m(), self.diagK())
+        self._sites.initialize()
+        self._ep_params_initialized = True
+
+    def initialize_hyperparams(self):
+        raise NotImplementedError
+
+    @cached
+    def K(self):
+        """:math:`K = v Q S Q0.T`"""
+        return self.genetic_variance * self._Q0S0Q0t()
+
+    @cached
+    def diagK(self):
+        return self.genetic_variance * self._diagQ0S0Q0t()
+
+    def _diagQ0S0Q0t(self):
+        return self._Q0S0Q0t().diagonal()
+
+    @cached
+    def m(self):
+        """:math:`m = M \\beta`"""
+        return dot(self._tM, self._tbeta)
     #
     # @property
     # def total_variance(self):
@@ -189,11 +190,12 @@ class EPBase(Cached):
     #     varc = self.covariates_variance
     #     return h2 * (1 + varc) / (1 - h2)
     #
-    # @property
-    # def _tbeta(self):
-    #     if self.__tbeta is None:
-    #         self.initialize_hyperparams()
-    #     return self.__tbeta
+
+    @property
+    def _tbeta(self):
+        if self.__tbeta is None:
+            self.initialize_hyperparams()
+        return self.__tbeta
     #
     # @_tbeta.setter
     # def _tbeta(self, value):
@@ -216,11 +218,12 @@ class EPBase(Cached):
     # def beta(self, value):
     #     self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
     #
-    # @property
-    # def genetic_variance(self):
-    #     if self._v is None:
-    #         self.initialize_hyperparams()
-    #     return self._v
+
+    @property
+    def genetic_variance(self):
+        if self._v is None:
+            self.initialize_hyperparams()
+        return self._v
     #
     # @genetic_variance.setter
     # def genetic_variance(self, value):

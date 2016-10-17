@@ -7,7 +7,8 @@
 # from numpy import hstack
 # from numpy.testing import assert_almost_equal
 #
-# from limix_qep.ep import BernoulliEP
+from limix_qep import BernoulliEP
+
 #
 # from limix_math.linalg import qs_decomposition
 #
