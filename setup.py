@@ -1,7 +1,7 @@
 import os
 import sys
-from setuptools import setup
-from setuptools import find_packages
+
+from setuptools import find_packages, setup
 
 
 def setup_package():
@@ -13,26 +13,25 @@ def setup_package():
     needs_pytest = {'pytest', 'test', 'ptr'}.intersection(sys.argv)
     pytest_runner = ['pytest-runner'] if needs_pytest else []
 
-    setup_requires = ['build_capi>=0.0.8', 'ncephes>=0.1',
-                      'cffi>=1.6', 'limix_math>=0.3'] + pytest_runner
+    setup_requires = ['cffi>=1.6', 'limix_math>=0.3'] + pytest_runner
     install_requires = ['hcache', 'limix_math>=0.3',
-                        'lim>=0.1', 'pytest', 'tabulate>=0.7']
+                        'lim>=0.1', 'pytest']
     tests_require = install_requires
 
     metadata = dict(
         name='limix_qep',
         maintainer="Limix Developers",
-        version='0.3.4',
+        version='1.0.1.dev1',
         maintainer_email="horta@ebi.ac.uk",
         packages=find_packages(),
-        license="BSD",
-        url='http://pmbio.github.io/limix/',
+        license="MIT",
+        url='https://github.com/Horta/limix-qep',
         install_requires=install_requires,
         setup_requires=setup_requires,
         tests_require=tests_require,
         zip_safe=False,
         include_package_data=True,
-        cffi_modules=['moments_build.py:binomial', 'liknorm_build.py:liknorm']
+        cffi_modules=['liknorm_build.py:liknorm']
     )
 
     try:

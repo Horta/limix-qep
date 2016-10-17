@@ -1,2 +1,5 @@
-include *.py *.txt *.mdk *.md *.rst
-recursive-include limix_qep *.py *.h *.c
+exclude .gitignore .travis.yml
+recursive-include limix_qep *.py
+include LICENSE
+include README.md
+include setup.cfg
