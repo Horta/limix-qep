@@ -293,6 +293,9 @@ class EPBase(Cached):
         self._logger.info('EP loop has started.')
         m = self.m()
 
+        pttau = self._previous_sitelik_tau
+        pteta = self._previous_sitelik_eta
+
         ttau = self._sitelik_tau
         teta = self._sitelik_eta
 
@@ -307,9 +310,6 @@ class EPBase(Cached):
             self._previous_sitelik_tau[:] = ttau
             self._previous_sitelik_eta[:] = teta
 
-            # self._cav_update()
-            # self._cavs.update(self._joint.tau, self._joint.eta, ttau, teta)
-
             self._cav_tau[:] = jtau - ttau
             self._cav_eta[:] = jeta - teta
             self._tilted_params()
@@ -318,7 +318,6 @@ class EPBase(Cached):
                 raise Exception('Error: not all(isfinite(hsig2))' +
                                 ' or any(hsig2 == 0.).')
 
-            # self._sites.update(self._cavs.tau, self._cavs.eta, hmu, hvar)
             self._sitelik_update(hmu, hvar)
             self.clear_cache('_r')
             self.clear_cache('_L')
@@ -326,19 +325,17 @@ class EPBase(Cached):
             self.clear_cache('_A2')
             self.clear_cache('_Q0B1Q0t')
 
-            # self._joint.update(m, teta, self._A1(), self._A2(),
-            #                    self._Q0B1Q0t(), self.K())
             self._joint_update()
 
-            tdiff = abs(self._psites.tau - ttau)
-            ediff = abs(self._psites.eta - teta)
+            tdiff = abs(pttau - ttau)
+            ediff = abs(pteta - teta)
             aerr = tdiff.max() + ediff.max()
 
-            if self._psites.tau.min() <= 0. or (0. in self._psites.eta):
+            if pttau.min() <= 0. or (0. in pteta):
                 rerr = inf
             else:
-                rtdiff = tdiff / abs(self._psites.tau)
-                rediff = ediff / abs(self._psites.eta)
+                rtdiff = tdiff / abs(pttau)
+                rediff = ediff / abs(pteta)
                 rerr = rtdiff.max() + rediff.max()
 
             i += 1
@@ -353,27 +350,28 @@ class EPBase(Cached):
         self._logger.info('EP loop has performed %d iterations.', i)
 
     def _joint_update(self):
+        A = self._A()
         K = self.K()
         m = self.m()
-        A2 = self._A2()
-        QB1Qt = self._Q0B1Q0t()
+        teta = self._sitelik_eta
+        QBiQt = self._Q0BiQ0t()
 
         jtau = self._joint_tau
         jeta = self._joint_eta
 
         diagK = K.diagonal()
-        QB1QtA1 = ddot(QB1Qt, self._A1(), left=False)
-        jtau[:] = 1 / (A2 * diagK - A2 * dotd(QB1QtA1, K))
+        QBiQtA = ddot(QBiQt, A, left=False)
+        jtau[:] = 1 / (diagK - dotd(QBiQtA, K))
 
-        Kteta = K.dot(self._sitelik_eta)
-        jeta[:] = A2 * (m - QB1QtA1.dot(m) + Kteta - QB1QtA1.dot(Kteta))
+        Kteta = K.dot(teta)
+        jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
         jeta *= jtau
 
     def _sitelik_update(self, hmu, hvar):
         tau = self._cav_tau
         eta = self._cav_eta
-        tau[:] = maximum(1.0 / hvar - tau, 1e-16)
-        eta[:] = hmu / hvar - eta
+        self._sitelik_tau[:] = maximum(1.0 / hvar - tau, 1e-16)
+        self._sitelik_eta[:] = hmu / hvar - eta
 
     # def _optimal_beta_nom(self):
     #     A1 = self._A1()
@@ -475,15 +473,15 @@ class EPBase(Cached):
     #     return 0.0
     #
     # @cached
-    # def _A1(self):
-    #     """:math:`(v \\delta \\mathrm I + \\tilde{\\mathrm T}^{-1})^{-1}`"""
-    #     return self._sites.tau
+    def _A(self):
+        return self._sitelik_tau
     #
     # @cached
     # def _A2(self):
     #     """:math:`\\tilde{\\mathrm T}^{-1} \\mathrm A_1`"""
     #     return 1.0
     #
+
     @cached
     def _S0Q0t(self):
         """:math:`S Q^t`"""
@@ -495,25 +493,21 @@ class EPBase(Cached):
             Q0 = self._Q0
             self.__Q0S0Q0t = dot(Q0, self._S0Q0t())
         return self.__Q0S0Q0t
-    #
-    # @cached
-    # def _Q0B1Q0t(self):
-    #     Q0=self._Q0
-    #     return Q0.dot(cho_solve(self._L(), Q0.T))
-    #
-    # def _B(self):
-    #     """:math:`\\mathrm B = \\mathrm Q^t \\mathrm A_1 \\mathrm Q +
-    #               \\mathrm S^{-1} v^{-1}`"""
-    #     Q0=self._Q0
-    #     A1=self._A1()
-    #     Q0tA1Q0=dot(Q0.T, ddot(A1, Q0, left=True))
-    #     return sum2diag(Q0tA1Q0, 1. / (self.genetic_variance * self._S0))
-    #
-    # @cached
-    # def _L(self):
-    #     """:math:`\\mathrm L \\mathrm L^T =
-    #         \\mathrm{Chol}\\{ \\mathrm B \\}`"""
-    #     return cho_factor(self._B(), lower = True)[0]
+
+    @cached
+    def _Q0BiQ0t(self):
+        Q0 = self._Q0
+        return Q0.dot(cho_solve(self._L(), Q0.T))
+
+    def _B(self):
+        Q0 = self._Q0
+        A = self._A()
+        Q0tAQ0 = dot(Q0.T, ddot(A, Q0, left=True))
+        return sum2diag(Q0tAQ0, 1. / (self.genetic_variance * self._S0))
+
+    @cached
+    def _L(self):
+        return cho_factor(self._B(), lower=True)[0]
     #
     # @cached
     # def _r(self):
