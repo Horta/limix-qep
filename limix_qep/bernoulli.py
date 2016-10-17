@@ -53,7 +53,7 @@ class BernoulliEP(EPBase):
         self._Q1 = Q1
 
         self._moments = LikNormMoments(350)
-#
+
 #     def initialize_hyperparams(self):
 #         from scipy.stats import norm
 #         y = self._y

@@ -140,101 +140,78 @@ class EPBase(Cached):
     def m(self):
         """:math:`m = M \\beta`"""
         return dot(self._tM, self._tbeta)
-    #
-    # @property
-    # def total_variance(self):
-    #     return (self.covariates_variance + self.genetic_variance +
-    #             self.environmental_variance + self.instrumental_variance)
-    #
-    # @property
-    # def covariates_variance(self):
-    #     return variance(self.m())
-    #
-    # @property
-    # def environmental_variance(self):
-    #     return 1.
-    #
-    # @environmental_variance.setter
-    # def environmental_variance(self, v):
-    #     raise NotImplementedError
-    #
-    # @property
-    # def instrumental_variance(self):
-    #     return 0.
-    #
-    # @property
-    # def heritability(self):
-    #     return self.genetic_variance / (self.genetic_variance +
-    #                                     self.environmental_variance +
-    #                                     self.covariates_variance)
-    #
-    # @heritability.setter
-    # def heritability(self, value):
-    #     t = (self.environmental_variance + self.covariates_variance)
-    #     self.genetic_variance = t * value / (1 - value)
-    #
-    # @property
-    # def pseudo_heritability(self):
-    #     return self.genetic_variance / (self.genetic_variance +
-    #                                     self.environmental_variance +
-    #                                     self.instrumental_variance +
-    #                                     self.covariates_variance)
-    #
-    # @pseudo_heritability.setter
-    # def pseudo_heritability(self, value):
-    #     t = (self.environmental_variance + self.covariates_variance +
-    #          self.instrumental_variance)
-    #     self.genetic_variance = t * value / (1 - value)
-    #
-    # def h2tovar(self, h2):
-    #     varc = self.covariates_variance
-    #     return h2 * (1 + varc) / (1 - h2)
-    #
-
-    @property
-    def _tbeta(self):
-        if self.__tbeta is None:
-            self.initialize_hyperparams()
-        return self.__tbeta
-    #
-    # @_tbeta.setter
-    # def _tbeta(self, value):
-    #     self.clear_cache('_r')
-    #     self.clear_cache('_lml_components')
-    #     self.clear_cache('m')
-    #     self.clear_cache('_update')
-    #     if self.__tbeta is None:
-    #         self.__tbeta = asarray(value, float).copy()
-    #     else:
-    #         self.__tbeta[:] = value
-    #
-    # @property
-    # def beta(self):
-    #     if self.__tbeta is None:
-    #         self.initialize_hyperparams()
-    #     return solve(self._svd_V.T, self._tbeta / self._svd_S12)
-    #
-    # @beta.setter
-    # def beta(self, value):
-    #     self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
-    #
 
     @property
     def genetic_variance(self):
         if self._v is None:
             self.initialize_hyperparams()
         return self._v
-    #
-    # @genetic_variance.setter
-    # def genetic_variance(self, value):
-    #     self.clear_cache('_r')
-    #     self.clear_cache('_lml_components')
-    #     self.clear_cache('_L')
-    #     self.clear_cache('_Q0B1Q0t')
-    #     self.clear_cache('_update')
-    #     self.clear_cache('K')
-    #     self.clear_cache('diagK')
-    #     self._v = max(value, 1e-7)
+
+    @property
+    def total_variance(self):
+        tv = self.covariates_variance + self.genetic_variance
+        tv += self.environmental_variance
+        return tv
+
+    @property
+    def covariates_variance(self):
+        return variance(self.m())
+
+    @property
+    def environmental_variance(self):
+        raise NotImplementedError
+
+    @environmental_variance.setter
+    def environmental_variance(self, v):
+        raise NotImplementedError
+
+    @property
+    def heritability(self):
+        return self.genetic_variance / self.total_variance
+
+    @heritability.setter
+    def heritability(self, v):
+        t = self.covariates_variance + self.environmental_variance
+        self.genetic_variance = t * (v / (1 - v))
+
+    @genetic_variance.setter
+    def genetic_variance(self, value):
+        self.clear_cache('_r')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_L')
+        self.clear_cache('_Q0B1Q0t')
+        self.clear_cache('_update')
+        self.clear_cache('K')
+        self.clear_cache('diagK')
+        self._v = max(value, 1e-7)
+
+    @property
+    def _tbeta(self):
+        if self.__tbeta is None:
+            self.initialize_hyperparams()
+        return self.__tbeta
+
+    @_tbeta.setter
+    def _tbeta(self, value):
+        self.clear_cache('_r')
+        self.clear_cache('_lml_components')
+        self.clear_cache('m')
+        self.clear_cache('_update')
+        if self.__tbeta is None:
+            self.__tbeta = asarray(value, float).copy()
+        else:
+            self.__tbeta[:] = value
+
+    @property
+    def beta(self):
+        if self.__tbeta is None:
+            self.initialize_hyperparams()
+        return solve(self._svd_V.T, self._tbeta / self._svd_S12)
+
+    @beta.setter
+    def beta(self, value):
+        self._tbeta = self._svd_S12 * dot(self._svd_V.T, value)
+
     #
     # @property
     # def M(self):
