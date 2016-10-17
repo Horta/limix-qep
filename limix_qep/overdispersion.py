@@ -4,6 +4,9 @@ import logging
 
 from hcache import Cached, cached
 
+from limix_math.linalg import (cho_solve, ddot, dotd, economic_svd, solve,
+                               sum2diag)
+
 from .base import EPBase
 
 
@@ -30,25 +33,44 @@ class OverdispersionEP(EPBase):
         self._Q1 = Q1
         self._delta = 0.5
 
-        @cached
-        def _A(self):
-            ttau = self._sitelik_tau
-            s2 = self.sigma2_epsilon
-            return ttau / (ttau * s2 + 1)
+    @cached
+    def _A(self):
+        ttau = self._sitelik_tau
+        s2 = self.sigma2_epsilon
+        return ttau / (ttau * s2 + 1)
 
-        @cached
-        def _C(self):
-            ttau = self._sitelik_tau
-            s2 = self.sigma2_epsilon
-            return 1 / (ttau * s2 + 1)
+    @cached
+    def _C(self):
+        ttau = self._sitelik_tau
+        s2 = self.sigma2_epsilon
+        return 1 / (ttau * s2 + 1)
 
-        @property
-        def sigma2_epsilon(self):
-            return self._v * self._delta
+    @property
+    def sigma2_epsilon(self):
+        return self._v * self._delta
 
-        @sigma2_epsilon.setter
-        def sigma2_epsilon(self, v):
-            self._delta = v / self._v
+    @sigma2_epsilon.setter
+    def sigma2_epsilon(self, v):
+        self._delta = v / self._v
+
+    def _joint_update(self):
+        A = self._A()
+        C = self._C()
+        K = self.K()
+        m = self.m()
+        teta = self._sitelik_eta
+        QBiQt = self._Q0BiQ0t()
+
+        jtau = self._joint_tau
+        jeta = self._joint_eta
+
+        diagCK = C * K.diagonal()
+        QBiQtA = ddot(QBiQt, A, left=False)
+        jtau[:] = 1 / (diagCK - C * dotd(QBiQtA, K))
+
+        Kteta = K.dot(teta)
+        jeta[:] = C * m - C * QBiQtA.dot(m) + C * Kteta - C * QBiQtA.dot(Kteta)
+        jeta *= jtau
 
 # def _joint_update(self):
 #     K = self.K()

@@ -3,6 +3,7 @@ from __future__ import absolute_import
 from pkg_resources import get_distribution
 
 from .bernoulli import BernoulliEP
+from .binomial import BinomialEP
 
 __version__ = get_distribution('limix-qep').version
 

@@ -17,8 +17,33 @@
 # from limix_qep.tool.util import create_binomial
 #
 # import lim
-#
-#
+
+from __future__ import division
+
+from numpy import array, dot, empty, hstack, ones, sqrt
+from numpy.random import RandomState
+from numpy.testing import assert_almost_equal
+
+from limix_math.linalg import qs_decomposition
+from limix_qep import BinomialEP
+
+
+def test_binomial_lml():
+    n = 3
+    M = ones((n, 1)) * 1.
+    G = array([[1.2, 3.4], [-.1, 1.2], [0.0, .2]])
+    (Q, S) = qs_decomposition(G)
+    nsuccesses = array([1., 0., 1.])
+    ntrials = array([1., 1., 1.])
+    ep = BinomialEP(nsuccesses, ntrials, M, hstack(Q),
+                    empty((n, 0)), hstack(S) + 1.0)
+    ep.beta = array([1.])
+    assert_almost_equal(ep.beta, array([1.]))
+    ep.sigma2_b = 1.
+    ep.sigma2_epsilon = 1e-6
+    assert_almost_equal(ep.lml(), -2.34493650833)
+
+
 # def test_binomial_optimize():
 #
 #     random = RandomState(10)

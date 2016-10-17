@@ -2,8 +2,8 @@ from __future__ import absolute_import
 
 import logging
 
-from numpy import (all, asarray, clip, exp, full, isfinite, log, ones, pi,
-                   set_printoptions, sqrt)
+from numpy import (all, asarray, clip, exp, full, isfinite, isscalar, log,
+                   ones, pi, set_printoptions, sqrt)
 from numpy.linalg import lstsq
 
 from lim.genetics import FastLMM
@@ -12,31 +12,24 @@ from limix_math import issingleton
 from limix_math.special import normal_logcdf, normal_logpdf
 from limix_qep.liknorm import LikNormMoments
 
-from .base import EPBase
+from .overdispersion import OverdispersionEP
 
 
-# class Bernoulli2Predictor(object):
-#
-#     def __init__(self, mean, cov):
-#         self._mean = mean
-#         self._cov = cov
-#
-#     def normal_logpdf(self, y):
-#         ind = 2 * y - 1
-#         return normal_logcdf(ind * self._mean / sqrt(1 + self._cov))
-#
-#     def pdf(self, y):
-#         return exp(self.normal_logpdf(y))
+class BinomialEP(OverdispersionEP):
 
-# K = \sigma_g^2 Q S Q.T
-class BernoulliEP(EPBase):
-
-    def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
-        super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
+    def __init__(self, nsuccesses, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
+        super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        y = asarray(y, float)
+        y = asarray(nsuccesses, float)
+
+        if isscalar(ntrials):
+            ntrials = full(len(y), ntrials, dtype=float)
+        else:
+            ntrials = asarray(ntrials, float)
+
         self._y = y
+        self._ntrials = ntrials
 
         if issingleton(y):
             raise ValueError("The phenotype array has a single unique value" +
@@ -49,6 +42,7 @@ class BernoulliEP(EPBase):
         assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
         assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
 
+        # self._y11 = 2. * self._y - 1.0
         self._Q1 = Q1
 
         self._moments = LikNormMoments(350)
