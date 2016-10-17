@@ -328,8 +328,6 @@ class EPBase(Cached):
 
             # self._joint.update(m, teta, self._A1(), self._A2(),
             #                    self._Q0B1Q0t(), self.K())
-            import pytest
-            pytest.set_trace()
             self._joint_update()
 
             tdiff = abs(self._psites.tau - ttau)
