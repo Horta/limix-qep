@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, unicode_literals
 
 import logging
+from math import fsum
 from time import time
 
 from hcache import Cached, cached
@@ -231,17 +232,25 @@ class EPBase(Cached):
         eC = self.sigma2_epsilon * C
 
         w1 = -sum(log(diagonal(L))) + (- sum(log(gS0)) / 2 + log(A).sum() / 2)
-        w2 = sum(teta * eC * teta)
-        w2 += dot(C * teta, dot(QBiQt, C * teta))
-        w2 -= sum((teta * teta) / tctau)
-        w2 /= 2
 
-        w3 = sum(ceta * (ttau * cmu - 2 * teta) / tctau) / 2
+        # w2 = sum(teta * eC * teta)
+        # w2 += dot(C * teta, dot(QBiQt, C * teta))
+        # w2 -= sum((teta * teta) / tctau)
+        # w2 /= 2
 
-        w4 = sum(m * C * teta) - sum(m * A * dot(QBiQt, C * teta))
+        w2 = eC * teta
+        w2 += ddot(C, dot(QBiQt, C * teta), left=True)
+        w2 -= teta / tctau
+        w2 = dot(teta, w2) / 2
+
+        # w3 = sum(ceta * (ttau * cmu - 2 * teta) / tctau) / 2
+        w3 = dot(ceta, (ttau * cmu - 2 * teta) / tctau) / 2
 
         Am = A * m
-        w5 = -sum(m * A * m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
+        w4 = dot(m * C, teta) - dot(Am, dot(QBiQt, C * teta))
+
+        # w5 = -sum(m * A * m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
+        w5 = -dot(Am, m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
 
         w6 = -sum(log(ttau)) + sum(log(tctau)) - sum(log(ctau))
         w6 /= 2
@@ -251,7 +260,7 @@ class EPBase(Cached):
         return (w1, w2, w3, w4, w5, w6, w7)
 
     def lml(self):
-        return sum(self._lml_components())
+        return fsum(self._lml_components())
 
     @cached
     def _update(self):

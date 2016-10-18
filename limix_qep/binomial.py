@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 
 import logging
 
@@ -20,28 +20,30 @@ class BinomialEP(OverdispersionEP):
         super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        y = asarray(nsuccesses, float)
+        nsuccesses = asarray(nsuccesses, float)
 
         if isscalar(ntrials):
-            ntrials = full(len(y), ntrials, dtype=float)
+            ntrials = full(len(nsuccesses), ntrials, dtype=float)
         else:
             ntrials = asarray(ntrials, float)
 
-        self._y = y
+        self._nsuccesses = nsuccesses
         self._ntrials = ntrials
 
-        if issingleton(y):
+        if issingleton(nsuccesses):
             raise ValueError("The phenotype array has a single unique value" +
                              " only.")
 
-        if not all(isfinite(y)):
+        if not all(isfinite(nsuccesses)):
             raise ValueError("There are non-finite numbers in phenotype.")
 
-        assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
-        assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
-        assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
+        assert nsuccesses.shape[0] == M.shape[
+            0], 'Number of individuals mismatch.'
+        assert nsuccesses.shape[0] == Q0.shape[
+            0], 'Number of individuals mismatch.'
+        assert nsuccesses.shape[0] == Q1.shape[
+            0], 'Number of individuals mismatch.'
 
-        # self._y11 = 2. * self._y - 1.0
         self._Q1 = Q1
 
         self._moments = LikNormMoments(350)
@@ -69,26 +71,27 @@ class BinomialEP(OverdispersionEP):
     def initialize(self):
         from scipy.stats import norm
         from lim.genetics.core import FastLMM
-        y = self._y
-        ratio = sum(y) / float(len(y))
-        latent_mean = norm(0, 1).isf(1 - ratio)
-        latent = y / y.std()
-        latent = latent - latent.mean() + latent_mean
+
+        nsuccesses = self._nsuccesses
+        ntrials = self._ntrials
+
+        latent = nsuccesses / ntrials
+        latent = latent / latent.std()
+        latent -= latent.mean()
 
         Q0 = self._Q0
         Q1 = self._Q1
         S0 = self._S0
         covariates = self._M
-        flmm = FastLMM(full(len(y), latent), covariates, QS=((Q0, Q1), (S0,)))
+        flmm = FastLMM(latent, covariates, QS=((Q0, Q1), (S0,)))
         flmm.learn()
         gv = flmm.genetic_variance
         nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
-        h2 = bern2lat_correction(h2, ratio, ratio)
         h2 = clip(h2, 0.01, 0.9)
 
         mean = flmm.mean
-        self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
+        self._tbeta = lstsq(self._tM, full(len(ntrials), mean))[0]
         self.heritability = h2
 
     @property
@@ -96,9 +99,28 @@ class BinomialEP(OverdispersionEP):
         return (pi * pi) / 3
 
     def _tilted_params(self):
-        y = self._y
+        nsuccesses = self._nsuccesses
+        ntrials = self._ntrials
         ctau = self._cav_tau
         ceta = self._cav_eta
         lmom0 = self._loghz
-        self._moments.binomial(y, ones(len(y)), ceta,
+
+        self._moments.binomial(nsuccesses, ntrials, ceta,
                                ctau, lmom0, self._hmu, self._hvar)
+        lmom0_in, lmom0_ax = min(lmom0), max(lmom0)
+        # print(lmom0_in, lmom0_ax, (ceta / ctau).min(), (ceta / ctau).max())
+        # import numpy as np
+        # idx = np.argsort(lmom0)
+        # print("1: %s" % str(lmom0[idx[:10]]))
+        # print("2: %s" % str(nsuccesses[idx[:10]]))
+        # print("3: %s" % str(ntrials[idx[:10]]))
+        # print("4: %s" % str(ctau[idx[:10]]))
+        # print("5: %s" % str((ceta / ctau)[idx[:10]]))
+
+        # print("1: %s" % str(lmom0[:5]))
+        # print("2: %s" % str(self._hmu[:5]))
+        # print("3: %s" % str(self._hvar[:5]))
+        # print("4: %s" % str(nsuccesses[:5]))
+        # print("5: %s" % str(ntrials[:5]))
+        # print("6: %s" % str(ctau[:5]))
+        # print("7: %s" % str((ceta / ctau)[:5]))
