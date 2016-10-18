@@ -26,7 +26,7 @@ HYPERPARAM_EPS = 1e-5
 # sigma2_b = v
 
 
-class EPBase(Cached):
+class EP(Cached):
     """
     .. math::
         K = v Q S Q0.T
@@ -40,7 +40,6 @@ class EPBase(Cached):
     def __init__(self, M, Q0, S0, Q0S0Q0t=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
-        self._ep_params_initialized = False
 
         if not all(isfinite(Q0)) or not all(isfinite(S0)):
             raise ValueError("There are non-finite numbers in the provided" +
@@ -72,24 +71,12 @@ class EPBase(Cached):
         self._joint_eta = zeros(nsamples)
 
         self._v = None
+        self._delta = 0.5
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
         self._hmu = empty(nsamples)
         self._hvar = empty(nsamples)
-
-    # def fixed_ep(self):
-    #
-    #     (p1, p3, p4, _, _, p7, p8, p9) = self._lml_components()
-    #
-    #     lml_const = p1 + p3 + p4 + p7 + p8 + p9
-    #
-    #     A1 = self._A1()
-    #     A2teta = self._A2() * self._sites.eta
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #     beta_nom = self._optimal_beta_nom()
-    #
-    #     return FixedBaseEP(lml_const, A1, A2teta, Q0B1Q0t, beta_nom)
 
     def _covariate_setup(self, M):
         self._M = M
@@ -100,28 +87,11 @@ class EPBase(Cached):
         self._tM = ddot(self._svd_U, self._svd_S12, left=False)
         self.__tbeta = None
 
-    # def _posterior_normal(self, m, var, covar):
-    #     m = atleast_1d(m)
-    #     var = atleast_2d(var)
-    #     covar = atleast_2d(covar)
-    #
-    #     A1 = self._A1()
-    #     Q0B1Q0t = self._Q0B1Q0t()
-    #
-    #     mu = m - covar.dot(self._r())
-    #
-    #     A1covar = ddot(A1, covar.T, left=True)
-    #     sig2 = var.diagonal() - dotd(A1covar.T, covar.T)\
-    #         + dotd(A1covar.T, Q0B1Q0t.dot(A1covar))
-    #
-    #     return (mu, sig2)
-
+    @cached
     def _init_ep_params(self):
-        assert self._ep_params_initialized is False
         self._logger.info("EP parameters initialization.")
         self._joint_initialize()
         self._sitelik_initialize()
-        self._ep_params_initialized = True
 
     def initialize(self):
         raise NotImplementedError
@@ -137,12 +107,11 @@ class EPBase(Cached):
 
     @cached
     def K(self):
-        """:math:`K = v Q S Q0.T`"""
-        return self.sigma2_b * self._Q0S0Q0t()
+        return sum2diag(self.sigma2_b * self._Q0S0Q0t(), self.sigma2_epsilon)
 
     @cached
     def diagK(self):
-        return self.sigma2_b * self._diagQ0S0Q0t()
+        return self.sigma2_b * self._diagQ0S0Q0t() + self.sigma2_epsilon
 
     def _diagQ0S0Q0t(self):
         return self._Q0S0Q0t().diagonal()
@@ -173,7 +142,27 @@ class EPBase(Cached):
 
     @property
     def sigma2_epsilon(self):
-        return 0.0
+        return self._v * self._delta
+
+    @sigma2_epsilon.setter
+    def sigma2_epsilon(self, v):
+        self.delta = v / self._v
+
+    @property
+    def delta(self):
+        return self._delta
+
+    @delta.setter
+    def delta(self, v):
+        self.clear_cache('K')
+        self.clear_cache('diagK')
+        self.clear_cache('_update')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_L')
+        self.clear_cache('_A')
+        self.clear_cache('_C')
+        self.clear_cache('_Q0BiQ0t')
+        self._delta = v
 
     @property
     def _tbeta(self):
@@ -264,8 +253,7 @@ class EPBase(Cached):
 
     @cached
     def _update(self):
-        if not self._ep_params_initialized:
-            self._init_ep_params()
+        self._init_ep_params()
 
         self._logger.info('EP loop has started.')
 
@@ -296,6 +284,7 @@ class EPBase(Cached):
 
             self._sitelik_update()
             # self.clear_cache('_r')
+            self.clear_cache('_lml_components')
             self.clear_cache('_L')
             self.clear_cache('_A')
             self.clear_cache('_C')
@@ -326,6 +315,7 @@ class EPBase(Cached):
 
     def _joint_update(self):
         A = self._A()
+        C = self._C()
         K = self.K()
         m = self.m()
         teta = self._sitelik_eta
@@ -341,6 +331,7 @@ class EPBase(Cached):
         Kteta = K.dot(teta)
         jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
         jeta *= jtau
+        jtau /= C
 
     def _sitelik_update(self):
         hmu = self._hmu
@@ -414,13 +405,48 @@ class EPBase(Cached):
         msg = "End of optimization (%.3f seconds, %d function calls)."
         self._logger.info(msg, elapsed, nfev)
 
+    # def optimize(self):
+    #
+    #     self._logger.info("Start of optimization.")
+    #
+    #     def function_cost(v):
+    #         self.sigma2_b = v
+    #
+    #         def function_cost_delta(delta):
+    #             self.delta = delta
+    #             self._optimize_beta()
+    #             return -self.lml()
+    #
+    #         delta, nfev = find_minimum(function_cost_delta, self.delta, a=1e-4,
+    #                                    b=1 - 1e-4, rtol=0, atol=1e-6)
+    #
+    #         self.delta = delta
+    #         self._optimize_beta()
+    #         return -self.lml()
+    #
+    #     start = time()
+    #     v, nfev = find_minimum(function_cost, self.sigma2_b, a=1e-4,
+    #                            b=1e4, rtol=0, atol=1e-6)
+    #
+    #     self.sigma2_b = v
+    #
+    #     self._optimize_beta()
+    #     elapsed = time() - start
+    #
+    #     msg = "End of optimization (%.3f seconds, %d function calls)."
+    #     self._logger.info(msg, elapsed, nfev)
+
     @cached
     def _A(self):
-        return self._sitelik_tau
+        ttau = self._sitelik_tau
+        s2 = self.sigma2_epsilon
+        return ttau / (ttau * s2 + 1)
 
     @cached
     def _C(self):
-        return 1
+        ttau = self._sitelik_tau
+        s2 = self.sigma2_epsilon
+        return 1 / (ttau * s2 + 1)
 
     @cached
     def _S0Q0t(self):
@@ -439,23 +465,10 @@ class EPBase(Cached):
         Q0 = self._Q0
         return Q0.dot(cho_solve(self._L(), Q0.T))
 
-    def _B(self):
+    @cached
+    def _L(self):
         Q0 = self._Q0
         A = self._A()
         Q0tAQ0 = dot(Q0.T, ddot(A, Q0, left=True))
-        return sum2diag(Q0tAQ0, 1. / (self.sigma2_b * self._S0))
-
-    @cached
-    def _L(self):
-        return cho_factor(self._B(), lower=True)[0]
-    #
-    # @cached
-    # def _r(self):
-    #     teta=self._sites.eta
-    #     A1=self._A1()
-    #     Q0B1Q0t=self._Q0B1Q0t()
-    #     K=self.K()
-    #
-    #     u=self.m() + K.dot(teta)
-    #     A1u=A1 * u
-    #     return A1u - A1 * Q0B1Q0t.dot(A1u) - teta
+        B = sum2diag(Q0tAQ0, 1. / (self.sigma2_b * self._S0))
+        return cho_factor(B, lower=True)[0]

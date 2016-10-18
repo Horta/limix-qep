@@ -11,13 +11,13 @@ from limix_math import issingleton
 from limix_math.special import normal_logcdf, normal_logpdf
 from limix_qep.liknorm import LikNormMoments
 
-from .overdispersion import OverdispersionEP
+from .ep import EP
 
 
-class BinomialEP(OverdispersionEP):
+class BinomialEP(EP):
 
     def __init__(self, nsuccesses, ntrials, M, Q0, Q1, S0, Q0S0Q0t=None):
-        super(BinomialEP, self).__init__(M, Q0, Q1, S0, Q0S0Q0t=Q0S0Q0t)
+        super(BinomialEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         nsuccesses = asarray(nsuccesses, float)

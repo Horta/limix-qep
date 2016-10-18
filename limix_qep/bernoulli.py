@@ -12,7 +12,7 @@ from limix_math import issingleton
 from limix_math.special import normal_logcdf, normal_logpdf
 from limix_qep.liknorm import LikNormMoments
 
-from .base import EPBase
+from .ep import EP
 
 
 # class Bernoulli2Predictor(object):
@@ -29,7 +29,7 @@ from .base import EPBase
 #         return exp(self.normal_logpdf(y))
 
 # K = \sigma_g^2 Q S Q.T
-class BernoulliEP(EPBase):
+class BernoulliEP(EP):
 
     def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)

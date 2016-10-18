@@ -47,6 +47,10 @@ def test_binomial_optimize():
     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
     ep.optimize()
     assert_almost_equal(ep.lml(), -4111.07735349)
+    assert_almost_equal(ep.sigma2_epsilon, 0.23878860620360959)
+    assert_almost_equal(ep.sigma2_b, 1.3121513162535285)
+    assert_almost_equal(ep.heritability, 0.28512511312132549)
+
 
 if __name__ == '__main__':
     __import__('pytest').main([__file__, '-s'])
