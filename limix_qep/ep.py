@@ -71,7 +71,7 @@ class EP(Cached):
         self._joint_eta = zeros(nsamples)
 
         self._v = None
-        self._delta = 0.5
+        self._delta = 0
         self.__tbeta = None
 
         self._loghz = empty(nsamples)

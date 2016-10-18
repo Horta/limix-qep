@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division, unicode_literals
 
 import logging
 
@@ -19,23 +19,24 @@ from .ep import EP
 
 class BernoulliEP(EP):
 
-    def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
+    def __init__(self, success, M, Q0, Q1, S0, Q0S0Q0t=None):
         super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
-        y = asarray(y, float)
-        self._y = y
+        success = asarray(success, float)
+        self._success = success
 
-        if issingleton(y):
-            raise ValueError("The phenotype array has a single unique value" +
-                             " only.")
+        if issingleton(success):
+            msg = "The phenotype array has a single unique value only."
+            raise ValueError(msg)
 
-        if not all(isfinite(y)):
+        if not all(isfinite(success)):
             raise ValueError("There are non-finite numbers in phenotype.")
 
-        assert y.shape[0] == M.shape[0], 'Number of individuals mismatch.'
-        assert y.shape[0] == Q0.shape[0], 'Number of individuals mismatch.'
-        assert y.shape[0] == Q1.shape[0], 'Number of individuals mismatch.'
+        msg = 'Number of individuals mismatch.'
+        assert success.shape[0] == M.shape[0], msg
+        assert success.shape[0] == Q0.shape[0], msg
+        assert success.shape[0] == Q1.shape[0], msg
 
         self._Q1 = Q1
 
@@ -62,7 +63,7 @@ class BernoulliEP(EP):
         self.genetic_variance = t * (v / (1 - v))
 
     def initialize(self):
-        y = self._y
+        y = self._success
         ratio = sum(y) / float(len(y))
         latent_mean = st.norm(0, 1).isf(1 - ratio)
         latent = y / y.std()
@@ -88,7 +89,7 @@ class BernoulliEP(EP):
         return (pi * pi) / 3
 
     def _tilted_params(self):
-        y = self._y
+        y = self._success
         ctau = self._cav_tau
         ceta = self._cav_eta
         lmom0 = self._loghz
