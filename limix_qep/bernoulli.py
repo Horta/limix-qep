@@ -2,33 +2,21 @@ from __future__ import absolute_import
 
 import logging
 
+import scipy.stats as st
+
 from numpy import (all, asarray, clip, exp, full, isfinite, log, ones, pi,
-                   set_printoptions, sqrt)
+                   sqrt)
 from numpy.linalg import lstsq
 
 from lim.genetics import FastLMM
-from lim.genetics.heritability import bern2lat_correction
 from limix_math import issingleton
-from limix_math.special import normal_logcdf, normal_logpdf
 from limix_qep.liknorm import LikNormMoments
 
 from .ep import EP
 
-
-# class Bernoulli2Predictor(object):
-#
-#     def __init__(self, mean, cov):
-#         self._mean = mean
-#         self._cov = cov
-#
-#     def normal_logpdf(self, y):
-#         ind = 2 * y - 1
-#         return normal_logcdf(ind * self._mean / sqrt(1 + self._cov))
-#
-#     def pdf(self, y):
-#         return exp(self.normal_logpdf(y))
-
 # K = \sigma_g^2 Q S Q.T
+
+
 class BernoulliEP(EP):
 
     def __init__(self, y, M, Q0, Q1, S0, Q0S0Q0t=None):
@@ -74,11 +62,9 @@ class BernoulliEP(EP):
         self.genetic_variance = t * (v / (1 - v))
 
     def initialize(self):
-        from scipy.stats import norm
-        from lim.genetics.core import FastLMM
         y = self._y
         ratio = sum(y) / float(len(y))
-        latent_mean = norm(0, 1).isf(1 - ratio)
+        latent_mean = st.norm(0, 1).isf(1 - ratio)
         latent = y / y.std()
         latent = latent - latent.mean() + latent_mean
 
@@ -91,18 +77,11 @@ class BernoulliEP(EP):
         gv = flmm.genetic_variance
         nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
-        h2 = bern2lat_correction(h2, ratio, ratio)
         h2 = clip(h2, 0.01, 0.9)
 
         mean = flmm.mean
         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
         self.heritability = h2
-
-#
-#     def predict(self, m, var, covar):
-#         (mu, sig2) = self._posterior_normal(m, var, covar)
-#         return Bernoulli2Predictor(mu, sig2)
-#
 
     @property
     def environmental_variance(self):
@@ -115,23 +94,3 @@ class BernoulliEP(EP):
         lmom0 = self._loghz
         self._moments.binomial(y, ones(len(y)), ceta,
                                ctau, lmom0, self._hmu, self._hvar)
-#
-#     # \hat z
-#     def _compute_hz(self):
-#         b = sqrt(self._cavs.tau**2 + self._cavs.tau)
-#         c = self._y11 * self._cavs.eta / b
-#         self._loghz[:] = normal_logcdf(c)
-#
-#     def __str__(self):
-#         set_printoptions(precision=3, threshold=10)
-#         s = """
-# Phenotype definition:
-#   y_l = Indicator(f_l > 0), where f_l is the latent phenotype of the l-th
-#         individual.
-#
-# Input data:
-#   y: {y}""".format(y=bytes(self._y))
-#         set_printoptions(edgeitems=3, infstr='inf', linewidth=75, nanstr='nan',
-#                          precision=8, suppress=False, threshold=1000,
-#                          formatter=None)
-#         return s + "\n" + super(BernoulliEP2, self).__str__()

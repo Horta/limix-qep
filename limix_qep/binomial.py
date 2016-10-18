@@ -6,9 +6,7 @@ from numpy import (all, asarray, clip, exp, full, isfinite, isscalar, log,
                    ones, pi, set_printoptions, sqrt)
 from numpy.linalg import lstsq
 
-from lim.genetics.heritability import bern2lat_correction
 from limix_math import issingleton
-from limix_math.special import normal_logcdf, normal_logpdf
 from limix_qep.liknorm import LikNormMoments
 
 from .ep import EP
