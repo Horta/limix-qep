@@ -20,7 +20,7 @@ from .ep import EP
 class BernoulliEP(EP):
 
     def __init__(self, success, M, Q0, Q1, S0, Q0S0Q0t=None):
-        super(BernoulliEP, self).__init__(M, Q0, S0, Q0S0Q0t=Q0S0Q0t)
+        super(BernoulliEP, self).__init__(M, Q0, S0, QSQt=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         success = asarray(success, float)
@@ -69,9 +69,9 @@ class BernoulliEP(EP):
         latent = y / y.std()
         latent = latent - latent.mean() + latent_mean
 
-        Q0 = self._Q0
+        Q0 = self._Q
         Q1 = self._Q1
-        S0 = self._S0
+        S0 = self._S
         covariates = self._M
         flmm = FastLMM(full(len(y), latent), covariates, QS=((Q0, Q1), (S0,)))
         flmm.learn()

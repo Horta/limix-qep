@@ -21,41 +21,133 @@ from .util import make_sure_reasonable_conditioning
 
 MAX_EP_ITER = 10
 EP_EPS = 1e-4
-HYPERPARAM_EPS = 1e-5
-
-# sigma2_b = v
 
 
 class EP(Cached):
-    """
+    r"""
+    Let :math:`\mathrm Q \mathrm S \mathrm Q^{\intercal}` be the economic
+    eigendecomposition of the genetic covariance matrix.
+    Let :math:`\mathrm U\mathrm S\mathrm V^{\intercal}` be the singular value
+    decomposition of the user-provided covariates :math:`\mathrm M`. We define
+
     .. math::
-        K = v Q S Q0.T
-        M = svd_U svd_S svd_V.T
-        \\tilde \\beta = svd_S^{1/2} svd_V.T \\beta
-        \\tilde M = svd_U svd_S^{1/2} \\tilde \\beta
-        m = M \\beta
-        m = \\tilde M \\tilde \\beta
+
+        \mathrm K = v ((1-\delta)\mathrm Q \mathrm S \mathrm Q^{\intercal} +
+                    \delta \mathrm I)
+
+    as the covariance of the prior distribution. As such,
+    :math:`v` and :math:`\delta` refer to :py:attr:`_v` and :py:attr:`_delta`
+    class attributes, respectively. We also use the following variables for
+    convenience:
+
+    .. math::
+        :nowrap:
+
+        \begin{eqnarray}
+            \sigma_b^2          & = & v (1-\delta) \\
+            \sigma_{\epsilon}^2 & = & v \delta
+        \end{eqnarray}
+
+    The covariate effect-sizes is given by :math:`\boldsymbol\beta`, which
+    implies
+
+    .. math::
+
+        \mathbf m = \mathrm M \boldsymbol\beta
+
+    The prior is thus defined as
+
+    .. math::
+
+        \mathcal N(\mathbf z ~|~ \mathbf m; \mathrm K)
+
+    and the marginal likelihood is given by
+
+    .. math::
+
+        p(\mathbf y) = \int \prod_i p(y_i | g(\mathrm E[y_i | z_i])=z_i)
+            \mathcal N(\mathbf z ~|~ \mathbf m, \mathrm K) \mathrm d\mathbf z
+
+    However, the singular value decomposition of the covariates allows us to
+    automatically remove dependence between covariates, which would create
+    infinitly number of :math:`\boldsymbol\beta` that lead to global optima.
+    Let us define
+
+    .. math::
+
+        \tilde{\boldsymbol\beta} = \mathrm S^{1/2} \mathrm V^{\intercal}
+                                    \boldsymbol\beta
+
+    as the covariate effect-sizes we will effectively work with during the
+    optimization process. Let us also define the
+
+    .. math::
+
+        \tilde{\mathrm M} = \mathrm U \mathrm S^{1/2}
+
+    as the redundance-free covariates. Naturally,
+
+    .. math::
+
+        \mathbf m = \tilde{\mathrm M} \tilde{\boldsymbol\beta}
+
+    In summary, we will optimize :math:`\tilde{\boldsymbol{\beta}}`, even
+    though the user will be able to retrieve the corresponding
+    :math:`\boldsymbol{\beta}`.
+
+
+    Let
+
+    .. math::
+
+        \mathrm{KL}[p(y_i|z_i) p_{-}(z_i|y_i)_{\text{EP}} ~|~
+            p(y_i|z_i)_{\text{EP}} p_{-}(z_i|y_i)_{\text{EP}}]
+
+    be the KL divergence we want to minimize at each EP iteration.
+    The left-hand side can be described as
+    :math:`\hat c_i \mathcal N(z_i | \hat \mu_i; \hat \sigma_i^2)`
+
+
+    Args:
+        M (array_like): :math:`\mathrm M` covariates.
+        Q (array_like): :math:`\mathrm Q` of the economic
+                        eigendecomposition.
+        S (array_like): :math:`\mathrm S` of the economic
+                        eigendecomposition.
+        QSQt (array_like): :math:`\mathrm Q \mathrm S
+                        \mathrm Q^{\intercal}` in case this has already
+                        been computed.
+
+
+    Attributes:
+        _v (float): Total variance :math:`v` from the prior distribution.
+        _delta (float): Fraction of the total variance due to the identity
+                        matrix :math:`\mathrm I`.
+        _loghz (array_like): This is :math:`\log(\hat c)` for each site.
+        _hmu (array_like): This is :math:`\hat \mu` for each site.
+        _hvar (array_like): This is :math:`\hat \sigma^2` for each site.
+
     """
 
-    def __init__(self, M, Q0, S0, Q0S0Q0t=None):
+    def __init__(self, M, Q, S, QSQt=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
 
-        if not all(isfinite(Q0)) or not all(isfinite(S0)):
+        if not all(isfinite(Q)) or not all(isfinite(S)):
             raise ValueError("There are non-finite numbers in the provided" +
                              " eigen decomposition.")
 
-        if S0.min() <= 0:
+        if S.min() <= 0:
             raise ValueError("The provided covariance matrix is not" +
                              " positive-definite because the minimum" +
-                             " eigvalue is %f." % S0.min())
+                             " eigvalue is %f." % S.min())
 
-        make_sure_reasonable_conditioning(S0)
+        make_sure_reasonable_conditioning(S)
 
         self._covariate_setup(M)
-        self._S0 = S0
-        self._Q0 = Q0
-        self.__Q0S0Q0t = Q0S0Q0t
+        self._S = S
+        self._Q = Q
+        self.__QSQt = QSQt
 
         nsamples = M.shape[0]
         self._previous_sitelik_tau = zeros(nsamples)
@@ -107,18 +199,20 @@ class EP(Cached):
 
     @cached
     def K(self):
-        return sum2diag(self.sigma2_b * self._Q0S0Q0t(), self.sigma2_epsilon)
+        r"""Returns :math:`\mathrm K`."""
+        return sum2diag(self.sigma2_b * self._QSQt(), self.sigma2_epsilon)
 
     @cached
     def diagK(self):
-        return self.sigma2_b * self._diagQ0S0Q0t() + self.sigma2_epsilon
+        r"""Returns the diagonal of :math:`\mathrm K`."""
+        return self.sigma2_b * self._diagQSQt() + self.sigma2_epsilon
 
-    def _diagQ0S0Q0t(self):
-        return self._Q0S0Q0t().diagonal()
+    def _diagQSQt(self):
+        return self._QSQt().diagonal()
 
     @cached
     def m(self):
-        """:math:`m = M \\beta`"""
+        r"""Returns :math:`\mathbf m = \mathrm M \boldsymbol\beta`."""
         return dot(self._tM, self._tbeta)
 
     @property
@@ -127,14 +221,14 @@ class EP(Cached):
 
     @property
     def sigma2_b(self):
+        r"""Returns :math:`v (1-\delta)`."""
         return self._v
 
     @sigma2_b.setter
     def sigma2_b(self, v):
-        # self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('_L')
-        self.clear_cache('_Q0BiQ0t')
+        self.clear_cache('_QBiQt')
         self.clear_cache('_update')
         self.clear_cache('K')
         self.clear_cache('diagK')
@@ -142,6 +236,7 @@ class EP(Cached):
 
     @property
     def sigma2_epsilon(self):
+        r"""Returns :math:`v \delta`."""
         return self._v * self._delta
 
     @sigma2_epsilon.setter
@@ -150,6 +245,7 @@ class EP(Cached):
 
     @property
     def delta(self):
+        r"""Returns :math:`\delta`."""
         return self._delta
 
     @delta.setter
@@ -161,7 +257,7 @@ class EP(Cached):
         self.clear_cache('_L')
         self.clear_cache('_A')
         self.clear_cache('_C')
-        self.clear_cache('_Q0BiQ0t')
+        self.clear_cache('_QBiQt')
         self._delta = v
 
     @property
@@ -170,7 +266,6 @@ class EP(Cached):
 
     @_tbeta.setter
     def _tbeta(self, value):
-        # self.clear_cache('_r')
         self.clear_cache('_lml_components')
         self.clear_cache('m')
         self.clear_cache('_update')
@@ -181,6 +276,7 @@ class EP(Cached):
 
     @property
     def beta(self):
+        r"""Returns :math:`\boldsymbol\beta`."""
         return solve(self._svd_V.T, self._tbeta / self._svd_S12)
 
     @beta.setter
@@ -189,12 +285,12 @@ class EP(Cached):
 
     @property
     def M(self):
+        r"""Returns :math:`\mathrm M`."""
         return self._M
 
     @M.setter
     def M(self, value):
         self._covariate_setup(value)
-        # self.clear_cache('_r')
         self.clear_cache('m')
         self.clear_cache('_lml_components')
         self.clear_cache('_update')
@@ -202,7 +298,7 @@ class EP(Cached):
     @cached
     def _lml_components(self):
         self._update()
-        S0 = self._S0
+        S = self._S
         m = self.m()
         ttau = self._sitelik_tau
         teta = self._sitelik_eta
@@ -215,12 +311,12 @@ class EP(Cached):
         A = self._A()
         C = self._C()
         L = self._L()
-        QBiQt = self._Q0BiQ0t()
+        QBiQt = self._QBiQt()
 
-        gS0 = self.sigma2_b * S0
+        gS = self.sigma2_b * S
         eC = self.sigma2_epsilon * C
 
-        w1 = -sum(log(diagonal(L))) + (- sum(log(gS0)) / 2 + log(A).sum() / 2)
+        w1 = -sum(log(diagonal(L))) + (- sum(log(gS)) / 2 + log(A).sum() / 2)
 
         # w2 = sum(teta * eC * teta)
         # w2 += dot(C * teta, dot(QBiQt, C * teta))
@@ -283,12 +379,11 @@ class EP(Cached):
                                 ' or any(hsig2 == 0.).')
 
             self._sitelik_update()
-            # self.clear_cache('_r')
             self.clear_cache('_lml_components')
             self.clear_cache('_L')
             self.clear_cache('_A')
             self.clear_cache('_C')
-            self.clear_cache('_Q0BiQ0t')
+            self.clear_cache('_QBiQt')
 
             self._joint_update()
 
@@ -319,7 +414,7 @@ class EP(Cached):
         K = self.K()
         m = self.m()
         teta = self._sitelik_eta
-        QBiQt = self._Q0BiQ0t()
+        QBiQt = self._QBiQt()
 
         jtau = self._joint_tau
         jeta = self._joint_eta
@@ -344,12 +439,12 @@ class EP(Cached):
     def _optimal_beta_nom(self):
         A = self._A()
         C = self._C()
-        QBiQt = self._Q0BiQ0t()
+        QBiQt = self._QBiQt()
         teta = self._sitelik_eta
         return C * teta - A * dot(QBiQt, C * teta)
 
     def _optimal_tbeta_denom(self):
-        QBiQt = self._Q0BiQ0t()
+        QBiQt = self._QBiQt()
         AM = ddot(self._A(), self._tM, left=True)
         return dot(self._tM.T, AM) - multi_dot([AM.T, QBiQt, AM])
 
@@ -405,70 +500,49 @@ class EP(Cached):
         msg = "End of optimization (%.3f seconds, %d function calls)."
         self._logger.info(msg, elapsed, nfev)
 
-    # def optimize(self):
-    #
-    #     self._logger.info("Start of optimization.")
-    #
-    #     def function_cost(v):
-    #         self.sigma2_b = v
-    #
-    #         def function_cost_delta(delta):
-    #             self.delta = delta
-    #             self._optimize_beta()
-    #             return -self.lml()
-    #
-    #         delta, nfev = find_minimum(function_cost_delta, self.delta, a=1e-4,
-    #                                    b=1 - 1e-4, rtol=0, atol=1e-6)
-    #
-    #         self.delta = delta
-    #         self._optimize_beta()
-    #         return -self.lml()
-    #
-    #     start = time()
-    #     v, nfev = find_minimum(function_cost, self.sigma2_b, a=1e-4,
-    #                            b=1e4, rtol=0, atol=1e-6)
-    #
-    #     self.sigma2_b = v
-    #
-    #     self._optimize_beta()
-    #     elapsed = time() - start
-    #
-    #     msg = "End of optimization (%.3f seconds, %d function calls)."
-    #     self._logger.info(msg, elapsed, nfev)
-
     @cached
     def _A(self):
+        r"""Returns :math:`\tilde{\mathrm T} \mathcal C^{-1}`."""
         ttau = self._sitelik_tau
         s2 = self.sigma2_epsilon
         return ttau / (ttau * s2 + 1)
 
     @cached
     def _C(self):
+        r"""Returns :math:`\sigma_{\epsilon}^2 \tilde{\mathrm T} +
+            \mathrm I`."""
         ttau = self._sitelik_tau
         s2 = self.sigma2_epsilon
         return 1 / (ttau * s2 + 1)
 
     @cached
-    def _S0Q0t(self):
-        """:math:`S Q^t`"""
-        return ddot(self._S0, self._Q0.T, left=True)
+    def _SQt(self):
+        r"""Returns :math:`\mathrm S \mathrm Q^\intercal`."""
+        return ddot(self._S, self._Q.T, left=True)
 
-    def _Q0S0Q0t(self):
-        """:math:`\\mathrm Q \\mathrm S \\mathrm Q^t`"""
-        if self.__Q0S0Q0t is None:
-            Q0 = self._Q0
-            self.__Q0S0Q0t = dot(Q0, self._S0Q0t())
-        return self.__Q0S0Q0t
+    def _QSQt(self):
+        r"""Returns :math:`\mathrm Q \mathrm S \mathrm Q^\intercal`."""
+        if self.__QSQt is None:
+            Q = self._Q
+            self.__QSQt = dot(Q, self._SQt())
+        return self.__QSQt
 
     @cached
-    def _Q0BiQ0t(self):
-        Q0 = self._Q0
-        return Q0.dot(cho_solve(self._L(), Q0.T))
+    def _QBiQt(self):
+        Q = self._Q
+        return Q.dot(cho_solve(self._L(), Q.T))
 
     @cached
     def _L(self):
-        Q0 = self._Q0
+        r"""Returns the Cholesky factorization of :math:`\mathcal B`.
+
+        .. math::
+
+            \mathcal B = \mathrm Q^{\intercal}\mathcal A\mathrm Q
+                (\sigma_b^2 \mathrm S)^{-1}
+        """
+        Q = self._Q
         A = self._A()
-        Q0tAQ0 = dot(Q0.T, ddot(A, Q0, left=True))
-        B = sum2diag(Q0tAQ0, 1. / (self.sigma2_b * self._S0))
+        QtAQ = dot(Q.T, ddot(A, Q, left=True))
+        B = sum2diag(QtAQ, 1. / (self.sigma2_b * self._S))
         return cho_factor(B, lower=True)[0]
