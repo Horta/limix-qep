@@ -638,6 +638,44 @@ class EP(Cached):
         msg = "End of optimization (%.3f seconds, %d function calls)."
         self._logger.info(msg, elapsed, nfev)
 
+    def optimize_gradient(self):
+
+        from scipy.optimize import fmin_tnc
+        xtol = 1e-5
+
+        self._logger.info("Start of optimization.")
+        start = time()
+
+        if self._overdispersion:
+            def function(x):
+                self.v = x[0]
+                self.delta = x[1]
+                print("v, delta: %g, %g" % (self.v, self.delta))
+                self._optimize_beta()
+                return (-self.lml(), -self._gradient_over_both())
+
+            r = fmin_tnc(function, asarray([self.v, self.delta]), xtol=xtol,
+                         disp=5, bounds=[(0, inf), (0, 1)])
+            x, nfev = r[0], r[1]
+            self.v = x[0]
+            self.delta = x[1]
+        else:
+            def function(x):
+                self.v = x[0]
+                self._optimize_beta()
+                return (-self.lml(), -self._gradient_over_v())
+
+            r = fmin_tnc(function, asarray([self.v]), xtol=xtol, disp=5,
+                         bounds=[(0, inf)])
+            x, nfev = r[0], r[1]
+            self.v = x[0]
+
+        self._optimize_beta()
+        elapsed = time() - start
+
+        msg = "End of optimization (%.3f seconds, %d function calls)."
+        self._logger.info(msg, elapsed, nfev)
+
     @cached
     def _A(self):
         r"""Returns :math:`\mathcal A = \tilde{\mathrm T} \mathcal C^{-1}`."""
