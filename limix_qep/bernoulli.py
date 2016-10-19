@@ -112,6 +112,7 @@ class BernoulliEP(EP):
         nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
         h2 = clip(h2, 0.01, 0.9)
+        h2 = _h2_correction(h2, ratio, ratio)
 
         mean = flmm.mean
         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
@@ -125,3 +126,11 @@ class BernoulliEP(EP):
         lmom0 = self._loghz
         self._moments.binomial(y, ones(len(y)), ceta,
                                ctau, lmom0, self._hmu, self._hvar)
+
+
+def _h2_correction(h2, prevalence, ascertainment):
+    t = st.norm.ppf(1 - prevalence)
+    z = st.norm.pdf(t)
+    k = prevalence * (1 - prevalence)
+    p = ascertainment * (1 - ascertainment)
+    return h2 * k**2 / (z**2 * p)

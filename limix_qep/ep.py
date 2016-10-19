@@ -609,7 +609,7 @@ class EP(Cached):
             step = sum((self._tbeta - ptbeta)**2)
             i += 1
 
-    def optimize(self):
+    def optimize_brent(self):
 
         self._logger.info("Start of optimization.")
 
@@ -638,10 +638,13 @@ class EP(Cached):
         msg = "End of optimization (%.3f seconds, %d function calls)."
         self._logger.info(msg, elapsed, nfev)
 
-    def optimize_gradient(self):
+    def optimize(self):
 
         from scipy.optimize import fmin_tnc
         xtol = 1e-5
+        rescale = 10
+        pgtol = 1e-5
+        ftol = 1e-5
 
         self._logger.info("Start of optimization.")
         start = time()
@@ -655,18 +658,21 @@ class EP(Cached):
                 return (-self.lml(), -self._gradient_over_both())
 
             r = fmin_tnc(function, asarray([self.v, self.delta]), xtol=xtol,
-                         disp=5, bounds=[(0, inf), (0, 1)])
+                         disp=5, bounds=[(0, inf), (0, 1)], ftol=ftol,
+                         pgtol=pgtol, rescale=rescale)
             x, nfev = r[0], r[1]
             self.v = x[0]
             self.delta = x[1]
         else:
             def function(x):
                 self.v = x[0]
+                print("v: %g" % self.v)
                 self._optimize_beta()
                 return (-self.lml(), -self._gradient_over_v())
 
             r = fmin_tnc(function, asarray([self.v]), xtol=xtol, disp=5,
-                         bounds=[(0, inf)])
+                         bounds=[(0, inf)], ftol=ftol, pgtol=pgtol,
+                         rescale=rescale)
             x, nfev = r[0], r[1]
             self.v = x[0]
 

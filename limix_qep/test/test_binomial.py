@@ -152,35 +152,6 @@ def test_binomial_optimize():
     M = ones((nsamples, 1))
     ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
     ep.optimize()
-    assert_almost_equal(ep.lml(), -4111.07735349)
-    assert_almost_equal(ep.beta[0], 0.0638478666713, decimal=3)
-    assert_almost_equal(ep.sigma2_epsilon, 0.238788433223, decimal=3)
-    assert_almost_equal(ep.sigma2_b, 1.31215140111, decimal=3)
-    assert_almost_equal(ep.heritability, 0.846036301385, decimal=3)
-
-
-def test_binomial_optimize_gradient():
-    random = RandomState(139)
-    nsamples = 800
-    nfeatures = 1000
-
-    G = random.randn(nsamples, nfeatures) / sqrt(nfeatures)
-
-    u = random.randn(nfeatures)
-
-    z = 0.1 + 2 * dot(G, u) + random.randn(nsamples)
-
-    ntrials = random.randint(10, 500, size=nsamples)
-
-    y = zeros(nsamples)
-    for i in range(len(ntrials)):
-        y[i] = sum(z[i] + random.logistic(scale=pi / sqrt(3),
-                                          size=ntrials[i]) > 0)
-    (Q, S) = qs_decomposition(G)
-
-    M = ones((nsamples, 1))
-    ep = BinomialEP(y, ntrials, M, Q[0], Q[1], S[0])
-    ep.optimize_gradient()
 
     assert_almost_equal(ep.lml(), -4111.07735349)
     assert_almost_equal(ep.beta[0], 0.0638478564959, decimal=3)
