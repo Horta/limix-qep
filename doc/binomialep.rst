@@ -1,5 +1,6 @@
-Binomial
---------
+BinomialEP
+----------
 
-.. autoclass:: limix_qep.binomial.BinomialEP
+.. autoclass:: limix_qep.BinomialEP
    :members:
+   :private-members:

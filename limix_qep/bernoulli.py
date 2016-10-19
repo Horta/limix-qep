@@ -14,13 +14,48 @@ from limix_qep.liknorm import LikNormMoments
 
 from .ep import EP
 
-# K = \sigma_g^2 Q S Q.T
-
 
 class BernoulliEP(EP):
+    r"""Bernoulli EP inference.
+
+    Let :math:`p_i` be the probability of success for the i-th individual and
+
+    .. math::
+
+        p(y_i | p_i) = p_i^{y_i} (1-p_i)^{1-y_i}
+
+    be the Bernoulli likelihood. It assumes the marginal likelihood
+
+    .. math::
+
+        p(\mathbf y) = \int \prod_i p(y_i | g(p_i)=z_i)
+            \mathcal N(\mathbf z ~|~ \mathbf m, \mathrm K) \mathrm d\mathbf z
+
+    where
+
+    .. math::
+
+        g(x) = \log \left(\frac{x}{1-x}\right)
+
+    is the Logit link function.
+
+    We set :math:`\delta=0` and perform inference only over the parameters
+    :math:`\boldsymbol\beta` and :math:`v`, which means that
+    :math:`\mathrm K = v \mathrm Q_0 \mathrm S_0 \mathrm Q_0^\intercal`.
+
+    Args:
+        success (array_like): Array of :math:`y_i \in \{0, 1\}`.
+        M (array_like): :math:`\mathrm M` covariates.
+        Q0 (array_like): :math:`\mathrm Q_0` of the eigendecomposition.
+        Q1 (array_like): :math:`\mathrm Q_1` of the eigendecomposition.
+        S0 (array_like): :math:`\mathrm S_0` of the eigendecomposition.
+        Q0S0Q0t (array_like): :math:`\mathrm Q_0 \mathrm S_0
+                        \mathrm Q_0^{\intercal}` in case this has already
+                        been computed. Defaults to `None`.
+    """
 
     def __init__(self, success, M, Q0, Q1, S0, Q0S0Q0t=None):
-        super(BernoulliEP, self).__init__(M, Q0, S0, True, QSQt=Q0S0Q0t)
+        super(BernoulliEP, self).__init__(M, Q0, S0, False, QSQt=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         success = asarray(success, float)
@@ -45,14 +80,17 @@ class BernoulliEP(EP):
 
     @property
     def genetic_variance(self):
+        r"""Returns :math:`\sigma_b^2`."""
         return self.sigma2_b
 
     @property
     def environmental_variance(self):
+        r"""Returns :math:`\pi^2/3`."""
         return (pi * pi) / 3
 
     @property
     def heritability(self):
+        r"""Returns :math:`\sigma_b^2/(\sigma_a^2+\sigma_b^2+\pi^2/3)`."""
         total = self.genetic_variance + self.covariates_variance
         total += self.environmental_variance
         return self.genetic_variance / total

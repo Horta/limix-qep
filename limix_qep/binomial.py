@@ -13,10 +13,47 @@ from .ep import EP
 
 
 class BinomialEP(EP):
+    r"""Binomial EP inference.
+
+    Let :math:`p_i` be the probability of success for the i-th individual and
+
+    .. math::
+
+        p(y_i | p_i) = {N_i \choose K_i} p_i^{K_i} (1-p_i)^{N_i-K_i}
+
+    be the Binomial likelihood, where :math:`N_i` and :math:`K_i` are the
+    number of trials and successes observed, respectively. Let
+    :math:`y_i = K_i/N_i` such that :math:`\mathrm E[y_i|z_i] = p_i`.
+    The marginal likelihood is
+
+    .. math::
+
+        p(\mathbf y) = \int \prod_i p(y_i | g(p_i)=z_i)
+            \mathcal N(\mathbf z ~|~ \mathbf m, \mathrm K) \mathrm d\mathbf z
+
+    where
+
+    .. math::
+
+        g(x) = \log \left(\frac{x}{1-x}\right)
+
+    is the Logit link function.
+
+    Args:
+        nsuccesses (array_like): Array of :math:`N_i \in \{1, \dots\}`.
+        ntrials (array_like): Array of :math:`K_i \in \{0, 1, \dots, N_i\}`.
+        M (array_like): :math:`\mathrm M` covariates.
+        Q0 (array_like): :math:`\mathrm Q_0` of the eigendecomposition.
+        Q1 (array_like): :math:`\mathrm Q_1` of the eigendecomposition.
+        S0 (array_like): :math:`\mathrm S_0` of the eigendecomposition.
+        Q0S0Q0t (array_like): :math:`\mathrm Q_0 \mathrm S_0
+                        \mathrm Q_0^{\intercal}` in case this has already
+                        been computed. Defaults to `None`.
+    """
 
     def __init__(self, nsuccesses, ntrials, M, Q0, Q1, S0,
                  Q0S0Q0t=None):
-        super(BinomialEP, self).__init__(M, Q0, S0, False, QSQt=Q0S0Q0t)
+        super(BinomialEP, self).__init__(M, Q0, S0, True, QSQt=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         nsuccesses = asarray(nsuccesses, float)
@@ -50,14 +87,18 @@ class BinomialEP(EP):
 
     @property
     def genetic_variance(self):
+        r"""Returns :math:`\sigma_b^2`."""
         return self.sigma2_b
 
     @property
     def environmental_variance(self):
+        r"""Returns :math:`\sigma_{\epsilon}^2`."""
         return self.sigma2_epsilon
 
     @property
     def heritability(self):
+        r"""Returns
+:math:`\sigma_b^2/(\sigma_a^2+\sigma_b^2+\sigma_{\epsilon}^2)`."""
         total = self.genetic_variance + self.covariates_variance
         total += self.environmental_variance
         return self.genetic_variance / total

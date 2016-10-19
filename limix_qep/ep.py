@@ -24,7 +24,8 @@ EP_EPS = 1e-4
 
 
 class EP(Cached):
-    r"""
+    r"""Generic EP implementation.
+
     Let :math:`\mathrm Q \mathrm S \mathrm Q^{\intercal}` be the economic
     eigendecomposition of the genetic covariance matrix.
     Let :math:`\mathrm U\mathrm S\mathrm V^{\intercal}` be the singular value
@@ -114,9 +115,11 @@ class EP(Cached):
                         eigendecomposition.
         S (array_like): :math:`\mathrm S` of the economic
                         eigendecomposition.
+        overdispersion (bool): `True` for :math:`\sigma_{\epsilon}^2 \ge 0`,
+                `False` for :math:`\sigma_{\epsilon}^2=0`.
         QSQt (array_like): :math:`\mathrm Q \mathrm S
                         \mathrm Q^{\intercal}` in case this has already
-                        been computed.
+                        been computed. Defaults to `None`.
 
 
     Attributes:
@@ -129,7 +132,7 @@ class EP(Cached):
 
     """
 
-    def __init__(self, M, Q, S, fixed_delta, QSQt=None):
+    def __init__(self, M, Q, S, overdispersion, QSQt=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
 
@@ -164,7 +167,7 @@ class EP(Cached):
 
         self._v = None
         self._delta = 0
-        self._fixed_delta = fixed_delta
+        self._overdispersion = overdispersion
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
@@ -190,6 +193,19 @@ class EP(Cached):
         raise NotImplementedError
 
     def _joint_initialize(self):
+        r"""Initialize the mean and covariance of the posterior.
+
+        Given that :math:`\tilde{\mathrm T}` is a matrix of zeros before the
+        first EP iteration, we have
+
+        .. math::
+            :nowrap:
+
+            \begin{eqnarray}
+                \Sigma         & = & \mathrm K \\
+                \boldsymbol\mu & = & \mathrm K^{-1} \mathbf m
+            \end{eqnarray}
+        """
         self._joint_tau[:] = 1 / self.diagK()
         self._joint_eta[:] = self.m()
         self._joint_eta[:] *= self._joint_tau
@@ -224,8 +240,9 @@ class EP(Cached):
 
         .. math::
 
-            \sum_{s=1}^p \left\{ \sum_{i=1}^n \left( \mathrm M_{i,s}\beta_s -
-                \sum_{j=1}^n\frac{\mathrm M_{j,s}\beta_s}{n} \right)^2 \Big/ n
+            \sigma_a^2 = \sum_{s=1}^p \left\{ \sum_{i=1}^n \left(
+                \mathrm M_{i,s}\beta_s - \sum_{j=1}^n
+                \frac{\mathrm M_{j,s}\beta_s}{n} \right)^2 \Big/ n
             \right\}
 
         where :math:`p` is the number of covariates and :math:`n` is the number
@@ -509,7 +526,7 @@ class EP(Cached):
 
         def function_cost(v):
             self.v = v
-            if not self._fixed_delta:
+            if self._overdispersion:
                 def function_cost_delta(delta):
                     self.delta = delta
                     self._optimize_beta()
