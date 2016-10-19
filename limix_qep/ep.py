@@ -261,7 +261,7 @@ class EP(Cached):
     @property
     def sigma2_b(self):
         r"""Returns :math:`v (1-\delta)`."""
-        return self.v
+        return self.v * (1 - self.delta)
 
     @property
     def sigma2_epsilon(self):
@@ -398,7 +398,6 @@ class EP(Cached):
         self._update()
 
         dK = self.K() / self.v
-        self._update()
         A = self._A()
         C = self._C()
         m = self.m()
@@ -425,10 +424,8 @@ class EP(Cached):
         v = self.v
         delta = self.delta
         K = self.K()
-        # dK = - K() / (1 - delta) + v * (delta / (1 - delta)) + v
-        dK = sum2diag(- K() / (1 - delta), v * (delta / (1 - delta)) + v)
+        dK = sum2diag(- K / (1 - delta), v * (delta / (1 - delta)) + v)
 
-        self._update()
         A = self._A()
         C = self._C()
         m = self.m()
@@ -458,7 +455,6 @@ class EP(Cached):
     #     dKv = K / v
     #     dKdelta = - K() / (1 - delta) + v * (delta / (1 - delta)) + v
     #
-    #     self._update()
     #     A = self._A()
     #     C = self._C()
     #     m = self.m()
