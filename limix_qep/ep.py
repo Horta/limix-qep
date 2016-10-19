@@ -284,6 +284,8 @@ class EP(Cached):
         self.clear_cache('_A')
         self.clear_cache('_C')
         self.clear_cache('_QBiQt')
+        self.clear_cache('_QBiQtAm')
+        self.clear_cache('_QBiQtCteta')
         assert 0 <= v <= 1
         self._delta = v
 
@@ -303,6 +305,8 @@ class EP(Cached):
         self.clear_cache('_A')
         self.clear_cache('_C')
         self.clear_cache('_QBiQt')
+        self.clear_cache('_QBiQtAm')
+        self.clear_cache('_QBiQtCteta')
         assert 0 <= v
         self._v = v
 
@@ -313,6 +317,7 @@ class EP(Cached):
     @_tbeta.setter
     def _tbeta(self, value):
         self.clear_cache('_lml_components')
+        self.clear_cache('_QBiQtAm')
         self.clear_cache('m')
         self.clear_cache('_update')
         if self.__tbeta is None:
@@ -338,6 +343,7 @@ class EP(Cached):
     def M(self, value):
         self._covariate_setup(value)
         self.clear_cache('m')
+        self.clear_cache('_QBiQtAm')
         self.clear_cache('_update')
         self.clear_cache('_lml_components')
 
@@ -364,8 +370,10 @@ class EP(Cached):
         Q = self._Q
 
         # QBiQtCteta = dot(QBiQt, Cteta)
-        QBiQtCteta = dot(Q, cho_solve(L, dot(Q.T, Cteta)))
-        QBiQtAm = dot(Q, cho_solve(L, dot(Q.T, Am)))
+        # QBiQtCteta = dot(Q, cho_solve(L, dot(Q.T, Cteta)))
+        QBiQtCteta = self._QBiQtCteta()
+        # QBiQtAm = dot(Q, cho_solve(L, dot(Q.T, Am)))
+        QBiQtAm = self._QBiQtAm()
 
         gS = self.sigma2_b * S
         eC = self.sigma2_epsilon * C
@@ -464,13 +472,19 @@ class EP(Cached):
         C = self._C()
         m = self.m()
         teta = self._sitelik_eta
-        QBiQt = self._QBiQt()
+        # QBiQt = self._QBiQt()
+        L = self._L()
+        Q = self._Q
 
         Am = A * m
-        Em = Am - A * dot(QBiQt, Am)
+        # Em = Am - A * dot(QBiQt, Am)
+        # Em = Am - A * dot(Q, cho_solve(L, dot(Q.T, Am)))
+        Em = Am - A * self._QBiQtAm()
 
         Cteta = C * teta
-        Eu = Cteta - A * dot(QBiQt, Cteta)
+        # Eu = Cteta - A * dot(QBiQt, Cteta)
+        # Eu = Cteta - A * dot(Q, cho_solve(L, dot(Q.T, Cteta)))
+        Eu = Cteta - A * self._QBiQtCteta()
 
         u = Em - Eu
 
@@ -478,7 +492,8 @@ class EP(Cached):
             AdK = ddot(A, dK, left=True)
             dKu = dot(dK, u)
 
-            AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+            # AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+            AQBiQtAdK = ddot(A, dot(Q, cho_solve(L, dot(Q.T, AdK))), left=True)
             return dot(u, dKu) / 2 - trace(AdK - AQBiQtAdK) / 2
 
         return asarray([grad(dKv), grad(dKdelta)])
@@ -520,6 +535,8 @@ class EP(Cached):
             self.clear_cache('_A')
             self.clear_cache('_C')
             self.clear_cache('_QBiQt')
+            self.clear_cache('_QBiQtAm')
+            self.clear_cache('_QBiQtCteta')
 
             self._joint_update()
 
@@ -568,7 +585,7 @@ class EP(Cached):
         jtau[:] = 1 / (diagK - QBiQtAK)
 
         # jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
-        jeta[:] = m - dot(Q, cho_solve(L, dot(Q.T, Am))) + Kteta - \
+        jeta[:] = m - self._QBiQtAm() + Kteta - \
             dot(Q, cho_solve(L, dot(Q.T, A * Kteta)))
         jeta *= jtau
         jtau /= C
@@ -584,20 +601,19 @@ class EP(Cached):
     def _optimal_beta_nom(self):
         A = self._A()
         C = self._C()
-        L = self._L()
-        Q = self._Q
         teta = self._sitelik_eta
         Cteta = C * teta
         # QBiQt = self._QBiQt()
         # dot(Q, cho_solve(L, dot(Q.T, Cteta)))
         # return Cteta - A * dot(QBiQt, Cteta)
-        return Cteta - A * dot(Q, cho_solve(L, dot(Q.T, Cteta)))
+        return Cteta - A * self._QBiQtCteta()
 
     def _optimal_tbeta_denom(self):
         # QBiQt = self._QBiQt()
         L = self._L()
         Q = self._Q
         AM = ddot(self._A(), self._tM, left=True)
+        # QBiQtAM = self._QBiQtAm()
         QBiQtAM = dot(Q, cho_solve(L, dot(Q.T, AM)))
         # return dot(self._tM.T, AM) - multi_dot([AM.T, QBiQt, AM])
         return dot(self._tM.T, AM) - dot(AM.T, QBiQtAM)
@@ -752,3 +768,19 @@ class EP(Cached):
         QtAQ = dot(Q.T, ddot(A, Q, left=True))
         B = sum2diag(QtAQ, 1. / (self.sigma2_b * self._S))
         return cho_factor(B, lower=True)[0]
+
+    @cached
+    def _QBiQtCteta(self):
+        Q = self._Q
+        L = self._L()
+        C = self._C()
+        teta = self._sitelik_eta
+        return dot(Q, cho_solve(L, dot(Q.T, C * teta)))
+
+    @cached
+    def _QBiQtAm(self):
+        Q = self._Q
+        L = self._L()
+        A = self._A()
+        m = self.m()
+        return dot(Q, cho_solve(L, dot(Q.T, A * m)))
