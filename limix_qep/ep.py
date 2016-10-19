@@ -388,6 +388,28 @@ class EP(Cached):
     def lml(self):
         return fsum(self._lml_components())
 
+    def gradient(self, dK):
+        self._update()
+        A = self._A()
+        C = self._C()
+        m = self.m()
+        teta = self._sitelik_eta
+        QBiQt = self._QBiQt()
+
+        Am = A * m
+        Em = Am - A * dot(QBiQt, Am)
+
+        Cteta = C * teta
+        Eu = Cteta - A * dot(QBiQt, Cteta)
+
+        u = Em - Eu
+
+        AdK = ddot(A, dK, left=True)
+        AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+        from numpy import trace
+
+        return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
+
     @cached
     def _update(self):
         self._init_ep_params()
