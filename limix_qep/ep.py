@@ -262,7 +262,8 @@ class EP(Cached):
         self.clear_cache('_A')
         self.clear_cache('_C')
         self.clear_cache('_QBiQt')
-        self._delta = max(v, 1e-7)
+        assert 0 <= v <= 1
+        self._delta = v
 
     @property
     def v(self):
@@ -280,7 +281,8 @@ class EP(Cached):
         self.clear_cache('_A')
         self.clear_cache('_C')
         self.clear_cache('_QBiQt')
-        self._v = max(v, 1e-7)
+        assert 0 <= v
+        self._v = v
 
     @property
     def _tbeta(self):

@@ -17,7 +17,8 @@ def test_bernoulli_lml():
     ep = BernoulliEP(y, M, hstack(Q), empty((n, 0)), hstack(S) + 1.0)
     ep.beta = array([1.])
     assert_almost_equal(ep.beta, array([1.]))
-    ep.sigma2_b = 1.
+    ep.v = 1.
+    ep.delta = 0.
     assert_almost_equal(ep.lml(), -2.344936587017978)
     assert_almost_equal(ep.sigma2_epsilon, 0)
     assert_almost_equal(ep.sigma2_b, 1)

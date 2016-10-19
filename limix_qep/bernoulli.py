@@ -47,20 +47,15 @@ class BernoulliEP(EP):
     def genetic_variance(self):
         return self.sigma2_b
 
-    @genetic_variance.setter
-    def genetic_variance(self, v):
-        self.sigma2_b = v
+    @property
+    def environmental_variance(self):
+        return (pi * pi) / 3
 
     @property
     def heritability(self):
         total = self.genetic_variance + self.covariates_variance
         total += self.environmental_variance
         return self.genetic_variance / total
-
-    @heritability.setter
-    def heritability(self, v):
-        t = self.environmental_variance + self.covariates_variance
-        self.genetic_variance = t * (v / (1 - v))
 
     def initialize(self):
         y = self._success
@@ -82,11 +77,8 @@ class BernoulliEP(EP):
 
         mean = flmm.mean
         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
-        self.heritability = h2
-
-    @property
-    def environmental_variance(self):
-        return (pi * pi) / 3
+        self.delta = 0.
+        self.v = self.environmental_variance * (h2 / (1 - h2))
 
     def _tilted_params(self):
         y = self._success
