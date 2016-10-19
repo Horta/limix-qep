@@ -358,7 +358,14 @@ class EP(Cached):
         A = self._A()
         C = self._C()
         L = self._L()
-        QBiQt = self._QBiQt()
+        # QBiQt = self._QBiQt()
+        Cteta = C * teta
+        Am = A * m
+        Q = self._Q
+
+        # QBiQtCteta = dot(QBiQt, Cteta)
+        QBiQtCteta = dot(Q, cho_solve(L, dot(Q.T, Cteta)))
+        QBiQtAm = dot(Q, cho_solve(L, dot(Q.T, Am)))
 
         gS = self.sigma2_b * S
         eC = self.sigma2_epsilon * C
@@ -371,18 +378,17 @@ class EP(Cached):
         # w2 /= 2
 
         w2 = eC * teta
-        w2 += ddot(C, dot(QBiQt, C * teta), left=True)
+        w2 += ddot(C, QBiQtCteta, left=True)
         w2 -= teta / tctau
         w2 = dot(teta, w2) / 2
 
         # w3 = sum(ceta * (ttau * cmu - 2 * teta) / tctau) / 2
         w3 = dot(ceta, (ttau * cmu - 2 * teta) / tctau) / 2
 
-        Am = A * m
-        w4 = dot(m * C, teta) - dot(Am, dot(QBiQt, C * teta))
+        w4 = dot(m * C, teta) - dot(Am, QBiQtCteta)
 
         # w5 = -sum(m * A * m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
-        w5 = -dot(Am, m) / 2 + dot(Am, dot(QBiQt, Am)) / 2
+        w5 = -dot(Am, m) / 2 + dot(Am, QBiQtAm) / 2
 
         w6 = -sum(log(ttau)) + sum(log(tctau)) - sum(log(ctau))
         w6 /= 2
@@ -539,22 +545,31 @@ class EP(Cached):
         self._logger.info('EP loop has performed %d iterations.', i)
 
     def _joint_update(self):
+        L = self._L()
         A = self._A()
         C = self._C()
         K = self.K()
         m = self.m()
+        Q = self._Q
         teta = self._sitelik_eta
-        QBiQt = self._QBiQt()
+        Kteta = dot(K, teta)
+        AK = ddot(A, K, left=True)
+        # AKteta = dot(AK, teta)
+        Am = A * m
+        # QBiQt = self._QBiQt()
+        QBiQtAK = dotd(Q, cho_solve(L, dot(Q.T, AK)))
 
         jtau = self._joint_tau
         jeta = self._joint_eta
 
         diagK = K.diagonal()
-        QBiQtA = ddot(QBiQt, A, left=False)
-        jtau[:] = 1 / (diagK - dotd(QBiQtA, K))
+        # QBiQtA = ddot(QBiQt, A, left=False)
+        # jtau[:] = 1 / (diagK - dotd(QBiQtA, K))
+        jtau[:] = 1 / (diagK - QBiQtAK)
 
-        Kteta = K.dot(teta)
-        jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
+        # jeta[:] = m - QBiQtA.dot(m) + Kteta - QBiQtA.dot(Kteta)
+        jeta[:] = m - dot(Q, cho_solve(L, dot(Q.T, Am))) + Kteta - \
+            dot(Q, cho_solve(L, dot(Q.T, A * Kteta)))
         jeta *= jtau
         jtau /= C
 
@@ -569,14 +584,23 @@ class EP(Cached):
     def _optimal_beta_nom(self):
         A = self._A()
         C = self._C()
-        QBiQt = self._QBiQt()
+        L = self._L()
+        Q = self._Q
         teta = self._sitelik_eta
-        return C * teta - A * dot(QBiQt, C * teta)
+        Cteta = C * teta
+        # QBiQt = self._QBiQt()
+        # dot(Q, cho_solve(L, dot(Q.T, Cteta)))
+        # return Cteta - A * dot(QBiQt, Cteta)
+        return Cteta - A * dot(Q, cho_solve(L, dot(Q.T, Cteta)))
 
     def _optimal_tbeta_denom(self):
-        QBiQt = self._QBiQt()
+        # QBiQt = self._QBiQt()
+        L = self._L()
+        Q = self._Q
         AM = ddot(self._A(), self._tM, left=True)
-        return dot(self._tM.T, AM) - multi_dot([AM.T, QBiQt, AM])
+        QBiQtAM = dot(Q, cho_solve(L, dot(Q.T, AM)))
+        # return dot(self._tM.T, AM) - multi_dot([AM.T, QBiQt, AM])
+        return dot(self._tM.T, AM) - dot(AM.T, QBiQtAM)
 
     def _optimal_tbeta(self):
         self._update()
