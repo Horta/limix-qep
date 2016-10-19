@@ -9,7 +9,7 @@ from numpy import var as variance
 from numpy import (abs, all, any, asarray, atleast_1d, atleast_2d, clip,
                    diagonal, dot, empty, empty_like, errstate, inf, isfinite,
                    log, maximum, set_printoptions, sqrt, sum, zeros,
-                   zeros_like)
+                   zeros_like, trace)
 from numpy.linalg import LinAlgError, multi_dot
 from scipy.linalg import cho_factor
 
@@ -414,7 +414,6 @@ class EP(Cached):
 
         AdK = ddot(A, dK, left=True)
         AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
-        from numpy import trace
 
         return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
 
@@ -442,38 +441,41 @@ class EP(Cached):
 
         AdK = ddot(A, dK, left=True)
         AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
-        from numpy import trace
 
         return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
 
-    # def _gradient_over_v_delta(self):
-    #     self._update()
-    #     v = self.v
-    #     delta = self.delta
-    #     K = self.K()
-    #
-    #     dKv = K / v
-    #     dKdelta = - K() / (1 - delta) + v * (delta / (1 - delta)) + v
-    #
-    #     A = self._A()
-    #     C = self._C()
-    #     m = self.m()
-    #     teta = self._sitelik_eta
-    #     QBiQt = self._QBiQt()
-    #
-    #     Am = A * m
-    #     Em = Am - A * dot(QBiQt, Am)
-    #
-    #     Cteta = C * teta
-    #     Eu = Cteta - A * dot(QBiQt, Cteta)
-    #
-    #     u = Em - Eu
-    #
-    #     AdK = ddot(A, dK, left=True)
-    #     AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
-    #     from numpy import trace
-    #
-    #     return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
+    def _gradient_over_both(self):
+        self._update()
+
+        v = self.v
+        delta = self.delta
+        K = self.K()
+
+        dKv = self.K() / self.v
+        dKdelta = sum2diag(- K / (1 - delta), v * (delta / (1 - delta)) + v)
+
+        A = self._A()
+        C = self._C()
+        m = self.m()
+        teta = self._sitelik_eta
+        QBiQt = self._QBiQt()
+
+        Am = A * m
+        Em = Am - A * dot(QBiQt, Am)
+
+        Cteta = C * teta
+        Eu = Cteta - A * dot(QBiQt, Cteta)
+
+        u = Em - Eu
+
+        def grad(dK):
+            AdK = ddot(A, dK, left=True)
+            dKu = dot(dK, u)
+
+            AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+            return dot(u, dKu) / 2 - trace(AdK - AQBiQtAdK) / 2
+
+        return asarray([grad(dKv), grad(dKdelta)])
 
     @cached
     def _update(self):
