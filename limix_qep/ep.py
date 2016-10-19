@@ -129,7 +129,7 @@ class EP(Cached):
 
     """
 
-    def __init__(self, M, Q, S, QSQt=None):
+    def __init__(self, M, Q, S, fixed_delta, QSQt=None):
         Cached.__init__(self)
         self._logger = logging.getLogger(__name__)
 
@@ -164,6 +164,7 @@ class EP(Cached):
 
         self._v = None
         self._delta = 0
+        self._fixed_delta = fixed_delta
         self.__tbeta = None
 
         self._loghz = empty(nsamples)
@@ -217,31 +218,33 @@ class EP(Cached):
 
     @property
     def covariates_variance(self):
-        return variance(self.m())
+        r"""Variance explained by the covariates.
+
+        It is defined as
+
+        .. math::
+
+            \sum_{s=1}^p \left\{ \sum_{i=1}^n \left( \mathrm M_{i,s}\beta_s -
+                \sum_{j=1}^n\frac{\mathrm M_{j,s}\beta_s}{n} \right)^2 \Big/ n
+            \right\}
+
+        where :math:`p` is the number of covariates and :math:`n` is the number
+        of individuals. One can show that it amounts to
+        :math:`\sum_s \beta_s^2` whenever the columns of :math:`\mathrm M`
+        are normalized to have mean and standard deviation equal to zero and
+        one, respectively.
+        """
+        return fsum(variance(self.M * self.beta, axis=0))
 
     @property
     def sigma2_b(self):
         r"""Returns :math:`v (1-\delta)`."""
-        return self._v
-
-    @sigma2_b.setter
-    def sigma2_b(self, v):
-        self.clear_cache('_lml_components')
-        self.clear_cache('_L')
-        self.clear_cache('_QBiQt')
-        self.clear_cache('_update')
-        self.clear_cache('K')
-        self.clear_cache('diagK')
-        self._v = max(v, 1e-7)
+        return self.v
 
     @property
     def sigma2_epsilon(self):
         r"""Returns :math:`v \delta`."""
-        return self._v * self._delta
-
-    @sigma2_epsilon.setter
-    def sigma2_epsilon(self, v):
-        self.delta = v / self._v
+        return self.v * self.delta
 
     @property
     def delta(self):
@@ -250,6 +253,7 @@ class EP(Cached):
 
     @delta.setter
     def delta(self, v):
+        r"""Set :math:`\delta`."""
         self.clear_cache('K')
         self.clear_cache('diagK')
         self.clear_cache('_update')
@@ -258,7 +262,25 @@ class EP(Cached):
         self.clear_cache('_A')
         self.clear_cache('_C')
         self.clear_cache('_QBiQt')
-        self._delta = v
+        self._delta = max(v, 1e-7)
+
+    @property
+    def v(self):
+        r"""Returns :math:`v`."""
+        return self._v
+
+    @v.setter
+    def v(self, v):
+        r"""Set :math:`v`."""
+        self.clear_cache('K')
+        self.clear_cache('diagK')
+        self.clear_cache('_update')
+        self.clear_cache('_lml_components')
+        self.clear_cache('_L')
+        self.clear_cache('_A')
+        self.clear_cache('_C')
+        self.clear_cache('_QBiQt')
+        self._v = max(v, 1e-7)
 
     @property
     def _tbeta(self):
@@ -484,15 +506,23 @@ class EP(Cached):
         self._logger.info("Start of optimization.")
 
         def function_cost(v):
-            self.sigma2_b = v
+            self.v = v
+            if not self._fixed_delta:
+                def function_cost_delta(delta):
+                    self.delta = delta
+                    self._optimize_beta()
+                    return -self.lml()
+                d, nfev = find_minimum(function_cost_delta, self.delta,
+                                       a=1e-4, b=1 - 1e-4, rtol=0, atol=1e-6)
+                self.delta = d
             self._optimize_beta()
             return -self.lml()
 
         start = time()
-        v, nfev = find_minimum(function_cost, self.sigma2_b, a=1e-4,
+        v, nfev = find_minimum(function_cost, self.v, a=1e-4,
                                b=1e4, rtol=0, atol=1e-6)
 
-        self.sigma2_b = v
+        self.v = v
 
         self._optimize_beta()
         elapsed = time() - start
@@ -502,14 +532,14 @@ class EP(Cached):
 
     @cached
     def _A(self):
-        r"""Returns :math:`\tilde{\mathrm T} \mathcal C^{-1}`."""
+        r"""Returns :math:`\mathcal A = \tilde{\mathrm T} \mathcal C^{-1}`."""
         ttau = self._sitelik_tau
         s2 = self.sigma2_epsilon
         return ttau / (ttau * s2 + 1)
 
     @cached
     def _C(self):
-        r"""Returns :math:`\sigma_{\epsilon}^2 \tilde{\mathrm T} +
+        r"""Returns :math:`\mathcal C = \sigma_{\epsilon}^2 \tilde{\mathrm T} +
             \mathrm I`."""
         ttau = self._sitelik_tau
         s2 = self.sigma2_epsilon

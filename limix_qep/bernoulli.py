@@ -20,7 +20,7 @@ from .ep import EP
 class BernoulliEP(EP):
 
     def __init__(self, success, M, Q0, Q1, S0, Q0S0Q0t=None):
-        super(BernoulliEP, self).__init__(M, Q0, S0, QSQt=Q0S0Q0t)
+        super(BernoulliEP, self).__init__(M, Q0, S0, True, QSQt=Q0S0Q0t)
         self._logger = logging.getLogger(__name__)
 
         success = asarray(success, float)

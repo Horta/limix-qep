@@ -45,6 +45,6 @@ def test_bernoulli_optimize():
     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
     ep.optimize()
     assert_almost_equal(ep.lml(), -506.21916986520444)
-    assert_almost_equal(ep.sigma2_b, 20.919822569104682, decimal=3)
+    assert_almost_equal(ep.sigma2_b, 20.919822569104682, decimal=2)
     assert_almost_equal(ep.sigma2_epsilon, 0.0)
     assert_almost_equal(ep.beta[0], 0.3876872635745286, decimal=3)
