@@ -4,6 +4,7 @@ from pkg_resources import get_distribution
 
 from .bernoulli import BernoulliEP
 from .binomial import BinomialEP
+from .poisson import PoissonEP
 
 __version__ = get_distribution('limix-qep').version
 
