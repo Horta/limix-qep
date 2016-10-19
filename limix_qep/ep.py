@@ -20,7 +20,7 @@ from ._optimize import find_minimum
 from .util import make_sure_reasonable_conditioning
 
 MAX_EP_ITER = 10
-EP_EPS = 1e-4
+EP_EPS = 1e-5
 
 
 class EP(Cached):
@@ -173,6 +173,7 @@ class EP(Cached):
         self._loghz = empty(nsamples)
         self._hmu = empty(nsamples)
         self._hvar = empty(nsamples)
+        self._ep_params_initialized = False
 
     def _covariate_setup(self, M):
         self._M = M
@@ -183,11 +184,15 @@ class EP(Cached):
         self._tM = ddot(self._svd_U, self._svd_S12, left=False)
         self.__tbeta = None
 
-    @cached
     def _init_ep_params(self):
         self._logger.info("EP parameters initialization.")
-        self._joint_initialize()
-        self._sitelik_initialize()
+
+        if self._ep_params_initialized:
+            self._joint_update()
+        else:
+            self._joint_initialize()
+            self._sitelik_initialize()
+            self._ep_params_initialized = True
 
     def initialize(self):
         raise NotImplementedError
@@ -333,12 +338,13 @@ class EP(Cached):
     def M(self, value):
         self._covariate_setup(value)
         self.clear_cache('m')
-        self.clear_cache('_lml_components')
         self.clear_cache('_update')
+        self.clear_cache('_lml_components')
 
     @cached
     def _lml_components(self):
         self._update()
+
         S = self._S
         m = self.m()
         ttau = self._sitelik_tau
@@ -388,7 +394,10 @@ class EP(Cached):
     def lml(self):
         return fsum(self._lml_components())
 
-    def gradient(self, dK):
+    def _gradient_over_v(self):
+        self._update()
+
+        dK = self.K() / self.v
         self._update()
         A = self._A()
         C = self._C()
@@ -409,6 +418,66 @@ class EP(Cached):
         from numpy import trace
 
         return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
+
+    def _gradient_over_delta(self):
+        self._update()
+
+        v = self.v
+        delta = self.delta
+        K = self.K()
+        # dK = - K() / (1 - delta) + v * (delta / (1 - delta)) + v
+        dK = sum2diag(- K() / (1 - delta), v * (delta / (1 - delta)) + v)
+
+        self._update()
+        A = self._A()
+        C = self._C()
+        m = self.m()
+        teta = self._sitelik_eta
+        QBiQt = self._QBiQt()
+
+        Am = A * m
+        Em = Am - A * dot(QBiQt, Am)
+
+        Cteta = C * teta
+        Eu = Cteta - A * dot(QBiQt, Cteta)
+
+        u = Em - Eu
+
+        AdK = ddot(A, dK, left=True)
+        AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+        from numpy import trace
+
+        return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
+
+    # def _gradient_over_v_delta(self):
+    #     self._update()
+    #     v = self.v
+    #     delta = self.delta
+    #     K = self.K()
+    #
+    #     dKv = K / v
+    #     dKdelta = - K() / (1 - delta) + v * (delta / (1 - delta)) + v
+    #
+    #     self._update()
+    #     A = self._A()
+    #     C = self._C()
+    #     m = self.m()
+    #     teta = self._sitelik_eta
+    #     QBiQt = self._QBiQt()
+    #
+    #     Am = A * m
+    #     Em = Am - A * dot(QBiQt, Am)
+    #
+    #     Cteta = C * teta
+    #     Eu = Cteta - A * dot(QBiQt, Cteta)
+    #
+    #     u = Em - Eu
+    #
+    #     AdK = ddot(A, dK, left=True)
+    #     AQBiQtAdK = ddot(A, dot(QBiQt, AdK), left=True)
+    #     from numpy import trace
+    #
+    #     return dot(u, dot(dK, u)) / 2 - trace(AdK - AQBiQtAdK) / 2
 
     @cached
     def _update(self):

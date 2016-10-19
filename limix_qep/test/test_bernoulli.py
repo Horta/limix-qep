@@ -24,7 +24,7 @@ def test_bernoulli_lml():
     assert_almost_equal(ep.sigma2_b, 1)
 
 
-def test_bernoulli_gradient():
+def test_bernoulli_gradient_over_v():
     n = 3
     M = ones((n, 1)) * 1.
     G = array([[1.2, 3.4], [-.1, 1.2], [0.0, .2]])
@@ -36,7 +36,7 @@ def test_bernoulli_gradient():
     ep.v = 1.
     ep.delta = 0.
 
-    analytical_gradient = ep.gradient(ep.K() / ep.v)
+    analytical_gradient = ep._gradient_over_v()
 
     lml0 = ep.lml()
     step = 1e-5
