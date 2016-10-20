@@ -666,7 +666,7 @@ class EP(Cached):
                 return (-self.lml(), -self._gradient_over_both())
 
             r = fmin_tnc(function, asarray([self.v, self.delta]), xtol=xtol,
-                         disp=5, bounds=[(0, inf), (0, 1)], ftol=ftol,
+                         disp=5, bounds=[(0, inf), (0, 1 - 1e-5)], ftol=ftol,
                          pgtol=pgtol, rescale=rescale)
             x, nfev = r[0], r[1]
             self.v = x[0]
