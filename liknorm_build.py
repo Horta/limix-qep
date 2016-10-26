@@ -1,4 +1,8 @@
+from __future__ import (division, absolute_import, unicode_literals,
+                        print_function)
+
 import logging
+
 from glob import glob
 from os.path import join
 
@@ -19,10 +23,10 @@ def _make():
     incls = ['liknorm']
     libraries = ['m']
 
-    logger.debug('Sources: %s', bytes(sources))
-    logger.debug('Headers: %s', bytes(hdrs))
-    logger.debug('Incls: %s', bytes(incls))
-    logger.debug('Libraries: %s', bytes(libraries))
+    logger.debug("Sources: %s", str(sources))
+    logger.debug('Headers: %s', str(hdrs))
+    logger.debug('Incls: %s', str(incls))
+    logger.debug('Libraries: %s', str(libraries))
 
     ffi.set_source('limix_qep.liknorm._liknorm_ffi',
                    '''#include "liknorm.h"''',
