@@ -111,8 +111,8 @@ class BernoulliEP(EP):
         gv = flmm.genetic_variance
         nv = flmm.environmental_variance
         h2 = gv / (gv + nv)
-        h2 = clip(h2, 0.01, 0.9)
         h2 = _h2_correction(h2, ratio, ratio)
+        h2 = clip(h2, 0.01, 0.9)
 
         mean = flmm.mean
         self._tbeta = lstsq(self._tM, full(len(y), mean))[0]
