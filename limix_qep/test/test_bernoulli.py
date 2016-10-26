@@ -68,13 +68,8 @@ def test_bernoulli_optimize():
     (Q, S) = qs_decomposition(G)
 
     ep = BernoulliEP(y, M, Q[0], Q[1], S[0])
-    # ep.optimize()
-    # print(ep.lml())
-    # print(ep.sigma2_b)
-    # print(ep.sigma2_epsilon)
-    # print(ep.beta[0])
-    # assert_almost_equal(ep.lml(), -506.21916986520444, decimal=4)
-    # assert_almost_equal(ep.sigma2_b / 100., 20.919822569104682 / 100.,
-    #                     decimal=2)
-    # assert_almost_equal(ep.sigma2_epsilon, 0.0)
-    # assert_almost_equal(ep.beta[0], 0.3876872635745286, decimal=2)
+    ep.optimize()
+    assert_almost_equal(ep.lml(), -16.691454697813427)
+    assert_almost_equal(ep.sigma2_b, 5551.30530403)
+    assert_almost_equal(ep.sigma2_epsilon, 0.0)
+    assert_almost_equal(ep.beta[0], 2.82422935655)
